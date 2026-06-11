@@ -1,0 +1,1612 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, useMemo } from "react";
+import {
+  Clock, Users, Coffee, UtensilsCrossed, LogIn, LogOut,
+  LayoutDashboard, History, FileText, Settings,
+  Plus, Edit3, Trash2, Search, AlertTriangle, CheckCircle2,
+  Download, RefreshCw, CalendarDays, ChevronRight, X,
+} from "lucide-react";
+import { Topbar } from "@/components/wfm/Topbar";
+import { useWFM } from "@/lib/wfm/store";
+import { useAuth } from "@/lib/auth";
+import { useJornada } from "@/lib/jornada/store";
+import type {
+  TipoMovimiento,
+  JornadaCupo,
+  JornadaConfiguracion,
+  JornadaRegistro,
+} from "@/lib/jornada/types";
+import {
+  TIPO_MOVIMIENTO_LABELS,
+  ESTADO_LABELS,
+  ESTADO_COLORS,
+  SIGUIENTES_MOVIMIENTOS,
+} from "@/lib/jornada/types";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/_authenticated/jornada")({
+  head: () => ({ meta: [{ title: "Control de Jornada · STC" }] }),
+  component: JornadaPage,
+});
+
+type Tab = "dashboard" | "registro" | "historial" | "reportes" | "configuracion";
+
+const TABS: { id: Tab; label: string; icon: any }[] = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "registro",  label: "Registro",  icon: Clock },
+  { id: "historial", label: "Historial", icon: History },
+  { id: "reportes",  label: "Reportes",  icon: FileText },
+  { id: "configuracion", label: "Configuración", icon: Settings },
+];
+
+const TIPO_ICONS: Record<TipoMovimiento, any> = {
+  entrada:          LogIn,
+  salida_break:     Coffee,
+  regreso_break:    Coffee,
+  salida_almuerzo:  UtensilsCrossed,
+  regreso_almuerzo: UtensilsCrossed,
+  salida:           LogOut,
+};
+
+const TIPO_COLORS: Record<TipoMovimiento, string> = {
+  entrada:          "bg-primary hover:opacity-90 text-primary-foreground",
+  salida_break:     "border border-border bg-card hover:bg-secondary text-foreground",
+  regreso_break:    "bg-primary hover:opacity-90 text-primary-foreground",
+  salida_almuerzo:  "border border-border bg-card hover:bg-secondary text-foreground",
+  regreso_almuerzo: "bg-primary hover:opacity-90 text-primary-foreground",
+  salida:           "bg-foreground hover:opacity-90 text-background",
+};
+
+// ── Helpers ────────────────────────────────────────────────
+
+function fmtTime(iso?: string) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtMins(mins: number) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function fmtFecha(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function calcDayStats(regs: JornadaRegistro[]) {
+  const sorted = [...regs].sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
+  const entrada  = sorted.find((r) => r.tipoMovimiento === "entrada");
+  const salida   = sorted.find((r) => r.tipoMovimiento === "salida");
+  let jornadaMin = 0, breakMin = 0, almuerzoMin = 0;
+  if (entrada && salida) {
+    jornadaMin = Math.floor((new Date(salida.horaExacta).getTime() - new Date(entrada.horaExacta).getTime()) / 60000);
+  }
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].tipoMovimiento === "salida_break") {
+      const r = sorted.find((x, j) => j > i && x.tipoMovimiento === "regreso_break");
+      if (r) breakMin += Math.floor((new Date(r.horaExacta).getTime() - new Date(sorted[i].horaExacta).getTime()) / 60000);
+    }
+    if (sorted[i].tipoMovimiento === "salida_almuerzo") {
+      const r = sorted.find((x, j) => j > i && x.tipoMovimiento === "regreso_almuerzo");
+      if (r) almuerzoMin += Math.floor((new Date(r.horaExacta).getTime() - new Date(sorted[i].horaExacta).getTime()) / 60000);
+    }
+  }
+  return { entrada, salida, jornadaMin, breakMin, almuerzoMin, efectivoMin: Math.max(0, jornadaMin - breakMin - almuerzoMin) };
+}
+
+function calcPunctuality(regs: JornadaRegistro[], config: JornadaConfiguracion | undefined) {
+  const toleranciaMin = config?.toleranciaLlegadaMin ?? 15;
+  const horaInicio    = (config?.horaInicioJornada ?? "08:00").slice(0, 5);
+  const fechas = [...new Set(regs.filter((r) => r.tipoMovimiento === "entrada").map((r) => r.fecha))];
+  let diasATiempo = 0, diasTarde = 0, totalRetrasoMin = 0;
+  fechas.forEach((fecha) => {
+    const entrada = regs.find((r) => r.fecha === fecha && r.tipoMovimiento === "entrada");
+    if (!entrada) return;
+    const limite   = new Date(`${fecha}T${horaInicio}:00`).getTime() + toleranciaMin * 60000;
+    const entradaT = new Date(entrada.horaExacta).getTime();
+    if (entradaT > limite) {
+      diasTarde++;
+      totalRetrasoMin += Math.floor((entradaT - new Date(`${fecha}T${horaInicio}:00`).getTime()) / 60000);
+    } else {
+      diasATiempo++;
+    }
+  });
+  const total = diasATiempo + diasTarde;
+  return {
+    diasATiempo, diasTarde, total,
+    pct: total > 0 ? Math.round((diasATiempo / total) * 100) : 100,
+    avgRetrasoMin: diasTarde > 0 ? Math.round(totalRetrasoMin / diasTarde) : 0,
+  };
+}
+
+// ── Shared components ──────────────────────────────────────
+
+function KPI({ icon: Icon, label, value, hint, alert }: { icon: any; label: string; value: any; hint?: string; alert?: boolean }) {
+  return (
+    <div className={cn("rounded-card p-4 shadow-card flex flex-col gap-2.5", alert ? "bg-foreground" : "border border-border bg-card")}>
+      <div className="flex items-start justify-between gap-2">
+        <span className={cn("text-[11px] font-medium uppercase tracking-[0.04em]", alert ? "text-background/70" : "text-muted-foreground")}>{label}</span>
+        <span className={cn("size-[34px] shrink-0 rounded-md grid place-items-center", alert ? "bg-white/12 text-background" : "bg-secondary text-foreground")}>
+          <Icon className="size-[18px]" />
+        </span>
+      </div>
+      <div className={cn("font-display text-[2.25rem] leading-none tracking-tight tabular-nums", alert ? "text-background" : "")}>{value}</div>
+      {hint && <div className={cn("text-[11px]", alert ? "text-background/70" : "text-muted-foreground")}>{hint}</div>}
+    </div>
+  );
+}
+
+function CupoBar({ label, enUso, max }: { label: string; enUso: number; max: number }) {
+  const pct   = Math.min(100, Math.round((enUso / max) * 100));
+  const color = pct >= 100 ? "var(--color-primary)" : pct >= 75 ? "#C98A00" : "#1F8A5B";
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span>{enUso} en {label.toLowerCase()}</span>
+        <span className="text-muted-foreground">{enUso}/{max} cupos</span>
+      </div>
+      <div className="h-3 rounded-full bg-secondary overflow-hidden">
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+      <p className="text-xs text-muted-foreground">{Math.max(0, max - enUso)} cupos disponibles</p>
+    </div>
+  );
+}
+
+function ModalField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+      <div className="mt-1">{children}</div>
+    </label>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────
+
+function JornadaPage() {
+  const { hasPermission, profile } = useAuth();
+  const isLinkedEmployee = !!profile?.employeeId;
+
+  const visibleTabs = TABS.filter((t) => {
+    if (t.id === "registro" && isLinkedEmployee) return true;
+    if (t.id === "reportes" && isLinkedEmployee) return hasPermission("mi_jornada_reportes" as any, "view");
+    return hasPermission(`jornada_${t.id}` as any, "view");
+  });
+  const defaultTab = (visibleTabs[0]?.id ?? "registro") as Tab;
+  const [tab, setTab] = useState<Tab>(defaultTab);
+  const activeTab = visibleTabs.some((t) => t.id === tab) ? tab : defaultTab;
+  const { initialized, initFromDB, loading, fechaActiva } = useJornada();
+
+  useEffect(() => {
+    if (!initialized) initFromDB();
+  }, [initialized, initFromDB]);
+
+  return (
+    <>
+      <Topbar title="Control de Jornada" subtitle={`Fecha activa: ${fechaActiva}`} />
+
+      <div className="border-b border-border bg-card px-6">
+        <nav className="flex gap-1 overflow-x-auto">
+          {visibleTabs.map((t) => {
+            const Icon = t.icon;
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
+                )}
+              >
+                <Icon className="size-4" />
+                {t.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {loading && (
+        <div className="flex items-center justify-center py-16 text-muted-foreground text-sm gap-2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          Cargando datos de jornada…
+        </div>
+      )}
+
+      {!loading && (
+        <div className="flex-1 overflow-auto">
+          {activeTab === "dashboard"     && <TabDashboard />}
+          {activeTab === "registro"      && <TabRegistro autoEmployeeId={profile?.employeeId ?? null} />}
+          {activeTab === "historial"     && <TabHistorial />}
+          {activeTab === "reportes"      && <TabReportes autoEmployeeId={profile?.employeeId ?? null} />}
+          {activeTab === "configuracion" && <TabConfiguracion />}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── TAB: Dashboard ─────────────────────────────────────────
+
+function TabDashboard() {
+  const { employees, areas, shifts } = useWFM();
+  const { registros, fechaActiva, getEstadoEmpleado, getCuposDisponibles, setFechaActiva, reloadRegistros, getShiftProgramado, configuracion } = useJornada();
+  const activeEmployees = employees.filter((e) => e.status === "active");
+
+  const estados = useMemo(
+    () => activeEmployees.map((e) => ({
+      emp: e,
+      est: getEstadoEmpleado(e.id, fechaActiva),
+      shift: getShiftProgramado(e.id, fechaActiva, shifts),
+    })),
+    [activeEmployees, registros, fechaActiva, shifts],
+  );
+
+  const counts = useMemo(() => ({
+    enJornada:  estados.filter((x) => x.est.estado === "en_jornada").length,
+    enBreak:    estados.filter((x) => x.est.estado === "en_break").length,
+    enAlmuerzo: estados.filter((x) => x.est.estado === "en_almuerzo").length,
+    fuera:      estados.filter((x) => x.est.estado === "fuera_jornada").length,
+    tardios:    estados.filter((x) => x.est.esTarde).length,
+    pendientes: estados.filter((x) => ["pendiente_ingreso", "tarde", "ausente"].includes(x.est.estado)).length,
+  }), [estados]);
+
+  const breakCupo = getCuposDisponibles(undefined, "break",    fechaActiva);
+  const almCupo   = getCuposDisponibles(undefined, "almuerzo", fechaActiva);
+
+  const conEntrada = estados.filter((x) =>
+    registros.some((r) => r.employeeId === x.emp.id && r.fecha === fechaActiva && r.tipoMovimiento === "entrada"),
+  );
+  const pctPuntual = conEntrada.length > 0
+    ? Math.round(((conEntrada.length - counts.tardios) / conEntrada.length) * 100)
+    : 100;
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Date + refresh */}
+      <div className="flex items-center gap-3">
+        <input
+          type="date"
+          value={fechaActiva}
+          onChange={(e) => setFechaActiva(e.target.value)}
+          className="text-sm rounded-pill border border-border bg-card px-3 py-2"
+        />
+        <button
+          onClick={() => reloadRegistros(fechaActiva)}
+          className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary"
+        >
+          <RefreshCw className="size-4" /> Actualizar
+        </button>
+      </div>
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <KPI icon={Users}          label="En jornada" value={counts.enJornada}  hint="Marcando ahora" />
+        <KPI icon={Coffee}         label="En break"   value={counts.enBreak}    hint="En pausa" />
+        <KPI icon={UtensilsCrossed} label="En almuerzo" value={counts.enAlmuerzo} hint="Fuera a almorzar" />
+        <KPI icon={LogOut}         label="Fuera"      value={counts.fuera}      hint="Jornada finalizada" />
+        <KPI icon={AlertTriangle}  label="Tardíos"    value={counts.tardios}    hint="Llegaron tarde" alert />
+        <KPI icon={Clock}          label="Pendientes" value={counts.pendientes} hint="Sin ingresar" />
+      </div>
+
+      {/* Cupos */}
+      {(breakCupo.max > 0 || almCupo.max > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {breakCupo.max > 0 && (
+            <div className="rounded-card border border-border bg-card p-5 shadow-card">
+              <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
+                <Coffee className="size-4 text-primary" /> Cupos de Break
+              </h3>
+              <CupoBar label="Break" enUso={breakCupo.enUso} max={breakCupo.max} />
+            </div>
+          )}
+          {almCupo.max > 0 && (
+            <div className="rounded-card border border-border bg-card p-5 shadow-card">
+              <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
+                <UtensilsCrossed className="size-4 text-primary" /> Cupos de Almuerzo
+              </h3>
+              <CupoBar label="Almuerzo" enUso={almCupo.enUso} max={almCupo.max} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Real-time status table */}
+      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Estado en tiempo real</h3>
+          <span className="text-xs text-muted-foreground">{activeEmployees.length} empleados activos</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/60 text-left">
+              <tr>
+                {["Empleado","Área","Horario programado","Estado","Último mov.","Hora","Break","Almuerzo","En jornada"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {estados.map(({ emp, est, shift }) => (
+                <tr key={emp.id} className="border-t border-border hover:bg-secondary/30">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                        {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+                      </div>
+                      <span className="font-medium whitespace-nowrap">{emp.fullName}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{areas.find((a) => a.id === emp.areaId)?.name ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {shift ? (
+                      shift.code === "OFF" ? <span className="text-xs text-muted-foreground">Descanso</span> :
+                      shift.code === "ABS" ? <span className="text-xs text-muted-foreground">Ausencia</span> : (
+                        <span className="text-xs font-medium text-primary">
+                          {String(shift.start).padStart(2,"0")}:00 – {String(shift.end).padStart(2,"0")}:00
+                        </span>
+                      )
+                    ) : <span className="text-xs text-muted-foreground">Sin programar</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      <span className={cn("inline-flex items-center rounded-pill px-3 py-1 text-[11px] font-medium", ESTADO_COLORS[est.estado])}>
+                        {ESTADO_LABELS[est.estado]}
+                      </span>
+                      {est.esTarde && est.estado !== "tarde" && (
+                        <span className="inline-flex items-center rounded-pill px-3 py-1 text-[11px] font-medium bg-primary/12 text-primary">
+                          Tarde +{fmtMins(est.minutosRetraso)}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {est.ultimoMovimiento ? TIPO_MOVIMIENTO_LABELS[est.ultimoMovimiento] : "—"}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">{fmtTime(est.horaUltimoMovimiento)}</td>
+                  <td className="px-4 py-3">
+                    {est.tiempoEnBreakMin ? (
+                      <span className={cn("inline-flex items-center gap-1 text-xs", est.breakExcedido && "text-primary font-medium")}>
+                        {fmtMins(est.tiempoEnBreakMin)}
+                        {est.breakExcedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {est.tiempoEnAlmuerzoMin ? (
+                      <span className={cn("inline-flex items-center gap-1 text-xs", est.almuerzoExcedido && "text-primary font-medium")}>
+                        {fmtMins(est.tiempoEnAlmuerzoMin)}
+                        {est.almuerzoExcedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {est.minutosEnJornada ? (
+                      <span className={cn("text-xs", est.jornadaExcedida && "text-[#C98A00] font-medium")}>
+                        {fmtMins(est.minutosEnJornada)}
+                      </span>
+                    ) : "—"}
+                  </td>
+                </tr>
+              ))}
+              {estados.length === 0 && (
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Sin empleados activos</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Punctuality summary */}
+      <div className="rounded-card border border-border bg-card shadow-card p-5">
+        <h3 className="font-semibold text-sm mb-4">Puntualidad del día</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+          <div>
+            <div className="text-3xl font-bold tabular-nums">{conEntrada.length}</div>
+            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Con registro</div>
+          </div>
+          <div className="border-l border-border">
+            <div className="text-3xl font-bold tabular-nums text-[#1F8A5B]">{conEntrada.length - counts.tardios}</div>
+            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">A tiempo</div>
+          </div>
+          <div className="border-l border-border">
+            <div className="text-3xl font-bold tabular-nums text-primary">{counts.tardios}</div>
+            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Tardíos</div>
+          </div>
+          <div className="border-l border-border">
+            <div className="text-3xl font-bold tabular-nums">
+              {pctPuntual}<span className="text-lg font-normal text-muted-foreground">%</span>
+            </div>
+            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Puntualidad</div>
+          </div>
+        </div>
+        <div className="mt-4 h-2 rounded-full bg-secondary overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{
+              width: `${pctPuntual}%`,
+              backgroundColor: pctPuntual >= 90 ? "#1F8A5B" : pctPuntual >= 75 ? "#C98A00" : "var(--color-primary)",
+            }}
+          />
+        </div>
+        {counts.tardios > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Empleados con retraso</div>
+            {estados.filter((x) => x.est.esTarde).map(({ emp, est }) => (
+              <div key={emp.id} className="flex items-center gap-3 text-sm">
+                <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                  {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+                </div>
+                <span className="flex-1 truncate">{emp.fullName}</span>
+                <span className="text-xs text-primary font-medium">+{fmtMins(est.minutosRetraso)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── TAB: Registro ──────────────────────────────────────────
+
+function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
+  const { employees, areas, shifts } = useWFM();
+  const { user } = useAuth();
+  const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado } = useJornada();
+
+  const isSelfMode = !!autoEmployeeId;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const activeEmployees = employees.filter((e) => e.status === "active");
+
+  // ── Admin state ──────────────────────────────────────────
+  const [search,        setSearch]        = useState("");
+  const [areaFilter,    setAreaFilter]    = useState("all");
+  const [pendingAction, setPendingAction] = useState<{ empId: string; tipo: TipoMovimiento } | null>(null);
+  const [busy,          setBusy]          = useState(false);
+  const [lastMsg,       setLastMsg]       = useState<{ ok: boolean; text: string } | null>(null);
+
+  // ── Self state ───────────────────────────────────────────
+  const [obs,      setObs]      = useState("");
+  const [msg,      setMsg]      = useState<{ ok: boolean; text: string } | null>(null);
+  const [selfBusy, setSelfBusy] = useState(false);
+
+  const filtered = isSelfMode
+    ? activeEmployees.filter((e) => e.id === autoEmployeeId)
+    : activeEmployees.filter((e) => {
+        const matchQ = !search || e.fullName.toLowerCase().includes(search.toLowerCase()) || e.documentId.includes(search);
+        const matchA = areaFilter === "all" || e.areaId === areaFilter;
+        return matchQ && matchA;
+      });
+
+  // Self mode derived values
+  const selfEmp   = isSelfMode ? employees.find((e) => e.id === autoEmployeeId) : null;
+  const selfEst   = isSelfMode ? getEstadoEmpleado(autoEmployeeId!, hoy) : null;
+  const selfShift = isSelfMode ? getShiftProgramado(autoEmployeeId!, hoy, shifts) : null;
+  const selfRegs  = isSelfMode
+    ? [...registros.filter((r) => r.employeeId === autoEmployeeId && r.fecha === hoy)]
+        .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime())
+    : [];
+  const selfBreaks    = selfRegs.filter((r) => r.tipoMovimiento === "salida_break").length;
+  const selfAlmuerzos = selfRegs.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
+  const selfSiguientes = selfEst
+    ? (SIGUIENTES_MOVIMIENTOS[selfEst.estado] ?? []).filter((tipo) => {
+        if (tipo === "salida_break")    return selfBreaks    < 2;
+        if (tipo === "salida_almuerzo") return selfAlmuerzos < 1;
+        return true;
+      })
+    : [];
+
+  async function handleAdminRegistrar(empId: string, tipo: TipoMovimiento, obsText: string) {
+    if (!user) return;
+    setBusy(true);
+    const areaId = employees.find((e) => e.id === empId)?.areaId;
+    const result = await registrarMovimiento(empId, tipo, areaId, user.id, obsText || undefined);
+    setLastMsg({ ok: result.ok, text: result.ok ? "Movimiento registrado." : result.error ?? "Error." });
+    if (result.ok) await reloadRegistros(hoy);
+    setBusy(false);
+    setPendingAction(null);
+    setTimeout(() => setLastMsg(null), 3000);
+  }
+
+  async function handleSelfRegistrar(tipo: TipoMovimiento) {
+    if (!autoEmployeeId || !user) return;
+    setSelfBusy(true);
+    setMsg(null);
+    const areaId = employees.find((e) => e.id === autoEmployeeId)?.areaId;
+    const result = await registrarMovimiento(autoEmployeeId, tipo, areaId, user.id, obs || undefined);
+    setMsg({ ok: result.ok, text: result.ok ? "Movimiento registrado exitosamente." : result.error ?? "Error." });
+    if (result.ok) { setObs(""); await reloadRegistros(hoy); }
+    setSelfBusy(false);
+  }
+
+  // ── Self mode ─────────────────────────────────────────────
+  if (isSelfMode && selfEmp && selfEst) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
+        {selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS" ? (
+          <div className="rounded-card border border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CalendarDays className="size-4 text-primary" />
+              <h4 className="font-medium text-sm text-primary">Horario programado</h4>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div><div className="text-xs text-muted-foreground">Entrada</div><div className="font-semibold">{String(selfShift.start).padStart(2,"0")}:00</div></div>
+              <div><div className="text-xs text-muted-foreground">Salida</div><div className="font-semibold">{String(selfShift.end).padStart(2,"0")}:00</div></div>
+              <div><div className="text-xs text-muted-foreground">Break</div><div className="font-semibold">{selfShift.breakMinutes} min</div></div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-card border border-amber-200 bg-amber-50 p-4 flex items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+            <span className="text-sm font-medium text-amber-800">
+              {!selfShift ? "Sin programación para hoy" : selfShift.code === "OFF" ? "Día de descanso" : "Ausencia programada"}
+            </span>
+          </div>
+        )}
+
+        <div className="rounded-card border border-border bg-card p-5 shadow-card">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                {selfEmp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+              </div>
+              <div>
+                <h3 className="font-semibold">{selfEmp.fullName}</h3>
+                <p className="text-sm text-muted-foreground">{selfEmp.position}</p>
+              </div>
+            </div>
+            <span className={cn("px-3 py-1 rounded-pill text-sm font-medium", ESTADO_COLORS[selfEst.estado])}>
+              {ESTADO_LABELS[selfEst.estado]}
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-lg bg-secondary p-3">
+              <div className="text-xs text-muted-foreground mb-1">Break acum.</div>
+              <div className="font-semibold">{selfEst.tiempoEnBreakMin ? fmtMins(selfEst.tiempoEnBreakMin) : "—"}</div>
+            </div>
+            <div className="rounded-lg bg-secondary p-3">
+              <div className="text-xs text-muted-foreground mb-1">Almuerzo acum.</div>
+              <div className="font-semibold">{selfEst.tiempoEnAlmuerzoMin ? fmtMins(selfEst.tiempoEnAlmuerzoMin) : "—"}</div>
+            </div>
+            <div className="rounded-lg bg-secondary p-3">
+              <div className="text-xs text-muted-foreground mb-1">En jornada</div>
+              <div className="font-semibold">{selfEst.minutosEnJornada ? fmtMins(selfEst.minutosEnJornada) : "—"}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-card border border-border bg-card p-5 shadow-card space-y-4">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registrar movimiento</h4>
+          {!selfShift || selfShift.code === "OFF" || selfShift.code === "ABS" ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              No se permiten registros: sin turno activo para hoy.
+            </p>
+          ) : selfSiguientes.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No hay movimientos disponibles.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {selfSiguientes.map((tipo) => {
+                const Icon = TIPO_ICONS[tipo];
+                return (
+                  <button
+                    key={tipo}
+                    onClick={() => handleSelfRegistrar(tipo)}
+                    disabled={selfBusy}
+                    className={cn("flex items-center justify-center gap-2 py-3 px-4 rounded-pill text-sm font-medium transition-all disabled:opacity-50", TIPO_COLORS[tipo])}
+                  >
+                    <Icon className="size-4" />
+                    {TIPO_MOVIMIENTO_LABELS[tipo]}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <textarea
+            value={obs}
+            onChange={(e) => setObs(e.target.value)}
+            placeholder="Observaciones opcionales..."
+            rows={2}
+            className="w-full text-sm border border-input rounded-xl px-3 py-2 bg-background outline-none resize-none"
+          />
+          {msg && (
+            <div className={cn("flex items-center gap-2 text-sm rounded-xl px-4 py-3", msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>
+              {msg.ok ? <CheckCircle2 className="size-4 shrink-0" /> : <AlertTriangle className="size-4 shrink-0" />}
+              {msg.text}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-card border border-border bg-card p-5 shadow-card">
+          <h4 className="font-medium text-sm mb-4">Actividad de hoy</h4>
+          {selfRegs.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">Sin registros aún.</p>
+          ) : (
+            <div className="space-y-2">
+              {selfRegs.map((r, i) => (
+                <div key={r.id} className="flex items-center gap-3">
+                  <div className="text-xs font-mono text-muted-foreground w-14 shrink-0">{fmtTime(r.horaExacta)}</div>
+                  <div className={cn("size-2 rounded-full shrink-0", r.esModificacion ? "bg-[#C98A00]" : "bg-primary")} />
+                  <div className="text-sm flex-1">{TIPO_MOVIMIENTO_LABELS[r.tipoMovimiento]}</div>
+                  {r.esModificacion && <span className="text-[10px] text-[#9a6b00] bg-[color-mix(in_srgb,#C98A00_14%,transparent)] px-1.5 rounded">Modificado</span>}
+                  {i < selfRegs.length - 1 && <ChevronRight className="size-3 text-muted-foreground ml-auto" />}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Admin mode: card grid ──────────────────────────────────
+  return (
+    <div className="p-4 md:p-6 space-y-4">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 w-full sm:w-72 focus-within:border-primary/40 transition-shadow">
+          <Search className="size-4 text-muted-foreground shrink-0" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar empleado..."
+            className="bg-transparent text-sm outline-none flex-1"
+          />
+        </div>
+        <select
+          value={areaFilter}
+          onChange={(e) => setAreaFilter(e.target.value)}
+          className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 outline-none"
+        >
+          <option value="all">Todas las áreas</option>
+          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <span className="text-sm text-muted-foreground ml-auto">
+          {filtered.length} empleado{filtered.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {lastMsg && (
+        <div className={cn("flex items-center gap-2 text-sm rounded-xl px-4 py-3 border",
+          lastMsg.ok
+            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+            : "bg-red-50 border-red-200 text-red-700"
+        )}>
+          {lastMsg.ok ? <CheckCircle2 className="size-4 shrink-0" /> : <AlertTriangle className="size-4 shrink-0" />}
+          {lastMsg.text}
+        </div>
+      )}
+
+      {/* Cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:"1rem" }}>
+        {filtered.map((emp) => {
+          const est        = getEstadoEmpleado(emp.id, hoy);
+          const shift      = getShiftProgramado(emp.id, hoy, shifts);
+          const regsHoy    = registros.filter((r) => r.employeeId === emp.id && r.fecha === hoy);
+          const breaksUsados    = regsHoy.filter((r) => r.tipoMovimiento === "salida_break").length;
+          const almuerzosUsados = regsHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
+          const siguientes      = (SIGUIENTES_MOVIMIENTOS[est.estado] ?? []).filter((tipo) => {
+            if (tipo === "salida_break")    return breaksUsados    < 2;
+            if (tipo === "salida_almuerzo") return almuerzosUsados < 1;
+            return true;
+          });
+          const initials    = emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+          const areaName    = areas.find((a) => a.id === emp.areaId)?.name ?? "—";
+          const hasShift    = shift && shift.code !== "OFF" && shift.code !== "ABS";
+          const entradaReg  = regsHoy.find((r) => r.tipoMovimiento === "entrada");
+
+          return (
+            <div
+              key={emp.id}
+              className="rounded-card border border-border bg-card shadow-card p-4 flex flex-col gap-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
+            >
+              {/* Header */}
+              <div className="flex items-start gap-3">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm truncate">{emp.fullName}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{emp.position} · {areaName}</div>
+                </div>
+                <span className={cn("text-[10px] px-2.5 py-1 rounded-pill font-medium shrink-0 leading-none", ESTADO_COLORS[est.estado])}>
+                  {ESTADO_LABELS[est.estado]}
+                </span>
+              </div>
+
+              {/* Shift badge */}
+              <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-1.5 text-xs">
+                <Clock className="size-3 text-muted-foreground shrink-0" />
+                {hasShift ? (
+                  <span className="font-medium">
+                    {String(shift.start).padStart(2,"0")}:00 – {String(shift.end).padStart(2,"0")}:00
+                    <span className="ml-1.5 text-muted-foreground font-normal">{shift.code}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {!shift ? "Sin programar" : shift.code === "OFF" ? "Descanso" : "Ausencia"}
+                  </span>
+                )}
+                {est.esTarde && (
+                  <span className="ml-auto text-primary font-medium">+{fmtMins(est.minutosRetraso)}</span>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="text-center bg-secondary/40 rounded-lg py-1.5 px-1">
+                  <div className="text-[10px] text-muted-foreground">Entrada</div>
+                  <div className="text-xs font-semibold tabular-nums">{entradaReg ? fmtTime(entradaReg.horaExacta) : "—"}</div>
+                </div>
+                <div className="text-center bg-secondary/40 rounded-lg py-1.5 px-1">
+                  <div className="text-[10px] text-muted-foreground">Break</div>
+                  <div className={cn("text-xs font-semibold", est.breakExcedido && "text-primary")}>
+                    {est.tiempoEnBreakMin ? fmtMins(est.tiempoEnBreakMin) : "—"}
+                  </div>
+                </div>
+                <div className="text-center bg-secondary/40 rounded-lg py-1.5 px-1">
+                  <div className="text-[10px] text-muted-foreground">Jornada</div>
+                  <div className="text-xs font-semibold">{est.minutosEnJornada ? fmtMins(est.minutosEnJornada) : "—"}</div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              {!hasShift ? (
+                <div className="text-[11px] text-muted-foreground text-center py-0.5 italic">Sin turno activo</div>
+              ) : siguientes.length === 0 ? (
+                <div className="text-[11px] text-muted-foreground text-center py-0.5 italic">Sin acciones disponibles</div>
+              ) : (
+                <div className={cn("grid gap-1.5", siguientes.length <= 2 ? "grid-cols-2" : "grid-cols-3")}>
+                  {siguientes.map((tipo) => {
+                    const Icon = TIPO_ICONS[tipo];
+                    return (
+                      <button
+                        key={tipo}
+                        onClick={() => setPendingAction({ empId: emp.id, tipo })}
+                        disabled={busy}
+                        className={cn("flex items-center justify-center gap-1 py-2 px-1 rounded-pill text-[11px] font-medium transition-all disabled:opacity-50", TIPO_COLORS[tipo])}
+                      >
+                        <Icon className="size-3" />
+                        <span className="truncate">{TIPO_MOVIMIENTO_LABELS[tipo]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="col-span-full py-16 text-center text-sm text-muted-foreground">
+            Sin empleados para los filtros seleccionados
+          </div>
+        )}
+      </div>
+
+      {pendingAction && (
+        <RegistrarModal
+          employeeName={employees.find((e) => e.id === pendingAction.empId)?.fullName ?? ""}
+          tipo={pendingAction.tipo}
+          busy={busy}
+          onConfirm={(obsText) => handleAdminRegistrar(pendingAction.empId, pendingAction.tipo, obsText)}
+          onClose={() => setPendingAction(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function RegistrarModal({
+  employeeName, tipo, busy, onConfirm, onClose,
+}: {
+  employeeName: string;
+  tipo: TipoMovimiento;
+  busy: boolean;
+  onConfirm: (obs: string) => void;
+  onClose: () => void;
+}) {
+  const [obs, setObs] = useState("");
+  const Icon = TIPO_ICONS[tipo];
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-card shadow-card max-w-sm w-full p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="font-semibold">{TIPO_MOVIMIENTO_LABELS[tipo]}</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">{employeeName}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary"><X className="size-4" /></button>
+        </div>
+        <ModalField label="Observaciones (opcional)">
+          <textarea
+            value={obs}
+            onChange={(e) => setObs(e.target.value)}
+            placeholder="Observaciones opcionales..."
+            rows={2}
+            autoFocus
+            className="w-full text-sm border border-input rounded-xl px-3 py-2 bg-background outline-none resize-none"
+          />
+        </ModalField>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} disabled={busy} className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary disabled:opacity-50">
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirm(obs)}
+            disabled={busy}
+            className={cn("inline-flex items-center gap-2 text-sm px-4 py-2 rounded-pill font-medium disabled:opacity-50", TIPO_COLORS[tipo])}
+          >
+            {busy && <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+            <Icon className="size-3.5" />
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TAB: Historial ─────────────────────────────────────────
+
+function TabHistorial() {
+  const { employees, areas } = useWFM();
+  const { user } = useAuth();
+  const { registros, modificaciones, editarRegistro, eliminarRegistro, agregarRegistroManual, fechaActiva, setFechaActiva, reloadRegistros } = useJornada();
+  const [empFilter,  setEmpFilter]  = useState("all");
+  const [areaFilter, setAreaFilter] = useState("all");
+  const [tipoFilter, setTipoFilter] = useState("all");
+  const [editingReg, setEditingReg] = useState<JornadaRegistro | null>(null);
+  const [showAddManual,  setShowAddManual]  = useState(false);
+  const [deleteConfirm,  setDeleteConfirm]  = useState<{ reg: JornadaRegistro; motivo: string } | null>(null);
+
+  const list = useMemo(() => {
+    return registros
+      .filter((r) => r.fecha === fechaActiva)
+      .filter((r) => empFilter  === "all" || r.employeeId === empFilter)
+      .filter((r) => {
+        if (areaFilter === "all") return true;
+        return employees.find((e) => e.id === r.employeeId)?.areaId === areaFilter;
+      })
+      .filter((r) => tipoFilter === "all" || r.tipoMovimiento === tipoFilter)
+      .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
+  }, [registros, fechaActiva, empFilter, areaFilter, tipoFilter, employees]);
+
+  return (
+    <div className="p-4 md:p-6 space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="date"
+          value={fechaActiva}
+          onChange={(e) => setFechaActiva(e.target.value)}
+          className="text-sm rounded-pill border border-border bg-card px-3 py-2"
+        />
+        <select value={empFilter}  onChange={(e) => setEmpFilter(e.target.value)}  className="text-sm rounded-pill border border-border bg-card px-3 py-2">
+          <option value="all">Todos los empleados</option>
+          {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+        </select>
+        <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
+          <option value="all">Todas las áreas</option>
+          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
+          <option value="all">Todos los movimientos</option>
+          {(Object.entries(TIPO_MOVIMIENTO_LABELS) as [TipoMovimiento, string][]).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
+        <button onClick={() => reloadRegistros(fechaActiva)} className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">
+          <RefreshCw className="size-4" /> Actualizar
+        </button>
+        <button onClick={() => setShowAddManual(true)} className="ml-auto inline-flex items-center gap-2 rounded-pill bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+          <Plus className="size-4" /> Agregar manual
+        </button>
+      </div>
+
+      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/60 text-left">
+              <tr>
+                {["Empleado","Área","Movimiento","Hora","Estado","Observaciones",""].map((h, i) => (
+                  <th key={i} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((r) => {
+                const emp  = employees.find((e) => e.id === r.employeeId);
+                const area = areas.find((a) => a.id === (emp?.areaId ?? r.areaId));
+                return (
+                  <tr key={r.id} className="border-t border-border hover:bg-secondary/30">
+                    <td className="px-4 py-3 font-medium">{emp?.fullName ?? r.employeeId}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{area?.name ?? "—"}</td>
+                    <td className="px-4 py-3">{TIPO_MOVIMIENTO_LABELS[r.tipoMovimiento]}</td>
+                    <td className="px-4 py-3 font-mono tabular-nums">{fmtTime(r.horaExacta)}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn("inline-flex items-center rounded-pill px-3 py-1 text-[11px] font-medium",
+                        r.estado === "valido"     ? "bg-[color-mix(in_srgb,#1F8A5B_14%,transparent)] text-[#1F8A5B]" :
+                        r.estado === "modificado" ? "bg-[color-mix(in_srgb,#C98A00_16%,transparent)] text-[#9a6b00]" :
+                        r.estado === "irregular"  ? "bg-primary/12 text-primary" :
+                        "bg-secondary text-muted-foreground"
+                      )}>
+                        {r.estado}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{r.observaciones ?? "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="inline-flex gap-1">
+                        <button onClick={() => setEditingReg(r)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"><Edit3 className="size-4" /></button>
+                        <button onClick={() => setDeleteConfirm({ reg: r, motivo: "" })} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {list.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Sin registros para los filtros seleccionados</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {editingReg && user && (
+        <EditarRegistroModal
+          registro={editingReg}
+          onClose={() => setEditingReg(null)}
+          onSave={async (nuevaHora, motivo) => {
+            await editarRegistro(editingReg, nuevaHora, motivo, user.id);
+            setEditingReg(null);
+          }}
+        />
+      )}
+
+      {deleteConfirm && user && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4">
+            <h3 className="font-semibold">Eliminar registro</h3>
+            <p className="text-sm text-muted-foreground">Esta acción quedará auditada. Indica el motivo de eliminación.</p>
+            <textarea
+              placeholder="Motivo obligatorio..."
+              rows={3}
+              value={deleteConfirm.motivo}
+              onChange={(e) => setDeleteConfirm({ ...deleteConfirm, motivo: e.target.value })}
+              className="w-full text-sm border border-input rounded-xl px-3 py-2 bg-background outline-none resize-none"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDeleteConfirm(null)} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">Cancelar</button>
+              <button
+                disabled={!deleteConfirm.motivo.trim()}
+                onClick={async () => {
+                  await eliminarRegistro(deleteConfirm.reg.id, deleteConfirm.motivo, user.id);
+                  setDeleteConfirm(null);
+                }}
+                className="text-sm px-4 py-2 rounded-pill bg-destructive text-white hover:opacity-90 disabled:opacity-50"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddManual && user && (
+        <AgregarManualModal
+          employees={employees}
+          areas={areas}
+          fecha={fechaActiva}
+          onClose={() => setShowAddManual(false)}
+          onSave={async (r: Omit<JornadaRegistro, "id" | "createdAt">, motivo: string) => {
+            await agregarRegistroManual(r, motivo, user.id);
+            setShowAddManual(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditarRegistroModal({ registro, onClose, onSave }: { registro: JornadaRegistro; onClose: () => void; onSave: (hora: string, motivo: string) => Promise<void> }) {
+  const currentTime = new Date(registro.horaExacta).toTimeString().slice(0, 5);
+  const [hora,  setHora]  = useState(currentTime);
+  const [motivo, setMotivo] = useState("");
+  const [busy,  setBusy]  = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-semibold">Editar hora de registro</h3>
+        <p className="text-sm text-muted-foreground">
+          Modificando: <strong>{TIPO_MOVIMIENTO_LABELS[registro.tipoMovimiento]}</strong> del {registro.fecha}
+        </p>
+        <ModalField label="Nueva hora">
+          <input type="time" className="input" value={hora} onChange={(e) => setHora(e.target.value)} />
+        </ModalField>
+        <ModalField label="Motivo de modificación (obligatorio)">
+          <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3} className="w-full text-sm border border-input rounded-xl px-3 py-2 bg-background outline-none resize-none" />
+        </ModalField>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">Cancelar</button>
+          <button
+            disabled={!motivo.trim() || busy}
+            onClick={async () => {
+              setBusy(true);
+              await onSave(new Date(`${registro.fecha}T${hora}:00`).toISOString(), motivo);
+              setBusy(false);
+            }}
+            className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            Guardar
+          </button>
+        </div>
+        <style>{`.input{width:100%;border:1px solid var(--color-input);border-radius:999px;padding:.5rem .75rem;font-size:.875rem;background:var(--color-card)}`}</style>
+      </div>
+    </div>
+  );
+}
+
+function AgregarManualModal({ employees, areas, fecha, onClose, onSave }: any) {
+  const [form, setForm] = useState({
+    employeeId:     employees[0]?.id ?? "",
+    tipoMovimiento: "entrada" as TipoMovimiento,
+    hora:           "08:00",
+    observaciones:  "",
+    motivo:         "",
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-semibold">Agregar registro manual</h3>
+        <ModalField label="Empleado">
+          <select className="input" value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })}>
+            {employees.map((e: any) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+          </select>
+        </ModalField>
+        <ModalField label="Tipo de movimiento">
+          <select className="input" value={form.tipoMovimiento} onChange={(e) => setForm({ ...form, tipoMovimiento: e.target.value as TipoMovimiento })}>
+            {(Object.entries(TIPO_MOVIMIENTO_LABELS) as [TipoMovimiento, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </ModalField>
+        <ModalField label="Hora">
+          <input type="time" className="input" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} />
+        </ModalField>
+        <ModalField label="Observaciones">
+          <input className="input" value={form.observaciones} onChange={(e) => setForm({ ...form, observaciones: e.target.value })} />
+        </ModalField>
+        <ModalField label="Motivo (obligatorio)">
+          <textarea value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} rows={2} className="w-full text-sm border border-input rounded-xl px-3 py-2 bg-background outline-none resize-none" />
+        </ModalField>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">Cancelar</button>
+          <button
+            disabled={!form.motivo.trim()}
+            onClick={() => {
+              const emp = employees.find((e: any) => e.id === form.employeeId);
+              onSave({
+                employeeId:     form.employeeId,
+                fecha,
+                horaExacta:     new Date(`${fecha}T${form.hora}:00`).toISOString(),
+                tipoMovimiento: form.tipoMovimiento,
+                areaId:         emp?.areaId,
+                observaciones:  form.observaciones || undefined,
+                estado:         "modificado" as const,
+                esModificacion: true,
+              }, form.motivo);
+            }}
+            className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            Guardar
+          </button>
+        </div>
+        <style>{`.input{width:100%;border:1px solid var(--color-input);border-radius:999px;padding:.5rem .75rem;font-size:.875rem;background:var(--color-card)}`}</style>
+      </div>
+    </div>
+  );
+}
+
+// ── TAB: Reportes ──────────────────────────────────────────
+
+function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
+  const isSelfMode = !!autoEmployeeId;
+  const { employees, areas } = useWFM();
+  const { registros, configuracion } = useJornada();
+  const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
+
+  const [desde, setDesde] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
+  });
+  const [hasta,      setHasta]      = useState(new Date().toISOString().slice(0, 10));
+  const [areaFilter, setAreaFilter] = useState("all");
+
+  // Self mode
+  const selfEmployee = useMemo(
+    () => (autoEmployeeId ? employees.find((e) => e.id === autoEmployeeId) ?? null : null),
+    [autoEmployeeId, employees],
+  );
+  const selfDays = useMemo(() => {
+    if (!autoEmployeeId) return [];
+    const regs = registros.filter((r) => r.employeeId === autoEmployeeId && r.fecha >= desde && r.fecha <= hasta);
+    return [...new Set(regs.map((r) => r.fecha))].sort().map((fecha) => ({
+      fecha, ...calcDayStats(regs.filter((r) => r.fecha === fecha)),
+    }));
+  }, [autoEmployeeId, registros, desde, hasta]);
+  const selfTotals = useMemo(() =>
+    selfDays.reduce((acc, d) => ({
+      dias:          acc.dias          + (d.entrada ? 1 : 0),
+      diasCompletos: acc.diasCompletos + (d.salida  ? 1 : 0),
+      jornadaMin:    acc.jornadaMin    + d.jornadaMin,
+      breakMin:      acc.breakMin      + d.breakMin,
+      almuerzoMin:   acc.almuerzoMin   + d.almuerzoMin,
+      efectivoMin:   acc.efectivoMin   + d.efectivoMin,
+    }), { dias: 0, diasCompletos: 0, jornadaMin: 0, breakMin: 0, almuerzoMin: 0, efectivoMin: 0 }),
+    [selfDays],
+  );
+
+  function exportSelfCSV() {
+    const rows = selfDays.map((d) =>
+      `${fmtFecha(d.fecha)},${fmtTime(d.entrada?.horaExacta)},${fmtTime(d.salida?.horaExacta)},${fmtMins(d.breakMin)},${fmtMins(d.almuerzoMin)},${fmtMins(d.jornadaMin)},${fmtMins(d.efectivoMin)}`
+    );
+    const csv = "Fecha,Entrada,Salida,Break,Almuerzo,Jornada,Efectivo\n" + rows.join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    a.download = `mi_jornada_${desde}_${hasta}.csv`;
+    a.click();
+  }
+
+  if (isSelfMode) {
+    const avgEfectivo = selfTotals.diasCompletos > 0 ? Math.round(selfTotals.efectivoMin / selfTotals.diasCompletos) : 0;
+    return (
+      <div className="p-4 md:p-6 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Mi Reporte de Jornada</h2>
+            {selfEmployee && <p className="text-sm text-muted-foreground mt-0.5">{selfEmployee.fullName}</p>}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Desde</span>
+              <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Hasta</span>
+              <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
+            </label>
+            <button onClick={exportSelfCSV} className="inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+              <Download className="size-4" /> Exportar CSV
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KPI icon={CalendarDays}  label="Días trabajados" value={selfTotals.dias} />
+          <KPI icon={Clock}         label="Tiempo en jornada" value={fmtMins(selfTotals.jornadaMin)} />
+          <KPI icon={Coffee}        label="Tiempo efectivo"   value={fmtMins(selfTotals.efectivoMin)} />
+          <KPI icon={CheckCircle2}  label="Promedio diario"   value={fmtMins(avgEfectivo)} hint="tiempo efectivo / día" />
+        </div>
+
+        <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-secondary/40">
+            <h3 className="font-semibold text-sm">Detalle por día</h3>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/30 text-left">
+              <tr>
+                {["Fecha","Entrada","Salida","Break","Almuerzo","Jornada","Efectivo","Estado"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {selfDays.map((d) => {
+                const completo = !!d.entrada && !!d.salida;
+                return (
+                  <tr key={d.fecha} className="border-t border-border hover:bg-secondary/30">
+                    <td className="px-4 py-3 font-medium">{fmtFecha(d.fecha)}</td>
+                    <td className="px-4 py-3 tabular-nums">{fmtTime(d.entrada?.horaExacta)}</td>
+                    <td className="px-4 py-3 tabular-nums">{fmtTime(d.salida?.horaExacta)}</td>
+                    <td className="px-4 py-3">{d.breakMin   > 0 ? fmtMins(d.breakMin)   : <span className="text-muted-foreground">—</span>}</td>
+                    <td className="px-4 py-3">{d.almuerzoMin > 0 ? fmtMins(d.almuerzoMin) : <span className="text-muted-foreground">—</span>}</td>
+                    <td className="px-4 py-3">{fmtMins(d.jornadaMin)}</td>
+                    <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(d.efectivoMin)}</td>
+                    <td className="px-4 py-3">
+                      {completo
+                        ? <span className="inline-flex items-center gap-1 rounded-pill bg-[color-mix(in_srgb,#1F8A5B_12%,transparent)] text-[#1F8A5B] px-2.5 py-0.5 text-[11px] font-medium"><CheckCircle2 className="size-3" />Completo</span>
+                        : <span className="inline-flex items-center gap-1 rounded-pill bg-[color-mix(in_srgb,#C98A00_12%,transparent)] text-[#9a6b00] px-2.5 py-0.5 text-[11px] font-medium"><AlertTriangle className="size-3" />Incompleto</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+              {selfDays.length === 0 && (
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Sin registros en el período</td></tr>
+              )}
+            </tbody>
+          </table>
+          {selfDays.length > 0 && (
+            <div className="px-4 py-3 bg-secondary/20 border-t border-border flex flex-wrap gap-6 text-xs text-muted-foreground">
+              <span>Total jornada: <strong className="text-foreground">{fmtMins(selfTotals.jornadaMin)}</strong></span>
+              <span>Total break: <strong className="text-foreground">{fmtMins(selfTotals.breakMin)}</strong></span>
+              <span>Total almuerzo: <strong className="text-foreground">{fmtMins(selfTotals.almuerzoMin)}</strong></span>
+              <span>Total efectivo: <strong className="text-[#1F8A5B]">{fmtMins(selfTotals.efectivoMin)}</strong></span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Admin mode
+  const empList = employees.filter((e) => e.status === "active" && (areaFilter === "all" || e.areaId === areaFilter));
+
+  const stats = empList.map((emp) => {
+    const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);
+    const fechas = [...new Set(regs.map((r) => r.fecha))];
+    let totalJornadaMin = 0, totalBreakMin = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, diasTrabajados = 0;
+    fechas.forEach((fecha) => {
+      const s = calcDayStats(regs.filter((r) => r.fecha === fecha));
+      if (s.entrada) diasTrabajados++;
+      totalJornadaMin  += s.jornadaMin;
+      totalBreakMin    += s.breakMin;
+      totalAlmuerzoMin += s.almuerzoMin;
+      totalEfectivoMin += s.efectivoMin;
+    });
+    const punct = calcPunctuality(regs, config);
+    return { emp, diasTrabajados, totalJornadaMin, totalBreakMin, totalAlmuerzoMin, totalEfectivoMin, punct };
+  });
+
+  function exportCSV() {
+    const rows = stats.map((s) => {
+      const area = areas.find((a) => a.id === s.emp.areaId)?.name ?? "";
+      return `"${s.emp.fullName}","${area}",${s.diasTrabajados},${fmtMins(s.totalJornadaMin)},${fmtMins(s.totalBreakMin)},${fmtMins(s.totalAlmuerzoMin)},${fmtMins(s.totalEfectivoMin)}`;
+    });
+    const csv = "Empleado,Área,Días trabajados,Horas jornada,Break,Almuerzo,Efectivo\n" + rows.join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    a.download = `jornada_${desde}_${hasta}.csv`;
+    a.click();
+  }
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Desde</span>
+          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Hasta</span>
+          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
+        </label>
+        <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
+          <option value="all">Todas las áreas</option>
+          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+        <button onClick={exportCSV} className="ml-auto inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+          <Download className="size-4" /> Exportar CSV
+        </button>
+      </div>
+
+      {/* Tiempos por trabajador */}
+      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+        <div className="px-5 py-3 border-b border-border bg-secondary/40">
+          <h3 className="font-semibold text-sm">Tiempos por trabajador</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/60 text-left">
+              <tr>
+                {["Empleado","Área","Días","Tiempo jornada","Break","Almuerzo","Efectivo"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreakMin, totalAlmuerzoMin, totalEfectivoMin }) => (
+                <tr key={emp.id} className="border-t border-border hover:bg-secondary/30">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                        {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+                      </div>
+                      <span className="font-medium">{emp.fullName}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{areas.find((a) => a.id === emp.areaId)?.name ?? "—"}</td>
+                  <td className="px-4 py-3 tabular-nums font-medium">{diasTrabajados}</td>
+                  <td className="px-4 py-3">{fmtMins(totalJornadaMin)}</td>
+                  <td className="px-4 py-3">{fmtMins(totalBreakMin)}</td>
+                  <td className="px-4 py-3">{fmtMins(totalAlmuerzoMin)}</td>
+                  <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(totalEfectivoMin)}</td>
+                </tr>
+              ))}
+              {stats.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Resumen puntualidad */}
+      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+        <div className="px-5 py-3 border-b border-border bg-secondary/40">
+          <h3 className="font-semibold text-sm">Resumen de puntualidad</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/60 text-left">
+              <tr>
+                {["Empleado","Área","Con registro","A tiempo","Tardíos","Puntualidad","Retraso prom."].map((h) => (
+                  <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map(({ emp, punct }) => {
+                const pctColor = punct.pct >= 90 ? "text-[#1F8A5B]" : punct.pct >= 75 ? "text-[#9a6b00]" : "text-primary";
+                return (
+                  <tr key={emp.id} className="border-t border-border hover:bg-secondary/30">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                          {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+                        </div>
+                        <span className="font-medium">{emp.fullName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{areas.find((a) => a.id === emp.areaId)?.name ?? "—"}</td>
+                    <td className="px-4 py-3 tabular-nums">{punct.total}</td>
+                    <td className="px-4 py-3 tabular-nums text-[#1F8A5B] font-medium">{punct.diasATiempo}</td>
+                    <td className="px-4 py-3 tabular-nums text-primary">{punct.diasTarde}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${punct.pct}%`, backgroundColor: punct.pct >= 90 ? "#1F8A5B" : punct.pct >= 75 ? "#C98A00" : "var(--color-primary)" }} />
+                        </div>
+                        <span className={cn("tabular-nums font-medium text-xs", pctColor)}>{punct.pct}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{punct.avgRetrasoMin > 0 ? fmtMins(punct.avgRetrasoMin) : "—"}</td>
+                  </tr>
+                );
+              })}
+              {stats.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── TAB: Configuración ─────────────────────────────────────
+
+function TabConfiguracion() {
+  const { areas } = useWFM();
+  const { configuracion, upsertConfiguracion, cupos, upsertCupo, removeCupo } = useJornada();
+  const fallbackId = useMemo(() => crypto.randomUUID(), []);
+  const globalConfig = configuracion.find((c) => !c.areaId) ?? {
+    id: fallbackId,
+    toleranciaLlegadaMin:      15,
+    tiempoMaxBreakMin:         15,
+    tiempoMaxAlmuerzoMin:      60,
+    diasLaborales:             [1, 2, 3, 4, 5],
+    horaInicioJornada:         "08:00",
+    horaFinJornada:            "18:00",
+    requiereAprobacionEdicion: true,
+  };
+
+  const [cfg,       setCfg]       = useState<JornadaConfiguracion>(globalConfig as JornadaConfiguracion);
+  const [saving,    setSaving]    = useState(false);
+  const [savingMsg, setSavingMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [cupoEditing, setCupoEditing] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storeConfig = configuracion.find((c) => !c.areaId);
+    if (storeConfig) setCfg(storeConfig);
+  }, [configuracion]);
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      {/* General config */}
+      <div className="rounded-card border border-border bg-card p-5 shadow-card">
+        <div className="mb-5">
+          <h3 className="font-semibold">Configuración general</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Valores por defecto para todo el sistema</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <CfgField label="Tolerancia de llegada (min)">
+            <input type="number" min={0} max={120} className="cfg-input" value={cfg.toleranciaLlegadaMin} onChange={(e) => setCfg({ ...cfg, toleranciaLlegadaMin: Number(e.target.value) })} />
+          </CfgField>
+          <CfgField label="Tiempo máx. break (min)">
+            <input type="number" min={1} max={60} className="cfg-input" value={cfg.tiempoMaxBreakMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxBreakMin: Number(e.target.value) })} />
+          </CfgField>
+          <CfgField label="Tiempo máx. almuerzo (min)">
+            <input type="number" min={1} max={180} className="cfg-input" value={cfg.tiempoMaxAlmuerzoMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxAlmuerzoMin: Number(e.target.value) })} />
+          </CfgField>
+          <CfgField label="Hora inicio jornada">
+            <input type="time" className="cfg-input" value={cfg.horaInicioJornada} onChange={(e) => setCfg({ ...cfg, horaInicioJornada: e.target.value })} />
+          </CfgField>
+          <CfgField label="Hora fin jornada">
+            <input type="time" className="cfg-input" value={cfg.horaFinJornada} onChange={(e) => setCfg({ ...cfg, horaFinJornada: e.target.value })} />
+          </CfgField>
+          <CfgField label="Requiere aprobación para ediciones">
+            <select className="cfg-input" value={cfg.requiereAprobacionEdicion ? "1" : "0"} onChange={(e) => setCfg({ ...cfg, requiereAprobacionEdicion: e.target.value === "1" })}>
+              <option value="1">Sí</option>
+              <option value="0">No</option>
+            </select>
+          </CfgField>
+        </div>
+        <div className="mt-5 flex items-center justify-end gap-4">
+          {savingMsg && (
+            <span className={savingMsg.ok ? "text-sm text-[#1F8A5B]" : "text-sm text-destructive"}>
+              {savingMsg.text}
+            </span>
+          )}
+          <button
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              setSavingMsg(null);
+              try {
+                await upsertConfiguracion(cfg);
+                setSavingMsg({ ok: true, text: "Configuración guardada." });
+              } catch {
+                setSavingMsg({ ok: false, text: "Error al guardar." });
+              } finally {
+                setSaving(false);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-pill bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {saving && <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+            Guardar configuración
+          </button>
+        </div>
+        <style>{`.cfg-input{width:100%;border:1px solid var(--color-input);border-radius:999px;padding:.5rem .75rem;font-size:.875rem;background:var(--color-card);outline:none}.cfg-input:focus{border-color:color-mix(in srgb,var(--color-primary) 40%,transparent)}`}</style>
+      </div>
+
+      {/* Cupos */}
+      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-sm">Control de cupos simultáneos</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Límites de empleados en break o almuerzo al mismo tiempo</p>
+          </div>
+          <button
+            onClick={() => setCupoEditing("new")}
+            className="inline-flex items-center gap-2 rounded-pill bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          >
+            <Plus className="size-4" /> Nuevo cupo
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/60 text-left">
+              <tr>
+                {["Tipo","Área","Máx. simultáneos","Cargo","Horario",""].map((h, i) => (
+                  <th key={i} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cupos.map((c) => (
+                <tr key={c.id} className="border-t border-border hover:bg-secondary/30">
+                  <td className="px-4 py-3 capitalize font-medium">{c.tipo}</td>
+                  <td className="px-4 py-3">{areas.find((a) => a.id === c.areaId)?.name ?? "Global"}</td>
+                  <td className="px-4 py-3">{c.maxSimultaneos} personas</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.cargo ?? "Todos"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.horaInicio && c.horaFin ? `${c.horaInicio} – ${c.horaFin}` : "Todo el día"}</td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="inline-flex gap-1">
+                      <button onClick={() => setCupoEditing(c.id)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"><Edit3 className="size-4" /></button>
+                      <button onClick={() => removeCupo(c.id)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {cupos.length === 0 && (
+                <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Sin cupos configurados</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {cupoEditing && (
+        <CupoModal
+          cupo={cupoEditing === "new" ? null : cupos.find((c) => c.id === cupoEditing)!}
+          areas={areas}
+          onClose={() => setCupoEditing(null)}
+          onSave={async (c: JornadaCupo) => { await upsertCupo(c); setCupoEditing(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function CfgField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+      <div className="mt-1">{children}</div>
+    </label>
+  );
+}
+
+function CupoModal({ cupo, areas, onClose, onSave }: any) {
+  const newId = useMemo(() => crypto.randomUUID(), []);
+  const [form, setForm] = useState<JornadaCupo>(cupo ?? { id: newId, tipo: "break", maxSimultaneos: 3, activo: true });
+  const [busy,  setBusy]  = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-semibold">{cupo ? "Editar cupo" : "Nuevo cupo"}</h3>
+        <ModalField label="Tipo">
+          <select className="input" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as any })}>
+            <option value="break">Break</option>
+            <option value="almuerzo">Almuerzo</option>
+          </select>
+        </ModalField>
+        <ModalField label="Área (vacío = global)">
+          <select className="input" value={form.areaId ?? ""} onChange={(e) => setForm({ ...form, areaId: e.target.value || undefined })}>
+            <option value="">Global</option>
+            {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </ModalField>
+        <ModalField label="Máximo simultáneos">
+          <input type="number" min={1} className="input" value={form.maxSimultaneos} onChange={(e) => setForm({ ...form, maxSimultaneos: Number(e.target.value) })} />
+        </ModalField>
+        <ModalField label="Cargo (opcional)">
+          <input className="input" value={form.cargo ?? ""} onChange={(e) => setForm({ ...form, cargo: e.target.value || undefined })} placeholder="Ej: Supervisor" />
+        </ModalField>
+        <div className="grid grid-cols-2 gap-4">
+          <ModalField label="Hora inicio (opcional)">
+            <input type="time" className="input" value={form.horaInicio ?? ""} onChange={(e) => setForm({ ...form, horaInicio: e.target.value || undefined })} />
+          </ModalField>
+          <ModalField label="Hora fin (opcional)">
+            <input type="time" className="input" value={form.horaFin ?? ""} onChange={(e) => setForm({ ...form, horaFin: e.target.value || undefined })} />
+          </ModalField>
+        </div>
+        {error && (
+          <div className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+            <AlertTriangle className="size-4 shrink-0" /> {error}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} disabled={busy} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary disabled:opacity-50">Cancelar</button>
+          <button
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                await onSave(form);
+              } catch {
+                setError("Error al guardar el cupo.");
+                setBusy(false);
+              }
+            }}
+            className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {busy && <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+            Guardar
+          </button>
+        </div>
+        <style>{`.input{width:100%;border:1px solid var(--color-input);border-radius:999px;padding:.5rem .75rem;font-size:.875rem;background:var(--color-card);outline:none}.input:focus{border-color:color-mix(in srgb,var(--color-primary) 40%,transparent)}`}</style>
+      </div>
+    </div>
+  );
+}
