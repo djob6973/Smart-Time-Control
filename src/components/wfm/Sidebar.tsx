@@ -149,7 +149,7 @@ export function Sidebar() {
 
         {/* Footer: usuario + acciones */}
         <div className="p-3 border-t border-sidebar-border shrink-0">
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-sidebar-accent/60 transition-colors">
+          <div className="flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-sidebar-accent/60 transition-colors">
             <div className="size-8 shrink-0 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
               {initials}
             </div>
@@ -157,20 +157,22 @@ export function Sidebar() {
               <div className="text-xs font-semibold truncate">{profile?.nombre || profile?.email}</div>
               <div className="text-[10px] text-muted-foreground capitalize">{roleLabel}</div>
             </div>
-            <button
-              onClick={() => { setPassOpen(true); setPassError(null); setPassDone(false); }}
-              title="Cambiar contraseña"
-              className="shrink-0 p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
-            >
-              <KeyRound className="size-3.5" />
-            </button>
-            <button
-              onClick={signOut}
-              title="Cerrar sesión"
-              className="shrink-0 p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
-            >
-              <LogOut className="size-3.5" />
-            </button>
+            <div className="flex items-center shrink-0">
+              <button
+                onClick={() => { setPassOpen(true); setPassError(null); setPassDone(false); }}
+                title="Cambiar contraseña"
+                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <KeyRound className="size-3.5" />
+              </button>
+              <button
+                onClick={signOut}
+                title="Cerrar sesión"
+                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <LogOut className="size-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
