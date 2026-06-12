@@ -303,7 +303,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!role) return false;
       if (role === "admin") return true;
       if (rolePerms) {
-        return (rolePerms[resource] as Action[] | undefined)?.includes(action) ?? false;
+        const perm = rolePerms[resource];
+        if (!perm) return false;
+        // La DB guarda PermLevel como string: "none" < "view" < "edit" < "full"
+        // "edit" implica "view"; "full" implica "edit" y "view"
+        const LEVELS = ["none", "view", "edit", "full"];
+        const permStr   = perm as unknown as string;
+        const permIdx   = LEVELS.indexOf(permStr);
+        const actionIdx = LEVELS.indexOf(action);
+        if (permIdx > 0 && actionIdx > 0) return actionIdx <= permIdx;
+        // Formato legado: array de strings
+        return Array.isArray(perm) && (perm as string[]).includes(action);
       }
       return hasPermission(role, resource, action);
     },

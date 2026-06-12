@@ -65,7 +65,7 @@ interface JornadaState {
   upsertConfiguracion: (c: JornadaConfiguracion) => Promise<void>;
 
   // Computed helpers
-  getEstadoEmpleado: (employeeId: string, fecha: string) => EstadoJornadaEmpleado;
+  getEstadoEmpleado: (employeeId: string, fecha: string, shiftStart?: number | null) => EstadoJornadaEmpleado;
   getRegistrosDia: (employeeId: string, fecha: string) => JornadaRegistro[];
   getCuposDisponibles: (
     areaId: string | undefined,
@@ -82,6 +82,7 @@ function computeEstado(
   config: JornadaConfiguracion | undefined,
   fecha: string,
   horario?: JornadaHorario,
+  shiftHoraEntrada?: string, // hora de inicio del turno WFM ("HH:MM"), usado cuando no hay horario jornada
 ): Pick<EstadoJornadaEmpleado, "estado" | "ultimoMovimiento" | "horaUltimoMovimiento" | "tiempoEnBreakMin" | "tiempoEnAlmuerzoMin" | "minutosEnJornada" | "esTarde" | "minutosRetraso" | "breakExcedido" | "almuerzoExcedido" | "jornadaExcedida"> {
   const sorted = [...registros].sort(
     (a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime(),
@@ -89,13 +90,14 @@ function computeEstado(
   const ultimo = sorted[sorted.length - 1];
 
   const now = new Date();
-  const hoy = now.toISOString().slice(0, 10);
+  // Usar fecha LOCAL (no UTC) para evitar desfases en zonas UTC-N como Colombia
+  const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const esFechaActual = fecha === hoy;
   const toleranciaMin = config?.toleranciaLlegadaMin ?? 15;
   // Normalizar a HH:MM (la DB puede guardar "HH:MM:SS")
   const toHHMM = (t: string) => t.slice(0, 5);
   // Prioridad: horario asignado al empleado > config global
-  const horaInicioStr = toHHMM(horario?.horaEntrada ?? config?.horaInicioJornada ?? "08:00");
+  const horaInicioStr = toHHMM(horario?.horaEntrada ?? shiftHoraEntrada ?? config?.horaInicioJornada ?? "08:00");
   const horaInicioMs = new Date(`${fecha}T${horaInicioStr}:00`).getTime() + toleranciaMin * 60000;
 
   let estado: EstadoEmpleado = "pendiente_ingreso";
@@ -106,9 +108,13 @@ function computeEstado(
   const refTime = esFechaActual ? now.getTime() : new Date(`${fecha}T23:59:59`).getTime();
 
   if (sorted.length === 0) {
-    if (refTime > horaInicioMs) {
+    // Solo evaluar tardanza si hay un horario de jornada o turno WFM explícito.
+    const tieneReferencia = !!horario || !!shiftHoraEntrada;
+    if (!tieneReferencia) {
+      estado = "sin_turno";
+    } else if (refTime > horaInicioMs) {
       estado = "tarde";
-      esTarde = esFechaActual; // solo mostrar como "tarde" en el día actual
+      esTarde = esFechaActual;
     } else {
       estado = "pendiente_ingreso";
     }
@@ -445,7 +451,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   getRegistrosDia: (employeeId, fecha) =>
     get().registros.filter((r) => r.employeeId === employeeId && r.fecha === fecha),
 
-  getEstadoEmpleado: (employeeId, fecha) => {
+  getEstadoEmpleado: (employeeId, fecha, shiftStart) => {
     const registros = get().getRegistrosDia(employeeId, fecha);
     const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
 
@@ -461,7 +467,13 @@ export const useJornada = create<JornadaState>()((set, get) => ({
         )
       : undefined;
 
-    const resultado = computeEstado(registros, config, fecha, horario);
+    // Si no hay horario jornada pero sí hay turno WFM, usarlo como referencia de hora de entrada
+    const shiftHoraEntrada =
+      !horario && shiftStart != null
+        ? `${String(shiftStart).padStart(2, "0")}:00`
+        : undefined;
+
+    const resultado = computeEstado(registros, config, fecha, horario, shiftHoraEntrada);
     return { employeeId, fecha, ...resultado };
   },
 

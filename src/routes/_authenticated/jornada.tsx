@@ -134,15 +134,20 @@ function calcPunctuality(regs: JornadaRegistro[], config: JornadaConfiguracion |
 
 function KPI({ icon: Icon, label, value, hint, alert }: { icon: any; label: string; value: any; hint?: string; alert?: boolean }) {
   return (
-    <div className={cn("rounded-card p-4 shadow-card flex flex-col gap-2.5", alert ? "bg-foreground" : "border border-border bg-card")}>
+    <div className={cn(
+      "rounded-card p-4 shadow-card flex flex-col gap-2.5",
+      alert
+        ? "bg-foreground dark:bg-primary/10 dark:border dark:border-primary/25"
+        : "border border-border bg-card",
+    )}>
       <div className="flex items-start justify-between gap-2">
-        <span className={cn("text-[11px] font-medium uppercase tracking-[0.04em]", alert ? "text-background/70" : "text-muted-foreground")}>{label}</span>
-        <span className={cn("size-[34px] shrink-0 rounded-md grid place-items-center", alert ? "bg-white/12 text-background" : "bg-secondary text-foreground")}>
+        <span className={cn("text-[11px] font-medium uppercase tracking-[0.04em]", alert ? "text-background/70 dark:text-primary/80" : "text-muted-foreground")}>{label}</span>
+        <span className={cn("size-[34px] shrink-0 rounded-md grid place-items-center", alert ? "bg-white/12 text-background dark:bg-primary/15 dark:text-primary" : "bg-secondary text-foreground")}>
           <Icon className="size-[18px]" />
         </span>
       </div>
-      <div className={cn("font-display text-[2.25rem] leading-none tracking-tight tabular-nums", alert ? "text-background" : "")}>{value}</div>
-      {hint && <div className={cn("text-[11px]", alert ? "text-background/70" : "text-muted-foreground")}>{hint}</div>}
+      <div className={cn("font-display text-[2.25rem] leading-none tracking-tight tabular-nums", alert ? "text-background dark:text-foreground" : "")}>{value}</div>
+      {hint && <div className={cn("text-[11px]", alert ? "text-background/70 dark:text-muted-foreground" : "text-muted-foreground")}>{hint}</div>}
     </div>
   );
 }
@@ -249,11 +254,15 @@ function TabDashboard() {
   const activeEmployees = employees.filter((e) => e.status === "active");
 
   const estados = useMemo(
-    () => activeEmployees.map((e) => ({
-      emp: e,
-      est: getEstadoEmpleado(e.id, fechaActiva),
-      shift: getShiftProgramado(e.id, fechaActiva, shifts),
-    })),
+    () => activeEmployees.map((e) => {
+      const shift = getShiftProgramado(e.id, fechaActiva, shifts);
+      const shiftStart = shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null;
+      return {
+        emp: e,
+        shift,
+        est: getEstadoEmpleado(e.id, fechaActiva, shiftStart),
+      };
+    }),
     [activeEmployees, registros, fechaActiva, shifts],
   );
 
@@ -524,8 +533,14 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   // Self mode derived values
   const selfEmp   = isSelfMode ? employees.find((e) => e.id === autoEmployeeId) : null;
-  const selfEst   = isSelfMode ? getEstadoEmpleado(autoEmployeeId!, hoy) : null;
   const selfShift = isSelfMode ? getShiftProgramado(autoEmployeeId!, hoy, shifts) : null;
+  const selfEst   = isSelfMode
+    ? getEstadoEmpleado(
+        autoEmployeeId!,
+        hoy,
+        selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS" ? selfShift.start : null,
+      )
+    : null;
   const selfRegs  = isSelfMode
     ? [...registros.filter((r) => r.employeeId === autoEmployeeId && r.fecha === hoy)]
         .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime())
@@ -723,8 +738,8 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       {/* Cards */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:"1rem" }}>
         {filtered.map((emp) => {
-          const est        = getEstadoEmpleado(emp.id, hoy);
           const shift      = getShiftProgramado(emp.id, hoy, shifts);
+          const est        = getEstadoEmpleado(emp.id, hoy, shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null);
           const regsHoy    = registros.filter((r) => r.employeeId === emp.id && r.fecha === hoy);
           const breaksUsados    = regsHoy.filter((r) => r.tipoMovimiento === "salida_break").length;
           const almuerzosUsados = regsHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;

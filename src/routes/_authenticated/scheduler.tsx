@@ -1528,6 +1528,31 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
       return;
     }
 
+    // Validar disponibilidad del trabajador (sólo para turnos normales, no ausencias)
+    if (code !== "ABS" && employee.availability) {
+      const dow = new Date(date + "T00:00:00").getDay(); // 0=Dom … 6=Sáb
+      const avail: { start: number; end: number } | null | undefined =
+        employee.availability[dow];
+      const DAY_ES = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+      const dayName = DAY_ES[dow];
+
+      if (avail === null) {
+        toast.error(
+          `${employee.fullName} no está disponible los ${dayName}. Revisa la configuración de disponibilidad del trabajador.`,
+          { duration: 6000 },
+        );
+        return;
+      }
+      if (avail !== undefined && (start < avail.start || end > avail.end)) {
+        toast.error(
+          `Horario ${pad(start)} – ${pad(end)} fuera de la disponibilidad de ${employee.fullName} los ${dayName} ` +
+          `(disponible ${pad(avail.start)} – ${pad(avail.end)}). Revisa la configuración de disponibilidad.`,
+          { duration: 7000 },
+        );
+        return;
+      }
+    }
+
     // Effective absence range: use form state when code=ABS, else use existing note
     const vFullDay   = code === "ABS" ? absFullDay   : absIsFullDay;
     const vAbsStart  = code === "ABS" ? absHrStart   : (absInfo?.absStart ?? 0);
@@ -1573,6 +1598,20 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
     const saveNote = isAbsShift ? shift?.note : note;
     onSave({ code, start, end, breakMinutes: breakMin, note: saveNote, locked });
   }
+
+  // Disponibilidad del empleado para el día siendo editado
+  const _dow = new Date(date + "T00:00:00").getDay(); // 0=Dom…6=Sáb
+  const _availSlot: { start: number; end: number } | null | undefined =
+    employee.availability?.[_dow];
+  const _availDayName =
+    ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][_dow];
+  const availWarning: "none" | "day" | "hours" = (() => {
+    if (!employee.availability || code === "ABS" || code === "OFF") return "none";
+    if (_availSlot === null) return "day";
+    if (_availSlot !== undefined && (start < _availSlot.start || end > _availSlot.end))
+      return "hours";
+    return "none";
+  })();
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={onClose}>
@@ -1735,6 +1774,20 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                   <input type="number" min={0} max={24} value={end} onChange={handleInputChange(setEnd)} className="input" />
                 </Field>
               </div>
+
+              {/* Advertencia de disponibilidad — se actualiza en tiempo real */}
+              {availWarning !== "none" && (
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
+                  <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-amber-500" />
+                  <span>
+                    {availWarning === "day"
+                      ? `${employee.fullName} no está disponible los ${_availDayName}. Revisa la configuración de disponibilidad del trabajador.`
+                      : `Horario ${pad(start)} – ${pad(end)} está fuera de la disponibilidad de ${employee.fullName} los ${_availDayName} (${pad(_availSlot!.start)} – ${pad(_availSlot!.end)}). Revisa la configuración de disponibilidad.`
+                    }
+                  </span>
+                </div>
+              )}
+
               <Field label="Break (min)">
                 <input type="number" min={0} max={180} value={breakMin} onChange={handleInputChange(setBreakMin)} className="input" />
               </Field>

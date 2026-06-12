@@ -23,7 +23,8 @@ export type EstadoEmpleado =
   | "fuera_jornada"
   | "ausente"
   | "tarde"
-  | "pendiente_ingreso";
+  | "pendiente_ingreso"
+  | "sin_turno";
 
 export interface JornadaRegistro {
   id: string;
@@ -135,6 +136,7 @@ export const ESTADO_LABELS: Record<EstadoEmpleado, string> = {
   ausente: "Ausente",
   tarde: "Tarde",
   pendiente_ingreso: "Pendiente ingreso",
+  sin_turno: "Sin turno programado",
 };
 
 export const ESTADO_COLORS: Record<EstadoEmpleado, string> = {
@@ -145,15 +147,17 @@ export const ESTADO_COLORS: Record<EstadoEmpleado, string> = {
   ausente:           "bg-primary/12 text-primary",
   tarde:             "bg-primary/12 text-primary",
   pendiente_ingreso: "bg-secondary text-muted-foreground",
+  sin_turno:         "bg-secondary/60 text-muted-foreground/60",
 };
 
 // Valid transitions: what moves are allowed after each state
 export const SIGUIENTES_MOVIMIENTOS: Record<EstadoEmpleado, TipoMovimiento[]> = {
   pendiente_ingreso: ["entrada"],
-  tarde: ["entrada"],
-  ausente: ["entrada"],
-  en_jornada: ["salida_break", "salida_almuerzo", "salida"],
-  en_break: ["regreso_break"],
-  en_almuerzo: ["regreso_almuerzo"],
-  fuera_jornada: [],
+  tarde:             ["entrada"],
+  ausente:           ["entrada"],
+  en_jornada:        ["salida_break", "salida_almuerzo", "salida"],
+  en_break:          ["regreso_break"],
+  en_almuerzo:       ["regreso_almuerzo"],
+  fuera_jornada:     [],
+  sin_turno:         [],
 };

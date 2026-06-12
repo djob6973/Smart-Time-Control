@@ -14,14 +14,17 @@ export const Route = createFileRoute("/_authenticated/employees")({
 });
 
 const DAY_LABELS = [
-  { day: 1, label: "L" },
-  { day: 2, label: "M" },
-  { day: 3, label: "Mi" },
-  { day: 4, label: "J" },
-  { day: 5, label: "V" },
-  { day: 6, label: "S" },
-  { day: 0, label: "D" },
+  { day: 1, label: "L",  full: "Lunes" },
+  { day: 2, label: "M",  full: "Martes" },
+  { day: 3, label: "Mi", full: "Miércoles" },
+  { day: 4, label: "J",  full: "Jueves" },
+  { day: 5, label: "V",  full: "Viernes" },
+  { day: 6, label: "S",  full: "Sábado" },
+  { day: 0, label: "D",  full: "Domingo" },
 ];
+
+const HOUR_OPTIONS = Array.from({ length: 25 }, (_, i) => i);
+function fmtH(h: number) { return `${String(h).padStart(2, "0")}:00`; }
 
 const CONTRACT_LABELS: Record<string, string> = {
   indefinido: "Término indefinido",
@@ -279,6 +282,14 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
     });
   }
 
+  function updateAvailabilityTime(day: number, field: "start" | "end", value: number) {
+    const current = form.availability[day] ?? { start: 8, end: 18 };
+    update("availability", {
+      ...form.availability,
+      [day]: { ...current, [field]: value },
+    });
+  }
+
   async function handleSave() {
     if (!form.fullName.trim()) {
       toast.error("El nombre del trabajador es obligatorio.");
@@ -374,6 +385,12 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
                 <option value="aprendiz">Aprendiz SENA</option>
               </select>
             </Field>
+            <Field label="Estado">
+              <select className="fi" value={form.status} onChange={e => update("status", e.target.value)}>
+                <option value="active">Activo</option>
+                <option value="inactive">Inactivo</option>
+              </select>
+            </Field>
             <Field label="Acceso (usuario vinculado)">
               <select
                 className="fi"
@@ -398,22 +415,57 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Disponibilidad semanal
             </span>
-            <div className="mt-2 flex gap-2 flex-wrap">
-              {DAY_LABELS.map(({ day, label }) => {
+            <div className="mt-2 divide-y divide-border rounded-xl border border-border overflow-hidden">
+              {DAY_LABELS.map(({ day, label, full }) => {
                 const active = !!form.availability[day];
+                const slot = form.availability[day] ?? { start: 8, end: 18 };
                 return (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleDay(day, !active)}
-                    className={`h-10 min-w-10 px-2 rounded-pill text-sm font-medium transition-colors border ${
-                      active
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card text-muted-foreground border-border hover:border-primary/40"
-                    }`}
-                  >
-                    {label}
-                  </button>
+                  <div key={day} className={`flex items-center gap-3 px-3 py-2.5 transition-colors ${active ? "" : "bg-secondary/40"}`}>
+                    {/* Toggle día */}
+                    <button
+                      type="button"
+                      onClick={() => toggleDay(day, !active)}
+                      className={`w-9 h-9 shrink-0 rounded-full text-xs font-semibold transition-colors border ${
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-card text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
+                      {label}
+                    </button>
+
+                    {/* Nombre del día */}
+                    <span className={`w-20 text-sm ${active ? "font-medium" : "text-muted-foreground"}`}>
+                      {full}
+                    </span>
+
+                    {/* Hora inicio */}
+                    {active ? (
+                      <>
+                        <select
+                          value={slot.start}
+                          onChange={e => updateAvailabilityTime(day, "start", Number(e.target.value))}
+                          className="fi-sm"
+                        >
+                          {HOUR_OPTIONS.slice(0, 24).map(h => (
+                            <option key={h} value={h}>{fmtH(h)}</option>
+                          ))}
+                        </select>
+                        <span className="text-muted-foreground text-sm shrink-0">—</span>
+                        <select
+                          value={slot.end}
+                          onChange={e => updateAvailabilityTime(day, "end", Number(e.target.value))}
+                          className="fi-sm"
+                        >
+                          {HOUR_OPTIONS.slice(1).map(h => (
+                            <option key={h} value={h} disabled={h <= slot.start}>{fmtH(h)}</option>
+                          ))}
+                        </select>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">No disponible</span>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -436,7 +488,7 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
           </button>
         </div>
 
-        <style>{`.fi{width:100%;border:1px solid var(--color-input);border-radius:999px;padding:.5rem .875rem;font-size:.875rem;background:var(--color-card);outline:none}.fi:focus{border-color:color-mix(in srgb,var(--color-primary) 40%,transparent)}`}</style>
+        <style>{`.fi{width:100%;border:1px solid var(--color-input);border-radius:999px;padding:.5rem .875rem;font-size:.875rem;background:var(--color-card);outline:none}.fi:focus{border-color:color-mix(in srgb,var(--color-primary) 40%,transparent)}.fi-sm{border:1px solid var(--color-input);border-radius:999px;padding:.25rem .625rem;font-size:.8125rem;background:var(--color-card);outline:none;min-width:5rem}.fi-sm:focus{border-color:color-mix(in srgb,var(--color-primary) 40%,transparent)}`}</style>
       </div>
     </div>
   );

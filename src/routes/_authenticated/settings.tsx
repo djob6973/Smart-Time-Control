@@ -44,16 +44,21 @@ interface Role {
 const MATRIX_ROLES = ["admin", "supervisor", "lider", "gestor", "consulta"] as const;
 type MatrixRole = typeof MATRIX_ROLES[number];
 
-const MAIN_MODULES: { key: keyof RolePermissions; label: string }[] = [
-  { key: "dashboard",  label: "Dashboard" },
-  { key: "scheduler",  label: "Programación" },
-  { key: "mi_horario", label: "Mi Horario" },
-  { key: "jornada",    label: "Jornada" },
-  { key: "employees",  label: "Trabajadores" },
-  { key: "areas",      label: "Áreas" },
-  { key: "absences",   label: "Ausencias" },
-  { key: "reports",    label: "Reportes" },
-  { key: "settings",   label: "Configuración" },
+const MAIN_MODULES: { key: keyof RolePermissions; label: string; indent?: boolean }[] = [
+  { key: "dashboard",             label: "Dashboard" },
+  { key: "scheduler",             label: "Programación" },
+  { key: "mi_horario",            label: "Mi Horario" },
+  { key: "jornada",               label: "Control de Jornada" },
+  { key: "jornada_dashboard",     label: "Dashboard",      indent: true },
+  { key: "jornada_registro",      label: "Registro",       indent: true },
+  { key: "jornada_historial",     label: "Historial",      indent: true },
+  { key: "jornada_reportes",      label: "Reportes",       indent: true },
+  { key: "jornada_configuracion", label: "Configuración",  indent: true },
+  { key: "employees",             label: "Trabajadores" },
+  { key: "areas",                 label: "Áreas" },
+  { key: "absences",             label: "Ausencias" },
+  { key: "reports",               label: "Reportes" },
+  { key: "settings",              label: "Configuración" },
 ];
 
 const MATRIX_LIMITS: { key: keyof AccessLimits; label: string }[] = [
@@ -65,25 +70,17 @@ const MATRIX_LIMITS: { key: keyof AccessLimits; label: string }[] = [
   { key: "canDeleteData",      label: "Eliminar datos" },
 ];
 
-const NAV_ITEMS: { label: string; icon: React.FC<{ className?: string }> }[] = [
-  { label: "Dashboard",          icon: LayoutDashboard },
-  { label: "Programación",       icon: CalendarDays },
-  { label: "Mi Horario",         icon: CalendarCheck },
-  { label: "Control de Jornada", icon: Clock },
-  { label: "Trabajadores",       icon: UserCog },
-  { label: "Áreas",              icon: Building2 },
-  { label: "Ausencias",          icon: FileX },
-  { label: "Reportes",           icon: BarChart3 },
-  { label: "Configuración",      icon: Settings2 },
+const NAV_ITEMS: { label: string; icon: React.FC<{ className?: string }>; permKey: keyof RolePermissions }[] = [
+  { label: "Dashboard",          icon: LayoutDashboard, permKey: "dashboard" },
+  { label: "Programación",       icon: CalendarDays,    permKey: "scheduler" },
+  { label: "Mi Horario",         icon: CalendarCheck,   permKey: "mi_horario" },
+  { label: "Control de Jornada", icon: Clock,           permKey: "jornada" },
+  { label: "Trabajadores",       icon: UserCog,         permKey: "employees" },
+  { label: "Áreas",              icon: Building2,       permKey: "areas" },
+  { label: "Ausencias",          icon: FileX,           permKey: "absences" },
+  { label: "Reportes",           icon: BarChart3,       permKey: "reports" },
+  { label: "Configuración",      icon: Settings2,       permKey: "settings" },
 ];
-
-const MENU_BY_ROLE: Record<MatrixRole, boolean[]> = {
-  admin:      [true, true, true, true, true, true, true, true, true],
-  supervisor: [true, true, true, true, true, true, true, true, false],
-  lider:      [true, true, true, true, true, true, true, true, false],
-  gestor:     [true, true, true, true, true, true, true, true, false],
-  consulta:   [true, true, true, true, true, true, true, true, false],
-};
 
 // ── Role definitions ──────────────────────────────────────────────────────
 
@@ -273,6 +270,12 @@ function SettingsPage() {
   const [usersError, setUsersError]     = useState<string | null>(null);
   const [userSearch, setUserSearch]     = useState("");
 
+  // Create user modal state
+  const [createUserOpen, setCreateUserOpen]     = useState(false);
+  const [createUserForm, setCreateUserForm]     = useState({ email: "", password: "", fullName: "", roleId: "consulta", areaId: "" });
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [createUserError, setCreateUserError]   = useState<string | null>(null);
+
   // Password reset modal state
   const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
   const [newPass, setNewPass]         = useState("");
@@ -408,6 +411,17 @@ function SettingsPage() {
     }
   }
 
+  async function handleAreaChange(userId: string, newAreaId: string) {
+    const areaId = newAreaId || null;
+    const areaName = areaId ? (areas.find(a => a.id === areaId)?.name ?? null) : null;
+    try {
+      await adminUpdateUser({ data: { id: userId, areaId } });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, areaId, areaName } : u));
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    }
+  }
+
   // ── Org handlers ─────────────────────────────────────────────────
 
   async function loadOrgMembers() {
@@ -470,6 +484,37 @@ function SettingsPage() {
     } catch (e: any) {
       setCreateOrgError(e.message ?? "Error al crear organización");
     } finally { setCreateOrgLoading(false); }
+  }
+
+  async function handleCreateUser() {
+    if (!createUserForm.email.trim() || !createUserForm.password || !createUserForm.fullName.trim()) {
+      setCreateUserError("Correo, contraseña y nombre son obligatorios.");
+      return;
+    }
+    if (createUserForm.password.length < 8) {
+      setCreateUserError("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    setCreateUserLoading(true);
+    setCreateUserError(null);
+    try {
+      await adminCreateUser({
+        data: {
+          email: createUserForm.email.trim().toLowerCase(),
+          password: createUserForm.password,
+          fullName: createUserForm.fullName.trim(),
+          roleId: createUserForm.roleId,
+          areaId: createUserForm.areaId || null,
+        },
+      });
+      setCreateUserOpen(false);
+      setCreateUserForm({ email: "", password: "", fullName: "", roleId: "consulta", areaId: "" });
+      await fetchUsers();
+    } catch (e: any) {
+      setCreateUserError(e.message ?? "Error al crear el usuario");
+    } finally {
+      setCreateUserLoading(false);
+    }
   }
 
   async function handleResetPassword() {
@@ -564,6 +609,15 @@ function SettingsPage() {
               >
                 <RefreshCw className={`size-4 ${usersLoading ? "animate-spin" : ""}`} />
               </button>
+              {isAdmin && (
+                <button
+                  onClick={() => { setCreateUserOpen(true); setCreateUserError(null); }}
+                  className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+                >
+                  <UserPlus className="size-4" />
+                  Nuevo usuario
+                </button>
+              )}
             </div>
 
             {usersError && (
@@ -580,6 +634,7 @@ function SettingsPage() {
                       <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Usuario</th>
                       <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Correo</th>
                       <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Rol</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Área</th>
                       <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Estado</th>
                       <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Último acceso</th>
                       <th className="px-4 py-3" />
@@ -588,12 +643,12 @@ function SettingsPage() {
                   <tbody>
                     {usersLoading && (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-muted-foreground">Cargando usuarios…</td>
+                        <td colSpan={7} className="py-12 text-center text-muted-foreground">Cargando usuarios…</td>
                       </tr>
                     )}
                     {!usersLoading && filteredUsers.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
                           {userSearch ? "Sin resultados para la búsqueda" : "Sin usuarios registrados"}
                         </td>
                       </tr>
@@ -620,6 +675,19 @@ function SettingsPage() {
                           >
                             {Object.entries(ROLE_MAP).map(([id, r]) => (
                               <option key={id} value={id}>{r.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        {/* Area dropdown */}
+                        <td className="px-4 py-3">
+                          <select
+                            value={u.areaId ?? ""}
+                            onChange={e => handleAreaChange(u.id, e.target.value)}
+                            style={ROLE_SEL_STYLE}
+                          >
+                            <option value="">Todas las áreas</option>
+                            {areas.map(a => (
+                              <option key={a.id} value={a.id}>{a.name}</option>
                             ))}
                           </select>
                         </td>
@@ -708,9 +776,11 @@ function SettingsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {MAIN_MODULES.map(({ key, label }) => (
+                    {MAIN_MODULES.map(({ key, label, indent }) => (
                       <tr key={key} className="border-t border-border/60">
-                        <td className="py-2 pr-6 font-medium sticky left-0 bg-card text-sm">{label}</td>
+                        <td className={`py-2 pr-6 sticky left-0 bg-card text-sm ${indent ? "pl-6 text-muted-foreground font-normal" : "font-medium"}`}>
+                          {indent && <span className="mr-1 opacity-40">↳</span>}{label}
+                        </td>
                         {MATRIX_ROLES.map(rId => {
                           const role = localRoles.find(x => x.id === rId);
                           const perm = role ? role.permissions[key] : "none";
@@ -829,10 +899,9 @@ function SettingsPage() {
                   </select>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {NAV_ITEMS.map(({ label, icon: Icon }, i) => {
+                  {NAV_ITEMS.map(({ label, icon: Icon, permKey }) => {
                     const role = localRoles.find(r => r.id === menuRole);
-                    const permKey = MAIN_MODULES[i]?.key;
-                    const visible = role && permKey ? role.permissions[permKey] !== "none" : false;
+                    const visible = role ? role.permissions[permKey] !== "none" : false;
                     return (
                       <span
                         key={label}
@@ -1106,6 +1175,105 @@ function SettingsPage() {
         )}
 
       </div>
+
+      {/* ── Create user modal ────────────────────────────────────────────── */}
+      {createUserOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setCreateUserOpen(false)}
+        >
+          <div
+            className="bg-card rounded-card shadow-card max-w-sm w-full p-5 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <UserPlus className="size-5 text-primary" />
+              <h3 className="font-semibold">Nuevo usuario</h3>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre completo</label>
+                <input
+                  type="text"
+                  value={createUserForm.fullName}
+                  onChange={e => setCreateUserForm(f => ({ ...f, fullName: e.target.value }))}
+                  placeholder="Nombre del usuario"
+                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Correo electrónico</label>
+                <input
+                  type="email"
+                  value={createUserForm.email}
+                  onChange={e => setCreateUserForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="usuario@empresa.com"
+                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contraseña</label>
+                <input
+                  type="password"
+                  value={createUserForm.password}
+                  onChange={e => setCreateUserForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder="Mínimo 8 caracteres"
+                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rol</label>
+                  <select
+                    value={createUserForm.roleId}
+                    onChange={e => setCreateUserForm(f => ({ ...f, roleId: e.target.value }))}
+                    className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {Object.entries(ROLE_MAP).map(([id, r]) => (
+                      <option key={id} value={id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área</label>
+                  <select
+                    value={createUserForm.areaId}
+                    onChange={e => setCreateUserForm(f => ({ ...f, areaId: e.target.value }))}
+                    className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">Todas las áreas</option>
+                    {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {createUserError && (
+              <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                {createUserError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setCreateUserOpen(false)}
+                className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateUser}
+                disabled={createUserLoading}
+                className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {createUserLoading ? "Creando…" : "Crear usuario"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Password reset modal ─────────────────────────────────────────── */}
       {resetTarget && (

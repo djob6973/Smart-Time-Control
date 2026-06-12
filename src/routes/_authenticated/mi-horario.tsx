@@ -81,7 +81,11 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
   const { registros, getEstadoEmpleado } = useJornada();
 
   const shift        = shifts.find(s => s.employeeId === employeeId && s.date === date) ?? null;
-  const estado       = getEstadoEmpleado(employeeId, date);
+  const estado       = getEstadoEmpleado(
+    employeeId,
+    date,
+    shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null,
+  );
   const registrosHoy = [...registros.filter(r => r.employeeId === employeeId && r.fecha === date)]
     .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
 
@@ -353,7 +357,11 @@ function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: st
           const isOff   = shift?.code === "OFF";
           const isAbs   = shift?.code === "ABS";
           const isWork  = shift && !isOff && !isAbs;
-          const estado  = getEstadoEmpleado(employeeId, day);
+          const estado  = getEstadoEmpleado(
+            employeeId,
+            day,
+            isWork ? shift!.start : null,
+          );
           const hasMov  = registros.some(r => r.employeeId === employeeId && r.fecha === day);
 
           return (
