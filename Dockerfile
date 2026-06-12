@@ -11,7 +11,9 @@ ARG VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_mp_vdMThhERuSTHhhc-V9g_O40_CSp_
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
     VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
-    NITRO_PRESET=node-server
+    NITRO_PRESET=node \
+    # Aumentar el stack de Node para evitar stack overflow en rollup durante el build SSR
+    NODE_OPTIONS="--stack-size=65536"
 
 COPY package.json bun.lock bunfig.toml ./
 RUN bun install
@@ -22,12 +24,10 @@ RUN bun run build
 FROM node:20-slim AS runner
 WORKDIR /app
 
-# Only copy the built output — no source, no secrets, no node_modules
+# Solo copiamos el output compilado — sin fuentes, sin secretos, sin node_modules
 COPY --from=builder /app/dist ./dist
 
 ENV NODE_ENV=production \
-    # Nitro node-server reads PORT from process.env (set by Dokku at runtime).
-    # NITRO_HOST=0.0.0.0 ensures the server listens on all interfaces inside the container.
     NITRO_HOST=0.0.0.0
 
 EXPOSE 3000
