@@ -89,6 +89,8 @@ function computeEstado(
   const ultimo = sorted[sorted.length - 1];
 
   const now = new Date();
+  const hoy = now.toISOString().slice(0, 10);
+  const esFechaActual = fecha === hoy;
   const toleranciaMin = config?.toleranciaLlegadaMin ?? 15;
   // Normalizar a HH:MM (la DB puede guardar "HH:MM:SS")
   const toHHMM = (t: string) => t.slice(0, 5);
@@ -99,10 +101,14 @@ function computeEstado(
   let estado: EstadoEmpleado = "pendiente_ingreso";
   let esTarde = false;
 
+  // Para fechas pasadas sin salida registrada usamos fin de día (23:59) como referencia,
+  // no el tiempo actual, para evitar métricas absurdas en registros históricos.
+  const refTime = esFechaActual ? now.getTime() : new Date(`${fecha}T23:59:59`).getTime();
+
   if (sorted.length === 0) {
-    if (now.getTime() > horaInicioMs) {
+    if (refTime > horaInicioMs) {
       estado = "tarde";
-      esTarde = true;
+      esTarde = esFechaActual; // solo mostrar como "tarde" en el día actual
     } else {
       estado = "pendiente_ingreso";
     }
@@ -111,11 +117,11 @@ function computeEstado(
     if (tipo === "salida") {
       estado = "fuera_jornada";
     } else if (tipo === "salida_break") {
-      estado = "en_break";
+      estado = esFechaActual ? "en_break" : "fuera_jornada";
     } else if (tipo === "salida_almuerzo") {
-      estado = "en_almuerzo";
+      estado = esFechaActual ? "en_almuerzo" : "fuera_jornada";
     } else {
-      estado = "en_jornada";
+      estado = esFechaActual ? "en_jornada" : "fuera_jornada";
     }
     const entrada = sorted.find((r) => r.tipoMovimiento === "entrada");
     if (entrada) {
@@ -133,8 +139,8 @@ function computeEstado(
       const entradaTime = new Date(entrada.horaExacta).getTime();
       const horaInicioExacta = new Date(`${fecha}T${horaInicioStr}:00`).getTime();
       minutosRetraso = Math.floor((entradaTime - horaInicioExacta) / 60000);
-    } else {
-      // Aún no entró: retraso desde horaInicio hasta ahora
+    } else if (esFechaActual) {
+      // Aún no entró hoy: retraso desde horaInicio hasta ahora
       const horaInicioExacta = new Date(`${fecha}T${horaInicioStr}:00`).getTime();
       minutosRetraso = Math.floor((now.getTime() - horaInicioExacta) / 60000);
     }
@@ -148,7 +154,7 @@ function computeEstado(
         (r, j) => j > i && r.tipoMovimiento === "regreso_break",
       );
       const salida = new Date(sorted[i].horaExacta).getTime();
-      const regreso = fin ? new Date(fin.horaExacta).getTime() : now.getTime();
+      const regreso = fin ? new Date(fin.horaExacta).getTime() : refTime;
       tiempoEnBreakMin += Math.floor((regreso - salida) / 60000);
     }
   }
@@ -161,17 +167,17 @@ function computeEstado(
         (r, j) => j > i && r.tipoMovimiento === "regreso_almuerzo",
       );
       const salida = new Date(sorted[i].horaExacta).getTime();
-      const regreso = fin ? new Date(fin.horaExacta).getTime() : now.getTime();
+      const regreso = fin ? new Date(fin.horaExacta).getTime() : refTime;
       tiempoEnAlmuerzoMin += Math.floor((regreso - salida) / 60000);
     }
   }
 
-  // Minutos en jornada (desde entrada hasta salida o ahora)
+  // Minutos en jornada (desde entrada hasta salida o refTime)
   let minutosEnJornada = 0;
   const entrada = sorted.find((r) => r.tipoMovimiento === "entrada");
   if (entrada) {
     const salidaFinal = sorted.find((r) => r.tipoMovimiento === "salida");
-    const fin = salidaFinal ? new Date(salidaFinal.horaExacta).getTime() : now.getTime();
+    const fin = salidaFinal ? new Date(salidaFinal.horaExacta).getTime() : refTime;
     minutosEnJornada = Math.floor(
       (fin - new Date(entrada.horaExacta).getTime()) / 60000,
     );
@@ -186,6 +192,7 @@ function computeEstado(
   const breakExcedido = tiempoEnBreakMin > tiempoMaxBreakMin;
   const almuerzoExcedido = tiempoEnAlmuerzoMin > tiempoMaxAlmuerzoMin;
   const jornadaExcedida =
+    esFechaActual &&
     now.getTime() > horaFinMs &&
     (estado === "en_jornada" || estado === "en_break" || estado === "en_almuerzo");
 

@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import type { Shift, Area } from "@/lib/wfm/types";
 import { useAuth } from "@/lib/auth";
 import { fetchApprovals, upsertApproval } from "@/lib/wfm/db";
+import { dispatchApprovalEvent } from "@/lib/notifications/dispatch";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
@@ -55,6 +56,7 @@ type NovRow = {
   horarioHabitual: string; horasTrabajadas: number;
   novedad: TargetCode; horaInicio: string; horaFin: string;
   horas: number; justificacion: string; lider: string;
+  employeeId: string;
 };
 
 type WorkerRow = {
@@ -355,6 +357,7 @@ function ReportsPage() {
           horas: nr.horas,
           justificacion: abs?.reason ?? s.note ?? "",
           lider: emp.leader ?? "",
+          employeeId: s.employeeId,
         });
       });
     });
@@ -368,6 +371,14 @@ function ReportsPage() {
     setSavingRows(p => new Set([...p, row.rowId]));
     try {
       await upsertApproval(row.rowId, row.isoDate, status);
+      if (status === "Aprobada" || status === "Rechazada") {
+        dispatchApprovalEvent({ data: {
+          event: status === "Aprobada" ? "approval_approved" : "approval_rejected",
+          employeeId: row.employeeId,
+          novedadType: row.novedad,
+          fecha: row.isoDate,
+        }}).catch(e => console.error("[notif:approval]", e?.message ?? e));
+      }
     } catch {
       toast.error("Error al guardar la aprobación");
       setAprobaciones(p => ({ ...p, [row.rowId]: prev }));

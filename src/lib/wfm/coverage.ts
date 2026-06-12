@@ -320,7 +320,7 @@ export function generateAnchorWeek(
 
   // Build sorted unique shift types from coverage requirements
   const shiftTypes: { start: number; end: number }[] = [];
-  if (area.coverageRequirements.length > 0) {
+  if (area.enableCoverageMode && area.coverageRequirements.length > 0) {
     const seen = new Set<string>();
     for (const r of area.coverageRequirements) {
       const key = `${r.startHour}-${r.endHour}`;

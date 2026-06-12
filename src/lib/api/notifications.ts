@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabase } from "../supabase";
+// Todas las operaciones se ejecutan en el servidor donde el cliente regular (supabase)
+// no tiene sesión activa (localStorage no disponible en Node). Usamos supabaseAdmin
+// (service_role) para bypassear RLS y filtrar por user_id a nivel de aplicación.
 import { supabaseAdmin } from "../supabase.server";
 
 // Types
@@ -38,7 +40,7 @@ const markAllAsReadSchema = z.object({
 export const getNotifications = createServerFn({ method: "GET" })
   .inputValidator(z.object({ user_id: z.string() }))
   .handler(async ({ data }) => {
-    const { data: notifications, error } = await supabase
+    const { data: notifications, error } = await supabaseAdmin
       .from("notifications")
       .select("*")
       .eq("user_id", data.user_id)
@@ -53,7 +55,7 @@ export const getNotifications = createServerFn({ method: "GET" })
 export const getUnreadCount = createServerFn({ method: "GET" })
   .inputValidator(z.object({ user_id: z.string() }))
   .handler(async ({ data }) => {
-    const { count, error } = await supabase
+    const { count, error } = await supabaseAdmin
       .from("notifications")
       .select("*", { count: "exact", head: true })
       .eq("user_id", data.user_id)
@@ -82,7 +84,7 @@ export const createNotification = createServerFn({ method: "POST" })
 export const markAsRead = createServerFn({ method: "POST" })
   .inputValidator(markAsReadSchema)
   .handler(async ({ data }) => {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("notifications")
       .update({ read: true })
       .eq("id", data.notification_id);
@@ -95,7 +97,7 @@ export const markAsRead = createServerFn({ method: "POST" })
 export const markAllAsRead = createServerFn({ method: "POST" })
   .inputValidator(markAllAsReadSchema)
   .handler(async ({ data }) => {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("notifications")
       .update({ read: true })
       .eq("user_id", data.user_id)
@@ -109,7 +111,7 @@ export const markAllAsRead = createServerFn({ method: "POST" })
 export const deleteNotification = createServerFn({ method: "POST" })
   .inputValidator(z.object({ notification_id: z.string() }))
   .handler(async ({ data }) => {
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from("notifications")
       .delete()
       .eq("id", data.notification_id);

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 import type { Area, Employee, Absence, Shift } from "./types";
 import { detectCode, parseAbsNote } from "./calc";
 import { seedAreas, seedEmployees, seedAbsences, seedShifts } from "./mock";
@@ -6,8 +7,16 @@ import { toISO, startOfWeek, addDays } from "./date";
 import * as db from "./db";
 import {
   extractBasePattern, generateAnchorWeek, buildRotatedWeek, buildEquityMap,
+  generateShiftSlots, validateCoverage,
 } from "./coverage";
 import type { BaseSlot } from "./coverage";
+
+function dbErr(op: string) {
+  return (err: unknown) => {
+    console.error(`[wfm:${op}]`, err);
+    toast.error(`No se pudo guardar (${op}). Verifica la conexión e intenta de nuevo.`);
+  };
+}
 
 interface WFMState {
   areas: Area[];
@@ -88,12 +97,12 @@ export const useWFM = create<WFMState>()((set, get) => ({
         ? s.employees.map((x) => (x.id === e.id ? e : x))
         : [...s.employees, e],
     }));
-    db.upsertEmployee(e).catch(console.error);
+    db.upsertEmployee(e).catch(dbErr("trabajador"));
   },
 
   removeEmployee: (id) => {
     set((s) => ({ employees: s.employees.filter((e) => e.id !== id) }));
-    db.removeEmployee(id).catch(console.error);
+    db.removeEmployee(id).catch(dbErr("trabajador"));
   },
 
   // ── Areas ──────────────────────────────────────────────────
@@ -103,12 +112,12 @@ export const useWFM = create<WFMState>()((set, get) => ({
         ? s.areas.map((x) => (x.id === a.id ? a : x))
         : [...s.areas, a],
     }));
-    db.upsertArea(a).catch(console.error);
+    db.upsertArea(a).catch(dbErr("área"));
   },
 
   removeArea: (id) => {
     set((s) => ({ areas: s.areas.filter((a) => a.id !== id) }));
-    db.removeArea(id).catch(console.error);
+    db.removeArea(id).catch(dbErr("área"));
   },
 
   // ── Absences ───────────────────────────────────────────────
@@ -118,12 +127,12 @@ export const useWFM = create<WFMState>()((set, get) => ({
         ? s.absences.map((x) => (x.id === a.id ? a : x))
         : [...s.absences, a],
     }));
-    db.upsertAbsence(a).catch(console.error);
+    db.upsertAbsence(a).catch(dbErr("ausencia"));
   },
 
   removeAbsence: (id) => {
     set((s) => ({ absences: s.absences.filter((a) => a.id !== id) }));
-    db.removeAbsence(id).catch(console.error);
+    db.removeAbsence(id).catch(dbErr("ausencia"));
   },
 
   // ── Shifts ─────────────────────────────────────────────────
@@ -150,7 +159,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
       const next = [...s.shifts];
       if (idx >= 0) next[idx] = merged;
       else next.push(merged);
-      db.upsertShift(merged).catch(console.error);
+      db.upsertShift(merged).catch(dbErr("turno"));
       return { shifts: next };
     });
   },
@@ -161,7 +170,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
         (sh) => !(sh.employeeId === employeeId && sh.date === date),
       ),
     }));
-    db.removeShift(employeeId, date).catch(console.error);
+    db.removeShift(employeeId, date).catch(dbErr("turno"));
   },
 
   // ── Generación automática semanal ──────────────────────────
@@ -279,7 +288,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
     });
 
     // Persiste en Supabase en lote
-    db.upsertShiftsBatch(newShifts).catch(console.error);
+    db.upsertShiftsBatch(newShifts).catch(dbErr("generación"));
   },
 
   // ── Generación multi-semana con rotación desde semana ancla ──
@@ -392,6 +401,25 @@ export const useWFM = create<WFMState>()((set, get) => ({
       "| working:", allNewShifts.filter(s => s.code !== "OFF" && s.code !== "ABS").length,
       "| fechas:", [...new Set(allNewShifts.map(s => s.date))].sort());
 
+    // ── Validación de cobertura post-generación ───────────────
+    const coverageWarnings: string[] = [];
+    for (const area of relevantAreas.filter(a => a.enableCoverageMode && a.coverageRequirements.length > 0)) {
+      const areaEmpIds = new Set(
+        employees.filter(e => e.areaId === area.id && e.status === "active").map(e => e.id)
+      );
+      let gapCount = 0;
+      for (let w = 0; w < numWeeks; w++) {
+        const weekDate = addDays(startDate, w * 7);
+        const slots = generateShiftSlots(weekDate, area);
+        const weekShifts = allNewShifts.filter(s => areaEmpIds.has(s.employeeId));
+        const { gaps } = validateCoverage(weekShifts, slots);
+        gapCount += gaps.length;
+      }
+      if (gapCount > 0) {
+        coverageWarnings.push(`${area.name} (${gapCount} franja${gapCount !== 1 ? "s" : ""})`);
+      }
+    }
+
     set((s) => {
       const dates = new Set(allNewShifts.map(x => x.date));
       const remaining = s.shifts.filter(sh =>
@@ -400,7 +428,19 @@ export const useWFM = create<WFMState>()((set, get) => ({
       return { shifts: [...remaining, ...allNewShifts] };
     });
 
-    db.upsertShiftsBatch(allNewShifts).catch(console.error);
+    const workingCount = allNewShifts.filter(s => s.code !== "OFF" && s.code !== "ABS").length;
+    db.upsertShiftsBatch(allNewShifts)
+      .then(() => {
+        if (coverageWarnings.length > 0) {
+          toast.warning(
+            `${workingCount} turnos generados. Cobertura insuficiente en: ${coverageWarnings.join(", ")}`,
+            { duration: 7000 }
+          );
+        } else {
+          toast.success(`${workingCount} turnos generados correctamente`);
+        }
+      })
+      .catch(dbErr("generación"));
   },
 
   // ── Limpiar semana (solo turnos no bloqueados) ─────────────
@@ -434,7 +474,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
     const toUpdate = updated.filter(sh =>
       dates.has(sh.date) && (!areaId || employees.find(e => e.id === sh.employeeId)?.areaId === areaId)
     );
-    db.upsertShiftsBatch(toUpdate).catch(console.error);
+    db.upsertShiftsBatch(toUpdate).catch(dbErr("bloqueo"));
   },
 
   unlockWeek: (weekStartISO, areaId) => {
@@ -450,7 +490,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
     const toUpdate = updated.filter(sh =>
       dates.has(sh.date) && (!areaId || employees.find(e => e.id === sh.employeeId)?.areaId === areaId)
     );
-    db.upsertShiftsBatch(toUpdate).catch(console.error);
+    db.upsertShiftsBatch(toUpdate).catch(dbErr("desbloqueo"));
   },
 
   // ── Intercambio de turnos entre dos empleados ─────────────
@@ -498,8 +538,8 @@ export const useWFM = create<WFMState>()((set, get) => ({
     }));
 
     [newA, newB].forEach(sh => {
-      if (sh.code === "OFF") db.removeShift(sh.employeeId, sh.date).catch(console.error);
-      else db.upsertShift(sh).catch(console.error);
+      if (sh.code === "OFF") db.removeShift(sh.employeeId, sh.date).catch(dbErr("intercambio"));
+      else db.upsertShift(sh).catch(dbErr("intercambio"));
     });
 
     return "ok";

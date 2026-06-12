@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   Clock, Users, Coffee, UtensilsCrossed, LogIn, LogOut,
   LayoutDashboard, History, FileText, Settings,
@@ -55,6 +55,15 @@ const TIPO_COLORS: Record<TipoMovimiento, string> = {
   salida_almuerzo:  "border border-border bg-card hover:bg-secondary text-foreground",
   regreso_almuerzo: "bg-primary hover:opacity-90 text-primary-foreground",
   salida:           "bg-foreground hover:opacity-90 text-background",
+};
+
+const TIPO_SHORT_LABELS: Record<TipoMovimiento, string> = {
+  entrada:          "Entrada",
+  salida_break:     "Break",
+  regreso_break:    "Fin break",
+  salida_almuerzo:  "Almuerzo",
+  regreso_almuerzo: "Fin almuerzo",
+  salida:           "Salida",
 };
 
 // ── Helpers ────────────────────────────────────────────────
@@ -236,7 +245,7 @@ function JornadaPage() {
 
 function TabDashboard() {
   const { employees, areas, shifts } = useWFM();
-  const { registros, fechaActiva, getEstadoEmpleado, getCuposDisponibles, setFechaActiva, reloadRegistros, getShiftProgramado, configuracion } = useJornada();
+  const { registros, fechaActiva, getEstadoEmpleado, getCuposDisponibles, setFechaActiva, reloadRegistros, getShiftProgramado, configuracion, horarios, horariosEmpleado } = useJornada();
   const activeEmployees = employees.filter((e) => e.status === "active");
 
   const estados = useMemo(
@@ -248,14 +257,39 @@ function TabDashboard() {
     [activeEmployees, registros, fechaActiva, shifts],
   );
 
+  // Determina si un empleado tiene turno laborable hoy (no OFF, no ABS).
+  // Si no tiene turno WFM, verifica si tiene un horario del módulo de Jornada asignado.
+  const diaSemana = useMemo(() => new Date(`${fechaActiva}T12:00:00`).getDay(), [fechaActiva]);
+
+  const tieneHorarioJornada = useCallback(
+    (empId: string) => {
+      const asig = horariosEmpleado.find(
+        (x) => x.employeeId === empId && x.activo &&
+          x.fechaInicio <= fechaActiva && (!x.fechaFin || x.fechaFin >= fechaActiva),
+      );
+      if (!asig) return false;
+      return horarios.some((h) => h.id === asig.horarioId && h.activo && h.diasAplicables.includes(diaSemana));
+    },
+    [horariosEmpleado, horarios, fechaActiva, diaSemana],
+  );
+
+  const esEsperadoHoy = useCallback(
+    (x: { shift: ReturnType<typeof getShiftProgramado>; emp: { id: string } }) => {
+      if (x.shift?.code === "OFF" || x.shift?.code === "ABS") return false;
+      if (x.shift) return true; // tiene turno de trabajo
+      return tieneHorarioJornada(x.emp.id); // sin turno WFM: revisar horario de jornada
+    },
+    [tieneHorarioJornada],
+  );
+
   const counts = useMemo(() => ({
     enJornada:  estados.filter((x) => x.est.estado === "en_jornada").length,
     enBreak:    estados.filter((x) => x.est.estado === "en_break").length,
     enAlmuerzo: estados.filter((x) => x.est.estado === "en_almuerzo").length,
     fuera:      estados.filter((x) => x.est.estado === "fuera_jornada").length,
-    tardios:    estados.filter((x) => x.est.esTarde).length,
-    pendientes: estados.filter((x) => ["pendiente_ingreso", "tarde", "ausente"].includes(x.est.estado)).length,
-  }), [estados]);
+    tardios:    estados.filter((x) => x.est.esTarde && esEsperadoHoy(x)).length,
+    pendientes: estados.filter((x) => ["pendiente_ingreso", "tarde", "ausente"].includes(x.est.estado) && esEsperadoHoy(x)).length,
+  }), [estados, esEsperadoHoy]);
 
   const breakCupo = getCuposDisponibles(undefined, "break",    fechaActiva);
   const almCupo   = getCuposDisponibles(undefined, "almuerzo", fechaActiva);
@@ -263,9 +297,12 @@ function TabDashboard() {
   const conEntrada = estados.filter((x) =>
     registros.some((r) => r.employeeId === x.emp.id && r.fecha === fechaActiva && r.tipoMovimiento === "entrada"),
   );
+  // Solo tardíos que SÍ tienen registro de entrada (llegaron tarde).
+  // Los que nunca llegaron (esTarde + sin entrada) no cuentan en la puntualidad de quienes asistieron.
+  const tardiosConEntrada = conEntrada.filter((x) => x.est.esTarde).length;
   const pctPuntual = conEntrada.length > 0
-    ? Math.round(((conEntrada.length - counts.tardios) / conEntrada.length) * 100)
-    : 100;
+    ? Math.round(((conEntrada.length - tardiosConEntrada) / conEntrada.length) * 100)
+    : 0;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -359,7 +396,7 @@ function TabDashboard() {
                       <span className={cn("inline-flex items-center rounded-pill px-3 py-1 text-[11px] font-medium", ESTADO_COLORS[est.estado])}>
                         {ESTADO_LABELS[est.estado]}
                       </span>
-                      {est.esTarde && est.estado !== "tarde" && (
+                      {est.esTarde && est.estado !== "tarde" && esEsperadoHoy({ shift, emp }) && (
                         <span className="inline-flex items-center rounded-pill px-3 py-1 text-[11px] font-medium bg-primary/12 text-primary">
                           Tarde +{fmtMins(est.minutosRetraso)}
                         </span>
@@ -412,11 +449,11 @@ function TabDashboard() {
             <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Con registro</div>
           </div>
           <div className="border-l border-border">
-            <div className="text-3xl font-bold tabular-nums text-[#1F8A5B]">{conEntrada.length - counts.tardios}</div>
+            <div className="text-3xl font-bold tabular-nums text-[#1F8A5B]">{conEntrada.length - tardiosConEntrada}</div>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">A tiempo</div>
           </div>
           <div className="border-l border-border">
-            <div className="text-3xl font-bold tabular-nums text-primary">{counts.tardios}</div>
+            <div className="text-3xl font-bold tabular-nums text-primary">{tardiosConEntrada}</div>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Tardíos</div>
           </div>
           <div className="border-l border-border">
@@ -438,7 +475,7 @@ function TabDashboard() {
         {counts.tardios > 0 && (
           <div className="mt-4 space-y-2">
             <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Empleados con retraso</div>
-            {estados.filter((x) => x.est.esTarde).map(({ emp, est }) => (
+            {estados.filter((x) => x.est.esTarde && esEsperadoHoy(x)).map(({ emp, est }) => (
               <div key={emp.id} className="flex items-center gap-3 text-sm">
                 <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
                   {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
@@ -733,7 +770,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
                     {!shift ? "Sin programar" : shift.code === "OFF" ? "Descanso" : "Ausencia"}
                   </span>
                 )}
-                {est.esTarde && (
+                {est.esTarde && hasShift && (
                   <span className="ml-auto text-primary font-medium">+{fmtMins(est.minutosRetraso)}</span>
                 )}
               </div>
@@ -758,11 +795,45 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
               {/* Actions */}
               {!hasShift ? (
-                <div className="text-[11px] text-muted-foreground text-center py-0.5 italic">Sin turno activo</div>
+                <div className="text-[11px] text-muted-foreground text-center py-1 italic">Sin turno activo</div>
               ) : siguientes.length === 0 ? (
-                <div className="text-[11px] text-muted-foreground text-center py-0.5 italic">Sin acciones disponibles</div>
+                <div className="text-[11px] text-muted-foreground text-center py-1 italic">Sin acciones disponibles</div>
+              ) : siguientes.length === 3 ? (
+                /* 3 actions: Break + Almuerzo in top row, Salida full-width below */
+                <div className="flex flex-col gap-1.5">
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {siguientes.slice(0, 2).map((tipo) => {
+                      const Icon = TIPO_ICONS[tipo];
+                      return (
+                        <button
+                          key={tipo}
+                          onClick={() => setPendingAction({ empId: emp.id, tipo })}
+                          disabled={busy}
+                          className={cn("flex items-center justify-center gap-1.5 py-2 px-3 rounded-pill text-xs font-medium transition-all disabled:opacity-50", TIPO_COLORS[tipo])}
+                        >
+                          <Icon className="size-3.5 shrink-0" />
+                          {TIPO_SHORT_LABELS[tipo]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(() => {
+                    const tipo = siguientes[2];
+                    const Icon = TIPO_ICONS[tipo];
+                    return (
+                      <button
+                        onClick={() => setPendingAction({ empId: emp.id, tipo })}
+                        disabled={busy}
+                        className={cn("w-full flex items-center justify-center gap-2 py-2.5 rounded-pill text-xs font-semibold transition-all disabled:opacity-50", TIPO_COLORS[tipo])}
+                      >
+                        <Icon className="size-3.5 shrink-0" />
+                        {TIPO_MOVIMIENTO_LABELS[tipo]}
+                      </button>
+                    );
+                  })()}
+                </div>
               ) : (
-                <div className={cn("grid gap-1.5", siguientes.length <= 2 ? "grid-cols-2" : "grid-cols-3")}>
+                <div className={cn("grid gap-1.5", siguientes.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
                   {siguientes.map((tipo) => {
                     const Icon = TIPO_ICONS[tipo];
                     return (
@@ -770,10 +841,10 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
                         key={tipo}
                         onClick={() => setPendingAction({ empId: emp.id, tipo })}
                         disabled={busy}
-                        className={cn("flex items-center justify-center gap-1 py-2 px-1 rounded-pill text-[11px] font-medium transition-all disabled:opacity-50", TIPO_COLORS[tipo])}
+                        className={cn("flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-pill text-xs font-medium transition-all disabled:opacity-50", TIPO_COLORS[tipo])}
                       >
-                        <Icon className="size-3" />
-                        <span className="truncate">{TIPO_MOVIMIENTO_LABELS[tipo]}</span>
+                        <Icon className="size-3.5 shrink-0" />
+                        {TIPO_MOVIMIENTO_LABELS[tipo]}
                       </button>
                     );
                   })}

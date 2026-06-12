@@ -291,12 +291,16 @@ export async function fetchApprovals(
 ): Promise<Record<string, string>> {
   const { data, error } = await supabase
     .from("report_approvals")
-    .select("row_id, status")
+    .select("row_id, status, changed_by")
     .gte("date", from)
     .lte("date", to);
   if (error) throw error;
   const map: Record<string, string> = {};
-  (data ?? []).forEach((r: any) => { map[r.row_id] = r.status; });
+  // Solo registrar filas con changed_by != null (aprobadas explícitamente por un usuario).
+  // Filas sin atribución se ignoran y quedan en "Pendiente" por defecto en el frontend.
+  (data ?? []).forEach((r: any) => {
+    if (r.changed_by != null) map[r.row_id] = r.status;
+  });
   return map;
 }
 

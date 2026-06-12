@@ -4,6 +4,7 @@ import { useWFM } from "@/lib/wfm/store";
 import { parseAbsNote } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useState, useMemo, type ElementType } from "react";
+import { dispatchAbsenceEvent } from "@/lib/notifications/dispatch";
 import { Plus, CalendarX2, Clock, CheckCircle2, Calendar, PencilLine, Trash2 } from "lucide-react";
 import type { AbsenceStatus, AbsenceType, Absence } from "@/lib/wfm/types";
 
@@ -438,7 +439,19 @@ function AbsencesPage() {
 
   function handleDecide(id: string, status: AbsenceStatus) {
     const a = absences.find(ab => ab.id === id);
-    if (a) upsertAbsence({ ...a, status });
+    if (!a) return;
+    upsertAbsence({ ...a, status });
+    if (status === "aprobada" || status === "rechazada") {
+      const emp = employees.find(e => e.id === a.employeeId);
+      dispatchAbsenceEvent({ data: {
+        event: status === "aprobada" ? "absence_approved" : "absence_rejected",
+        employeeId: a.employeeId,
+        employeeName: emp?.fullName ?? "",
+        absenceType: TYPE_META[a.type]?.label ?? a.type,
+        startDate: a.startDate,
+        endDate: a.endDate,
+      }}).catch(e => console.error("[notif:absence]", e?.message ?? e));
+    }
   }
 
   // Sync ABS shift records when an absence is edited or deleted.
@@ -701,7 +714,19 @@ function AbsencesPage() {
         <AbsenceFormModal
           employees={visibleEmployees}
           onClose={() => setCreateOpen(false)}
-          onSave={a => { upsertAbsence(a); setCreateOpen(false); }}
+          onSave={a => {
+            upsertAbsence(a);
+            setCreateOpen(false);
+            const emp = employees.find(e => e.id === a.employeeId);
+            dispatchAbsenceEvent({ data: {
+              event: "absence_created",
+              employeeId: a.employeeId,
+              employeeName: emp?.fullName ?? "",
+              absenceType: TYPE_META[a.type as AbsenceType]?.label ?? a.type,
+              startDate: a.startDate,
+              endDate: a.endDate,
+            }}).catch(e => console.error("[notif:absence]", e?.message ?? e));
+          }}
         />
       )}
 

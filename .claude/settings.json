@@ -58,7 +58,16 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\HP\\\\Documents\\\\David Ortega\\\\Mis Cursos\\\\IA\\\\smart-shift-pro-main\" -Recurse -Directory -ErrorAction SilentlyContinue)",
       "Bash(node -e ' *)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(git config *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(gh auth *)",
+      "Bash(xargs cat)",
+      "Bash(grep -r \"toast\\\\\\\\.success\\\\|toast\\\\\\\\.error\" \"c:\\\\Users\\\\HP\\\\Documents\\\\David Ortega\\\\Mis Cursos\\\\IA\\\\smart-shift-pro-main\\\\src\\\\routes\" --include=\"*.tsx\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Documents\\David Ortega\\Mis Cursos\\IA\\smart-shift-pro-main",

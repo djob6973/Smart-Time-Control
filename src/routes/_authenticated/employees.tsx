@@ -2,8 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
-import { useState } from "react";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Search, Pencil, Trash2, Link2, Unlink } from "lucide-react";
+import { toast } from "sonner";
+import { adminListUsers, adminUpdateUser, type AppUser } from "@/lib/auth/admin.server";
+import { dispatchEmployeeEvent } from "@/lib/notifications/dispatch";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Trabajadores · STC" }] }),
@@ -39,6 +42,15 @@ function EmployeesPage() {
   const [areaFilter, setAreaFilter]       = useState("all");
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("all");
   const [editing, setEditing]             = useState<string | null>(null);
+
+  const [users, setUsers] = useState<AppUser[]>([]);
+  useEffect(() => { adminListUsers().then(setUsers).catch(() => {}); }, []);
+  function reloadUsers() { adminListUsers().then(setUsers).catch(() => {}); }
+
+  const userByEmpId = useMemo(
+    () => new Map(users.filter(u => u.employeeId).map(u => [u.employeeId!, u])),
+    [users],
+  );
 
   const list = employees.filter(e => {
     const matchQ = !q || e.fullName.toLowerCase().includes(q.toLowerCase()) || e.documentId.includes(q);
@@ -144,7 +156,24 @@ function EmployeesPage() {
                       <td className="px-4 py-3">{e.position}</td>
                       <td className="px-4 py-3">{areaName}</td>
                       <td className="px-4 py-3">{CONTRACT_LABELS[e.contractType] ?? e.contractType}</td>
-                      <td className="px-4 py-3 text-[11px] text-muted-foreground">Sin vincular</td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const linked = userByEmpId.get(e.id);
+                          return linked ? (
+                            <div className="flex items-center gap-1.5">
+                              <Link2 className="size-3 text-primary shrink-0" />
+                              <span className="text-xs font-medium truncate max-w-[140px]" title={linked.email}>
+                                {linked.fullName || linked.email}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Unlink className="size-3 shrink-0" />
+                              <span className="text-[11px]">Sin vincular</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-pill px-3 py-1 text-[11px] font-medium tracking-[0.02em] ${
                           e.status === "active"
@@ -196,15 +225,33 @@ function EmployeesPage() {
         <EmployeeModal
           employee={editing === "new" ? null : employees.find(e => e.id === editing) ?? null}
           areas={areas}
+          users={users}
           onClose={() => setEditing(null)}
-          onSave={(emp: any) => { upsertEmployee(emp); setEditing(null); }}
+          onSave={(emp: any) => {
+            const existing = employees.find((e: any) => e.id === emp.id);
+            const isNew = !existing;
+            const wasActive = existing?.status === "active";
+            upsertEmployee(emp);
+            setEditing(null);
+            reloadUsers();
+            if (isNew) {
+              dispatchEmployeeEvent({ data: { event: "employee_added", employeeName: emp.fullName } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
+            } else if (wasActive && emp.status === "inactive") {
+              dispatchEmployeeEvent({ data: { event: "employee_deactivated", employeeName: emp.fullName } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
+            } else if (!wasActive && emp.status === "active") {
+              dispatchEmployeeEvent({ data: { event: "employee_reactivated", employeeName: emp.fullName } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
+            }
+          }}
         />
       )}
     </>
   );
 }
 
-function EmployeeModal({ employee, areas, onClose, onSave }: any) {
+function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
+  const { employees } = useWFM();
+  const currentLinkedUser: AppUser | undefined = users.find((u: AppUser) => u.employeeId === employee?.id);
+
   const [form, setForm] = useState(() => ({
     ...(employee ?? {
       id: `e${Date.now()}`,
@@ -218,7 +265,7 @@ function EmployeeModal({ employee, areas, onClose, onSave }: any) {
       hireDate: new Date().toISOString().slice(0, 10),
       availability: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i, { start: 8, end: 18 }])),
     }),
-    linkedUser: "",
+    linkedUserId: currentLinkedUser?.id ?? "",
   }));
 
   function update(k: string, v: any) {
@@ -232,8 +279,39 @@ function EmployeeModal({ employee, areas, onClose, onSave }: any) {
     });
   }
 
-  function handleSave() {
-    const { linkedUser: _ignored, ...emp } = form;
+  async function handleSave() {
+    if (!form.fullName.trim()) {
+      toast.error("El nombre del trabajador es obligatorio.");
+      return;
+    }
+    if (!form.documentId.trim()) {
+      toast.error("El número de documento es obligatorio.");
+      return;
+    }
+    const isDuplicate = (employees as any[]).some(
+      (e: any) => e.id !== form.id && e.documentId === form.documentId.trim()
+    );
+    if (isDuplicate) {
+      toast.error("Ya existe un trabajador con ese número de documento.");
+      return;
+    }
+    const { linkedUserId, ...emp } = form;
+    const prevLinkedUserId = currentLinkedUser?.id ?? "";
+
+    if (linkedUserId !== prevLinkedUserId) {
+      try {
+        if (prevLinkedUserId) {
+          await adminUpdateUser({ data: { id: prevLinkedUserId, employeeId: null } });
+        }
+        if (linkedUserId) {
+          await adminUpdateUser({ data: { id: linkedUserId, employeeId: emp.id } });
+        }
+      } catch (e: any) {
+        toast.error(`Error al vincular usuario: ${e.message}`);
+        return;
+      }
+    }
+
     onSave(emp);
   }
 
@@ -296,14 +374,22 @@ function EmployeeModal({ employee, areas, onClose, onSave }: any) {
                 <option value="aprendiz">Aprendiz SENA</option>
               </select>
             </Field>
-            <Field label="Usuario vinculado">
-              <input
+            <Field label="Acceso (usuario vinculado)">
+              <select
                 className="fi"
-                type="email"
-                value={form.linkedUser}
-                onChange={e => update("linkedUser", e.target.value)}
-                placeholder="correo@empresa.com"
-              />
+                value={form.linkedUserId}
+                onChange={e => update("linkedUserId", e.target.value)}
+              >
+                <option value="">— Sin vincular —</option>
+                {(users as AppUser[])
+                  .filter(u => !u.employeeId || u.id === currentLinkedUser?.id)
+                  .map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName ? `${u.fullName} · ${u.email}` : u.email}
+                    </option>
+                  ))
+                }
+              </select>
             </Field>
           </div>
 

@@ -6,10 +6,13 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// NITRO_PRESET=node-server → builds a Node.js SSR server (for Dokku/VPS).
+// Unset (default) → auto mode: nitro only activates inside Lovable's infra (Cloudflare).
+const nitroPreset = process.env.NITRO_PRESET;
+
 export default defineConfig({
+  nitro: nitroPreset ? { preset: nitroPreset } : undefined,
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
   },
 });

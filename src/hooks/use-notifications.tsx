@@ -106,9 +106,11 @@ export function useNotifications() {
     []
   );
 
-  // Fetch notifications on mount and when user changes
+  // Fetch on mount y polling cada 60 s para capturar notificaciones insertadas desde el servidor.
   React.useEffect(() => {
     fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60_000);
+    return () => clearInterval(interval);
   }, [fetchNotifications]);
 
   return {

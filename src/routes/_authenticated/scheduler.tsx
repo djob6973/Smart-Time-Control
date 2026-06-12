@@ -6,10 +6,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
 import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
-import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Filter, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Filter, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { fetchShiftHistory } from "@/lib/wfm/db";
+import { dispatchShiftEvent } from "@/lib/notifications/dispatch";
 import type { ShiftHistory } from "@/lib/wfm/types";
 import { buildEquityMap } from "@/lib/wfm/coverage";
 import { isSundayOrHoliday } from "@/lib/wfm/calc";
@@ -776,8 +777,33 @@ function Scheduler() {
           date={editing.date}
           shift={getEffectiveShift(editing.employeeId, editing.date)}
           onClose={() => setEditing(null)}
-          onSave={(patch: any) => { setShift(editing.employeeId, editing.date, patch); setEditing(null); }}
-          onClear={() => { clearShift(editing.employeeId, editing.date); setEditing(null); }}
+          onSave={(patch: any) => {
+            const prev = getEffectiveShift(editing.employeeId, editing.date);
+            const isNew = !prev || prev.code === "OFF";
+            setShift(editing.employeeId, editing.date, patch);
+            setEditing(null);
+            if (patch.code !== "OFF" && patch.code !== "ABS") {
+              dispatchShiftEvent({ data: {
+                event: isNew ? "shift_created" : "shift_updated",
+                employeeId: editing.employeeId,
+                date: editing.date,
+                startHour: patch.start,
+                endHour: patch.end,
+              }}).catch(e => console.error("[notif:shift]", e?.message ?? e));
+            }
+          }}
+          onClear={() => {
+            const prev = getEffectiveShift(editing.employeeId, editing.date);
+            clearShift(editing.employeeId, editing.date);
+            setEditing(null);
+            if (prev && prev.code !== "OFF" && prev.code !== "ABS") {
+              dispatchShiftEvent({ data: {
+                event: "shift_deleted",
+                employeeId: editing.employeeId,
+                date: editing.date,
+              }}).catch(e => console.error("[notif:shift_deleted]", e?.message ?? e));
+            }
+          }}
           onHistory={() => {
             const emp = employees.find(e => e.id === editing.employeeId);
             setHistoryModal({ employeeId: editing.employeeId, date: editing.date, employeeName: emp?.fullName ?? "" });
@@ -1399,11 +1425,16 @@ const EDITOR_CODES: { code: string; label: string }[] = [
 ];
 
 function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistory }: any) {
-  const { shifts, areas } = useWFM();
+  const { shifts, areas, absences, upsertAbsence, removeAbsence } = useWFM();
   const area = areas.find((a: any) => a.id === employee.areaId);
 
   const absInfo = parseAbsNote(shift?.note);
   const isAbsShift = !!absInfo || shift?.code === "ABS";
+
+  // Existing absence record for this employee/date (for pre-filling)
+  const existingAbsence = (absences as any[]).find(
+    (a: any) => a.employeeId === employee.id && date >= a.startDate && date <= a.endDate,
+  );
 
   const [code, setCode] = useState<string>(shift?.code ?? "STD");
   const [start, setStart] = useState(shift?.start ?? (isAbsShift ? 0 : 8));
@@ -1413,12 +1444,30 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
   const [locked, setLocked] = useState(!!shift?.locked);
   const [showConfirm, setShowConfirm] = useState(false);
   const [absError, setAbsError] = useState<string | null>(null);
+  const [confirmDeleteAbs, setConfirmDeleteAbs] = useState(false);
+
+  // Absence config state — pre-filled from existing note or absence record
+  const [absType, setAbsType] = useState<string>(
+    absInfo?.type ?? existingAbsence?.type ?? "licencia",
+  );
+  const [absFullDay, setAbsFullDay] = useState<boolean>(
+    absInfo
+      ? absInfo.absStart === 0 && absInfo.absEnd === 8
+      : existingAbsence?.startHour === undefined,
+  );
+  const [absHrStart, setAbsHrStart] = useState<number>(
+    absInfo && !(absInfo.absStart === 0 && absInfo.absEnd === 8)
+      ? absInfo.absStart
+      : existingAbsence?.startHour ?? 8,
+  );
+  const [absHrEnd, setAbsHrEnd] = useState<number>(
+    absInfo && !(absInfo.absStart === 0 && absInfo.absEnd === 8)
+      ? absInfo.absEnd
+      : existingAbsence?.endHour ?? 12,
+  );
 
   const absHours = absInfo ? absInfo.absEnd - absInfo.absStart : (isAbsShift ? 8 : 0);
   const workHours = end > start ? Math.max(0, end - start - breakMin / 60) : 0;
-  const totalHoursDisplay = absHours + workHours;
-  const extraHoursDisplay = Math.max(0, totalHoursDisplay - 8);
-  const missingHours = Math.max(0, 8 - absHours - workHours);
   const absIsFullDay = !absInfo || (absInfo.absStart === 0 && absInfo.absEnd === 8);
 
   // Existing hours for this employee in the same week/month, excluding the date being edited
@@ -1474,28 +1523,54 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
       return;
     }
 
+    if (end <= start) {
+      toast.error("La hora de fin debe ser posterior a la hora de inicio.");
+      return;
+    }
+
+    // Effective absence range: use form state when code=ABS, else use existing note
+    const vFullDay   = code === "ABS" ? absFullDay   : absIsFullDay;
+    const vAbsStart  = code === "ABS" ? absHrStart   : (absInfo?.absStart ?? 0);
+    const vAbsEnd    = code === "ABS" ? absHrEnd     : (absInfo?.absEnd   ?? 8);
+
     // Validate: work hours must not overlap with the absence time range
-    if (isAbsShift && (start !== 0 || end !== 0)) {
-      if (absIsFullDay) {
+    if ((code === "ABS" || isAbsShift) && (start !== 0 || end !== 0)) {
+      if (vFullDay) {
         setAbsError("Ausencia de día completo: no es posible programar horas de trabajo para este día.");
         return;
       }
-      if (absInfo && !absIsFullDay) {
-        const overlap = start < absInfo.absEnd && end > absInfo.absStart;
-        if (overlap) {
-          setAbsError(
-            `El horario ${pad(start)}:00–${pad(end)}:00 se superpone con la ausencia registrada ${pad(absInfo.absStart)}:00–${pad(absInfo.absEnd)}:00.`
-          );
-          return;
-        }
+      const overlap = start < vAbsEnd && end > vAbsStart;
+      if (overlap) {
+        setAbsError(
+          `El horario ${pad(start)}:00–${pad(end)}:00 se superpone con la ausencia registrada ${pad(vAbsStart)}:00–${pad(vAbsEnd)}:00.`
+        );
+        return;
       }
     }
     setAbsError(null);
 
     if (anyOvertime && !showConfirm) { setShowConfirm(true); return; }
-    const saveNote = code === "ABS"
-      ? (isAbsShift ? shift?.note : "abs:licencia")
-      : note;
+
+    if (code === "ABS") {
+      // Build note and upsert absence record
+      const absNote = absFullDay
+        ? `abs:${absType}`
+        : `abs:${absType}:${absHrStart}:${absHrEnd}`;
+      (upsertAbsence as any)({
+        id:         existingAbsence?.id ?? `a-sched-${employee.id}-${date.replace(/-/g, "")}`,
+        employeeId: employee.id,
+        type:       absType,
+        startDate:  date,
+        endDate:    date,
+        ...(absFullDay ? {} : { startHour: absHrStart, endHour: absHrEnd }),
+        reason:     existingAbsence?.reason ?? "",
+        status:     existingAbsence?.status ?? "pendiente",
+      });
+      onSave({ code: "ABS", start, end, breakMinutes: breakMin, note: absNote, locked });
+      return;
+    }
+
+    const saveNote = isAbsShift ? shift?.note : note;
     onSave({ code, start, end, breakMinutes: breakMin, note: saveNote, locked });
   }
 
@@ -1551,31 +1626,104 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
         ) : (
           <>
             <div className="overflow-y-auto flex-1">
-            {/* Absence banner */}
-            {isAbsShift && (
-              <div className="px-5 py-3 bg-red-50 border-b border-red-200 space-y-0.5">
-                <p className="text-sm font-semibold text-red-700">
-                  Ausencia{absInfo ? ` · ${ABS_TYPE_LABELS[absInfo.type] ?? absInfo.type}` : ""}
-                </p>
-                <p className="text-xs text-red-600">
-                  {absInfo
-                    ? absIsFullDay
-                      ? "Día completo · 8h ausente"
-                      : `${pad(absInfo.absStart)}:00 – ${pad(absInfo.absEnd)}:00 · ${absHours}h ausente`
-                    : "Día completo · 8h ausente"}
-                </p>
-                {missingHours > 0 && (
-                  <p className="text-xs text-amber-600 font-medium">
-                    Faltan {missingHours.toFixed(1)}h para completar la jornada estándar
-                  </p>
+            {/* Absence config form (editable when code=ABS) */}
+            {code === "ABS" && (
+              <div className="px-5 py-3.5 border-b border-red-200 bg-red-50 space-y-3">
+                <p className="text-[10px] font-semibold text-red-700 uppercase tracking-wider">Ausencia</p>
+
+                {/* Type */}
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Tipo de ausencia</label>
+                  <select
+                    value={absType}
+                    onChange={e => setAbsType(e.target.value)}
+                    className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-red-300"
+                  >
+                    {Object.entries(ABS_TYPE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v as string}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Full day / partial toggle */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setAbsFullDay(true); setAbsError(null); }}
+                    className={cn(
+                      "flex-1 rounded-lg py-1.5 text-xs font-medium border transition-colors",
+                      absFullDay
+                        ? "bg-red-100 border-red-300 text-red-700"
+                        : "bg-card border-border text-muted-foreground hover:bg-secondary"
+                    )}
+                  >
+                    Día completo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAbsFullDay(false); setAbsError(null); }}
+                    className={cn(
+                      "flex-1 rounded-lg py-1.5 text-xs font-medium border transition-colors",
+                      !absFullDay
+                        ? "bg-red-100 border-red-300 text-red-700"
+                        : "bg-card border-border text-muted-foreground hover:bg-secondary"
+                    )}
+                  >
+                    Parcial (por horas)
+                  </button>
+                </div>
+
+                {/* Partial hour range */}
+                {!absFullDay && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Desde</label>
+                      <input
+                        type="number" min={0} max={23} value={absHrStart}
+                        onChange={e => { setAbsHrStart(Number(e.target.value)); setAbsError(null); }}
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Hasta</label>
+                      <input
+                        type="number" min={1} max={24} value={absHrEnd}
+                        onChange={e => { setAbsHrEnd(Number(e.target.value)); setAbsError(null); }}
+                        className="input"
+                      />
+                    </div>
+                  </div>
                 )}
+
+                <p className="text-xs text-red-600">
+                  {absFullDay
+                    ? "Día completo · 8h ausente"
+                    : `${pad(absHrStart)}:00 – ${pad(absHrEnd)}:00 · ${Math.max(0, absHrEnd - absHrStart)}h ausente`}
+                </p>
+              </div>
+            )}
+
+            {/* Read-only absence warning when switching to a non-ABS code on an absence day */}
+            {code !== "ABS" && isAbsShift && (
+              <div className="px-5 py-2.5 bg-amber-50 border-b border-amber-200">
+                <p className="text-xs font-semibold text-amber-700">
+                  Este día tiene una ausencia registrada
+                </p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  {absInfo ? (ABS_TYPE_LABELS[absInfo.type] ?? absInfo.type) : ""}
+                  {absInfo && !absIsFullDay
+                    ? ` · ${pad(absInfo.absStart)}:00 – ${pad(absInfo.absEnd)}:00`
+                    : " · Día completo"}
+                </p>
               </div>
             )}
 
             <div className="p-5 space-y-4">
-              {isAbsShift && (
+              {(code === "ABS" || isAbsShift) && (
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                  {absIsFullDay ? "Horas extras sobre la ausencia" : "Horas de trabajo adicionales"}
+                  {(code === "ABS" ? absFullDay : absIsFullDay)
+                    ? "Horas extras sobre la ausencia"
+                    : "Horas de trabajo adicionales"}
                 </p>
               )}
 
@@ -1590,9 +1738,16 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
               <Field label="Break (min)">
                 <input type="number" min={0} max={180} value={breakMin} onChange={handleInputChange(setBreakMin)} className="input" />
               </Field>
-              {!isAbsShift && (
-                <Field label="Nota">
-                  <input type="text" value={note} onChange={(e) => setNote(e.target.value)} className="input" placeholder="Opcional" />
+              {!isAbsShift && (anyOvertime || note) && (
+                <Field label={anyOvertime ? "Justificación de horas extras" : "Justificación"}>
+                  <input
+                    type="text"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    className="input"
+                    placeholder={anyOvertime ? "Motivo o aprobación previa..." : "Opcional"}
+                    autoFocus={anyOvertime && !note}
+                  />
                 </Field>
               )}
 
@@ -1610,33 +1765,43 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
               </label>
 
               {/* Summary panel */}
-              <div className="rounded-xl bg-secondary/60 p-3 text-xs space-y-1">
-                {isAbsShift && (
-                  <div className="flex justify-between">
-                    <span>Horas ausente</span>
-                    <strong className="text-red-600">{absHours}h</strong>
+              {(() => {
+                const effAbsHours = code === "ABS"
+                  ? (absFullDay ? 8 : Math.max(0, absHrEnd - absHrStart))
+                  : absHours;
+                const effTotal = effAbsHours + workHours;
+                const effExtra = Math.max(0, effTotal - 8);
+                const showAbs  = code === "ABS" || isAbsShift;
+                return (
+                  <div className="rounded-xl bg-secondary/60 p-3 text-xs space-y-1">
+                    {showAbs && (
+                      <div className="flex justify-between">
+                        <span>Horas ausente</span>
+                        <strong className="text-red-600">{effAbsHours}h</strong>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Horas trabajo</span>
+                      <strong>{workHours > 0 ? `${workHours.toFixed(1)}h` : "—"}</strong>
+                    </div>
+                    {showAbs && (
+                      <div className="flex justify-between border-t border-border pt-1 font-medium">
+                        <span>Total jornada</span>
+                        <strong>
+                          {effTotal.toFixed(1)}h
+                          {effExtra > 0 && <span className="text-amber-600 ml-1">({effExtra.toFixed(1)}h extras)</span>}
+                        </strong>
+                      </div>
+                    )}
+                    {!showAbs && (
+                      <div className="flex justify-between">
+                        <span>Horas netas</span>
+                        <strong>{workHours.toFixed(1)}h</strong>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Horas trabajo</span>
-                  <strong>{workHours > 0 ? `${workHours.toFixed(1)}h` : "—"}</strong>
-                </div>
-                {isAbsShift && (
-                  <div className="flex justify-between border-t border-border pt-1 font-medium">
-                    <span>Total jornada</span>
-                    <strong>
-                      {totalHoursDisplay.toFixed(1)}h
-                      {extraHoursDisplay > 0 && <span className="text-amber-600 ml-1">({extraHoursDisplay.toFixed(1)}h extras)</span>}
-                    </strong>
-                  </div>
-                )}
-                {!isAbsShift && (
-                  <div className="flex justify-between">
-                    <span>Horas netas</span>
-                    <strong>{workHours.toFixed(1)}h</strong>
-                  </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Live hours-limit progress — shown whenever there are work hours and an area */}
               {area && workHours > 0 && (
@@ -1651,18 +1816,49 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
             </div>
             </div>{/* end scrollable area */}
 
-            <div className="p-4 border-t border-border flex justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <button onClick={onClear} className="text-sm text-muted-foreground hover:text-primary">Limpiar turno</button>
+            <div className="p-4 border-t border-border flex justify-between items-center shrink-0">
+              <div className="flex items-center">
+                {/* Delete absence — shown only when an absence record exists */}
+                {code === "ABS" && existingAbsence ? (
+                  confirmDeleteAbs ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600 font-medium">¿Eliminar ausencia?</span>
+                      <button
+                        onClick={() => {
+                          (removeAbsence as any)(existingAbsence.id);
+                          onClear();
+                        }}
+                        className="text-xs px-2.5 py-1 rounded-pill bg-red-600 text-white hover:bg-red-700 transition-colors"
+                      >
+                        Sí, eliminar
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteAbs(false)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteAbs(true)}
+                      className="text-sm text-red-500 hover:text-red-700 inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      <Trash2 className="size-3.5" /> Eliminar ausencia
+                    </button>
+                  )
+                ) : (
+                  <button onClick={onClear} className="text-sm text-muted-foreground hover:text-primary">Limpiar turno</button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={onHistory}
-                  className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1"
+                  className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1 px-2 py-1.5"
                   title="Ver historial de cambios"
                 >
                   <History className="size-3.5" /> Historial
                 </button>
-              </div>
-              <div className="flex gap-2">
                 <button onClick={onClose} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">Cancelar</button>
                 <button
                   onClick={handleSave}

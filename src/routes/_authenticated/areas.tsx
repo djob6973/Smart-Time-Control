@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
-import { useState } from "react";
-import { Building2, ChevronRight, Plus, Settings } from "lucide-react";
-import type { Area } from "@/lib/wfm/types";
+import React, { useState } from "react";
+import { Building2, ChevronRight, Info, Plus, Settings, Trash2 } from "lucide-react";
+import type { Area, CoverageRequirement } from "@/lib/wfm/types";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/areas")({
   head: () => ({ meta: [{ title: "Áreas · STC" }] }),
@@ -20,6 +22,10 @@ const DAYS = [
   { day: 6, label: "S" },
   { day: 0, label: "D" },
 ];
+
+const DAY_SHORT: Record<number, string> = { 0: "Dom", 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb" };
+
+function padH(h: number) { return String(h).padStart(2, "0"); }
 
 function coverageColor(pct: number) {
   if (pct >= 90)
@@ -74,12 +80,15 @@ function AreasPage() {
         style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "1.25rem" }}
       >
         {areas.map(area => {
-          const areaEmps = employees.filter(e => e.areaId === area.id);
-          const active   = areaEmps.filter(e => e.status === "active").length;
-          const todayReq = area.coverageRequirements.find(r => r.dayOfWeek === todayDow);
-          const minCov   = todayReq?.minWorkers ?? 0;
-          const pct      = minCov > 0 ? Math.min(Math.round((active / minCov) * 100), 100) : (active > 0 ? 100 : 0);
-          const cc       = coverageColor(pct);
+          const areaEmps   = employees.filter(e => e.areaId === area.id);
+          const active     = areaEmps.filter(e => e.status === "active").length;
+          const inactive   = areaEmps.length - active;
+          // Sumar mínimos de todas las franjas del día (pueden ser varias por turno).
+          const todayReqs  = area.coverageRequirements.filter(r => r.dayOfWeek === todayDow);
+          const minCov     = todayReqs.reduce((sum, r) => sum + r.minWorkers, 0);
+          const hasCovReq  = area.enableCoverageMode && minCov > 0;
+          const pct        = hasCovReq ? Math.min(Math.round((active / minCov) * 100), 100) : null;
+          const cc         = pct !== null ? coverageColor(pct) : null;
 
           return (
             <div
@@ -110,16 +119,21 @@ function AreasPage() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-3 py-1">
                 <div className="text-center">
-                  <div className="text-2xl font-bold tabular-nums leading-none">{areaEmps.length}</div>
-                  <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Empleados</div>
+                  <div className="text-2xl font-bold tabular-nums leading-none">{active}</div>
+                  <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Activos{inactive > 0 && <span className="text-muted-foreground/60"> /{areaEmps.length}</span>}
+                  </div>
                 </div>
                 <div className="text-center border-x border-border">
-                  <div className="text-2xl font-bold tabular-nums leading-none">{minCov}</div>
+                  <div className="text-2xl font-bold tabular-nums leading-none">{hasCovReq ? minCov : "—"}</div>
                   <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Mín. cobertura</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold tabular-nums leading-none">
-                    {pct}<span className="text-base font-normal text-muted-foreground">%</span>
+                    {pct !== null
+                      ? <>{pct}<span className="text-base font-normal text-muted-foreground">%</span></>
+                      : <span className="text-base font-normal text-muted-foreground">—</span>
+                    }
                   </div>
                   <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Cobertura</div>
                 </div>
@@ -129,14 +143,20 @@ function AreasPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">Cobertura actual de hoy</span>
-                  <span className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-medium ${cc.pill}`}>
-                    {cc.label}
-                  </span>
+                  {cc ? (
+                    <span className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-medium ${cc.pill}`}>
+                      {cc.label}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-medium bg-secondary text-muted-foreground">
+                      Sin requisito
+                    </span>
+                  )}
                 </div>
                 <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, backgroundColor: cc.bar }}
+                    style={{ width: pct !== null ? `${pct}%` : "0%", backgroundColor: cc?.bar ?? "transparent" }}
                   />
                 </div>
               </div>
@@ -214,8 +234,31 @@ function AreaModal({
     enableCoverageMode: false,
   });
 
+  const [newReq, setNewReq] = useState<CoverageRequirement>({ dayOfWeek: 1, startHour: 8, endHour: 16, minWorkers: 2, preferredWorkers: 3 });
+
   function set<K extends keyof Area>(k: K, v: Area[K]) {
     setForm(prev => ({ ...prev, [k]: v }));
+  }
+
+  function addReq() {
+    if (newReq.endHour <= newReq.startHour) {
+      toast.error("La hora de fin debe ser posterior a la hora de inicio.");
+      return;
+    }
+    const isDuplicate = form.coverageRequirements.some(
+      r => r.dayOfWeek === newReq.dayOfWeek && r.startHour === newReq.startHour && r.endHour === newReq.endHour
+    );
+    if (isDuplicate) {
+      toast.error("Ya existe una franja con ese día y horario.");
+      return;
+    }
+    set("coverageRequirements", [...form.coverageRequirements, { ...newReq }]);
+  }
+
+  function removeReq(req: CoverageRequirement) {
+    set("coverageRequirements", form.coverageRequirements.filter(r =>
+      !(r.dayOfWeek === req.dayOfWeek && r.startHour === req.startHour && r.endHour === req.endHour)
+    ));
   }
 
   function toggleDay(day: number) {
@@ -342,11 +385,143 @@ function AreaModal({
           </div>
 
           {/* Toggles */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <ToggleField label="Horas extras"      value={form.allowOvertime}      onChange={v => set("allowOvertime", v)} />
-            <ToggleField label="Trabajo dominical"  value={form.allowSunday}        onChange={v => set("allowSunday", v)} />
-            <ToggleField label="Modo cobertura"     value={form.enableCoverageMode} onChange={v => set("enableCoverageMode", v)} />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <ToggleField label="Horas extras"     value={form.allowOvertime} onChange={v => set("allowOvertime", v)} />
+              <ToggleField label="Trabajo dominical" value={form.allowSunday}   onChange={v => set("allowSunday", v)} />
+            </div>
+
+            {/* Modo cobertura — standalone con descripción */}
+            <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-1.5">
+              <ToggleField
+                label="Modo cobertura"
+                value={form.enableCoverageMode}
+                onChange={v => set("enableCoverageMode", v)}
+                tooltip={
+                  <span>
+                    <strong>Cómo funciona:</strong> define franjas horarias (ej. 06–14 y 14–22) y el scheduler distribuye a los empleados automáticamente entre turnos, rotándolos semana a semana. En la tabla de programación aparecen indicadores de cobertura por franja y día.
+                  </span>
+                }
+              />
+              <p className="text-xs text-muted-foreground leading-relaxed pl-11">
+                Programa empleados por turnos y franjas horarias según la demanda real del área,
+                en lugar de asignar un horario único a todos.
+              </p>
+            </div>
           </div>
+
+          {/* Coverage requirements — solo visible cuando el modo cobertura está activo */}
+          {form.enableCoverageMode && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Franjas de cobertura</span>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="size-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-72 leading-relaxed whitespace-normal text-left space-y-1 bg-popover text-popover-foreground border border-border shadow-md">
+                        <p><strong>Día</strong> — día de la semana que aplica la franja.</p>
+                        <p><strong>Desde / Hasta</strong> — horario del turno en horas (ej. 6 → 14).</p>
+                        <p><strong>Mín.</strong> — trabajadores mínimos requeridos. Si no se alcanza, el scheduler lo marca como crítico.</p>
+                        <p><strong>Pref.</strong> — trabajadores ideales. Si hay entre mínimo y preferido, se marca como alerta.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                {form.coverageRequirements.length > 0 && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {form.coverageRequirements.length} franja{form.coverageRequirements.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+
+              {/* Lista de requisitos existentes */}
+              <div className="space-y-1.5">
+                {form.coverageRequirements
+                  .slice()
+                  .sort((a, b) => a.dayOfWeek !== b.dayOfWeek ? a.dayOfWeek - b.dayOfWeek : a.startHour - b.startHour)
+                  .map((req, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded-xl border border-border bg-secondary/30 px-3 py-2">
+                      <span className="w-9 shrink-0 text-center text-[11px] font-semibold rounded-md bg-primary/10 text-primary py-0.5">
+                        {DAY_SHORT[req.dayOfWeek]}
+                      </span>
+                      <span className="flex-1 tabular-nums text-sm">
+                        {padH(req.startHour)}:00 – {padH(req.endHour)}:00
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        mín. <strong className="text-foreground">{req.minWorkers}</strong>
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        pref. <strong className="text-foreground">{req.preferredWorkers ?? req.minWorkers}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeReq(req)}
+                        className="ml-1 p-1 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                {form.coverageRequirements.length === 0 && (
+                  <p className="text-xs text-muted-foreground/60 py-2 text-center">Sin franjas definidas</p>
+                )}
+              </div>
+
+              {/* Formulario para agregar nueva franja */}
+              <div className="rounded-xl border border-dashed border-border p-3 space-y-2.5">
+                <p className="text-xs font-medium text-muted-foreground">Nueva franja</p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Día</label>
+                    <select
+                      className="fi mt-0.5"
+                      value={newReq.dayOfWeek}
+                      onChange={e => setNewReq(r => ({ ...r, dayOfWeek: Number(e.target.value) }))}
+                    >
+                      {DAYS.map(({ day }) => (
+                        <option key={day} value={day}>{DAY_SHORT[day]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Desde</label>
+                    <input type="number" className="fi mt-0.5" min={0} max={23}
+                      value={newReq.startHour}
+                      onChange={e => setNewReq(r => ({ ...r, startHour: Number(e.target.value) }))} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Hasta</label>
+                    <input type="number" className="fi mt-0.5" min={1} max={24}
+                      value={newReq.endHour}
+                      onChange={e => setNewReq(r => ({ ...r, endHour: Number(e.target.value) }))} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Mín.</label>
+                    <input type="number" className="fi mt-0.5" min={1}
+                      value={newReq.minWorkers}
+                      onChange={e => setNewReq(r => ({ ...r, minWorkers: Number(e.target.value) }))} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Pref.</label>
+                    <input type="number" className="fi mt-0.5" min={1}
+                      value={newReq.preferredWorkers ?? newReq.minWorkers}
+                      onChange={e => setNewReq(r => ({ ...r, preferredWorkers: Number(e.target.value) }))} />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={addReq}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-pill bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                >
+                  <Plus className="size-3.5" />
+                  Agregar franja
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -390,7 +565,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function ToggleField({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+function ToggleField({ label, value, onChange, tooltip }: { label: string; value: boolean; onChange: (v: boolean) => void; tooltip?: React.ReactNode }) {
   return (
     <label className="flex items-center gap-2 text-sm cursor-pointer">
       <button
@@ -401,6 +576,18 @@ function ToggleField({ label, value, onChange }: { label: string; value: boolean
         <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${value ? "left-4" : "left-0.5"}`} />
       </button>
       <span className="text-muted-foreground">{label}</span>
+      {tooltip && (
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild onClick={e => e.preventDefault()}>
+              <Info className="size-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-help shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-64 leading-relaxed whitespace-normal text-left bg-popover text-popover-foreground border border-border shadow-md">
+              {tooltip}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </label>
   );
 }
