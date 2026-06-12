@@ -96,14 +96,15 @@ function HoursTooltip({ active, payload, label }: any) {
 // ── Dashboard ────────────────────────────────────────────────────
 
 function Dashboard() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, profile } = useAuth();
+  const ownArea = profile?.areaId ?? null;
   const navigate = useNavigate();
   const { employees, shifts, areas, absences } = useWFM();
   const { registros, configuracion } = useJornada();
 
   const [period, setPeriod]             = useState<Period>("semana");
   const [dateOffset, setDateOffset]     = useState(0);
-  const [selectedArea, setSelectedArea] = useState<string>("all");
+  const [selectedArea, setSelectedArea] = useState<string>(ownArea ?? "all");
   const [approvals, setApprovals]       = useState<Record<string, string>>({});
 
   const today    = toISO(new Date());
@@ -152,9 +153,10 @@ function Dashboard() {
     return cap(d.toLocaleDateString("es-CO", { month: "long", year: "numeric" }));
   }, [period, dateOffset]);
 
+  const effectiveArea = ownArea ?? (selectedArea !== "all" ? selectedArea : null);
   const filteredEmployees = useMemo(
-    () => selectedArea === "all" ? employees : employees.filter(e => e.areaId === selectedArea),
-    [employees, selectedArea]
+    () => effectiveArea ? employees.filter(e => e.areaId === effectiveArea) : employees,
+    [employees, effectiveArea]
   );
   const filteredIds = useMemo(() => new Set(filteredEmployees.map(e => e.id)), [filteredEmployees]);
 
@@ -357,14 +359,20 @@ function Dashboard() {
           </div>
 
           {/* Filtro área */}
-          <select
-            value={selectedArea}
-            onChange={e => setSelectedArea(e.target.value)}
-            className="text-sm border border-border rounded-pill px-3.5 py-2 bg-card text-foreground focus:outline-none appearance-none"
-          >
-            <option value="all">Todas las áreas</option>
-            {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          {ownArea ? (
+            <span className="text-sm border border-border rounded-pill px-3.5 py-2 bg-card text-muted-foreground">
+              {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
+            </span>
+          ) : (
+            <select
+              value={selectedArea}
+              onChange={e => setSelectedArea(e.target.value)}
+              className="text-sm border border-border rounded-pill px-3.5 py-2 bg-card text-foreground focus:outline-none appearance-none"
+            >
+              <option value="all">Todas las áreas</option>
+              {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          )}
 
           <span className="ml-auto hidden md:inline text-[11px] text-muted-foreground">
             Actualizado hace 2 min
