@@ -111,7 +111,7 @@ export const dispatchAbsenceEvent = createServerFn({ method: "POST" })
         : `${fmtShort(data.startDate)} – ${fmtShort(data.endDate)}`;
 
     if (data.event === "absence_created") {
-      const managers = await usersByRole("admin", "supervisor");
+      const managers = await usersByRole("admin", "supervisor", "lider");
       await insertNotifications(
         managers.map((uid) => ({
           user_id: uid,
@@ -139,8 +139,7 @@ export const dispatchAbsenceEvent = createServerFn({ method: "POST" })
   });
 
 // ── Empleados ──────────────────────────────────────────────────────────────
-// employee_added / employee_reactivated → Admin.
-// employee_deactivated → Admin + Supervisor.
+// Todos los eventos → Admin + Supervisor + Líder.
 
 export const dispatchEmployeeEvent = createServerFn({ method: "POST" })
   .inputValidator(
@@ -150,9 +149,7 @@ export const dispatchEmployeeEvent = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const roles =
-      data.event === "employee_deactivated" ? ["admin", "supervisor"] : ["admin"];
-    const managers = await usersByRole(...roles);
+    const managers = await usersByRole("admin", "supervisor", "lider");
 
     const templates = {
       employee_added:       { type: "success", title: "Nuevo empleado registrado", body: `${data.employeeName} ha sido añadido al sistema` },
@@ -162,6 +159,38 @@ export const dispatchEmployeeEvent = createServerFn({ method: "POST" })
 
     const { type, title, body } = templates[data.event];
     await insertNotifications(managers.map((uid) => ({ user_id: uid, type, title, body, data: { event: data.event } })));
+  });
+
+// ── Jornada (movimientos) ─────────────────────────────────────────────────
+// entrada / salidas / breaks / almuerzo → Admin + Supervisor + Líder.
+
+export const dispatchJornadaEvent = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      tipo:         z.enum(["entrada", "salida_break", "regreso_break", "salida_almuerzo", "regreso_almuerzo", "salida"]),
+      employeeName: z.string(),
+      hora:         z.string(),
+      areaName:     z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const managers = await usersByRole("admin", "supervisor", "lider");
+    if (managers.length === 0) return;
+
+    const suffix = data.areaName ? ` · ${data.areaName}` : "";
+    const templates: Record<string, { type: string; title: string; body: string }> = {
+      entrada:          { type: "success", title: "Entrada registrada",    body: `${data.employeeName} registró entrada a las ${data.hora}${suffix}` },
+      salida_break:     { type: "info",    title: "Salida a break",        body: `${data.employeeName} salió a break a las ${data.hora}${suffix}` },
+      regreso_break:    { type: "info",    title: "Regreso de break",      body: `${data.employeeName} regresó de break a las ${data.hora}${suffix}` },
+      salida_almuerzo:  { type: "info",    title: "Salida a almuerzo",     body: `${data.employeeName} salió a almuerzo a las ${data.hora}${suffix}` },
+      regreso_almuerzo: { type: "info",    title: "Regreso de almuerzo",   body: `${data.employeeName} regresó de almuerzo a las ${data.hora}${suffix}` },
+      salida:           { type: "success", title: "Salida registrada",     body: `${data.employeeName} registró salida a las ${data.hora}${suffix}` },
+    };
+
+    const { type, title, body } = templates[data.tipo];
+    await insertNotifications(
+      managers.map((uid) => ({ user_id: uid, type, title, body, data: { event: `jornada_${data.tipo}` } })),
+    );
   });
 
 // ── Aprobaciones de novedades (reportes) ──────────────────────────────────

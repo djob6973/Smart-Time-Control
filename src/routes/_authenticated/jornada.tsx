@@ -10,6 +10,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
+import { dispatchJornadaEvent } from "@/lib/notifications/dispatch";
 import type {
   TipoMovimiento,
   JornadaCupo,
@@ -558,13 +559,29 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       })
     : [];
 
+  function fmtHora() {
+    const n = new Date();
+    return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
+  }
+
   async function handleAdminRegistrar(empId: string, tipo: TipoMovimiento, obsText: string) {
     if (!user) return;
     setBusy(true);
-    const areaId = employees.find((e) => e.id === empId)?.areaId;
+    const emp    = employees.find((e) => e.id === empId);
+    const areaId = emp?.areaId;
     const result = await registrarMovimiento(empId, tipo, areaId, user.id, obsText || undefined);
     setLastMsg({ ok: result.ok, text: result.ok ? "Movimiento registrado." : result.error ?? "Error." });
-    if (result.ok) await reloadRegistros(hoy);
+    if (result.ok) {
+      await reloadRegistros(hoy);
+      dispatchJornadaEvent({
+        data: {
+          tipo,
+          employeeName: emp?.fullName ?? empId,
+          hora:         fmtHora(),
+          areaName:     areas.find((a) => a.id === areaId)?.name,
+        },
+      }).catch((e) => console.error("[notif:jornada]", e?.message ?? e));
+    }
     setBusy(false);
     setPendingAction(null);
     setTimeout(() => setLastMsg(null), 3000);
@@ -574,10 +591,22 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     if (!autoEmployeeId || !user) return;
     setSelfBusy(true);
     setMsg(null);
-    const areaId = employees.find((e) => e.id === autoEmployeeId)?.areaId;
+    const emp    = employees.find((e) => e.id === autoEmployeeId);
+    const areaId = emp?.areaId;
     const result = await registrarMovimiento(autoEmployeeId, tipo, areaId, user.id, obs || undefined);
     setMsg({ ok: result.ok, text: result.ok ? "Movimiento registrado exitosamente." : result.error ?? "Error." });
-    if (result.ok) { setObs(""); await reloadRegistros(hoy); }
+    if (result.ok) {
+      setObs("");
+      await reloadRegistros(hoy);
+      dispatchJornadaEvent({
+        data: {
+          tipo,
+          employeeName: emp?.fullName ?? autoEmployeeId,
+          hora:         fmtHora(),
+          areaName:     areas.find((a) => a.id === areaId)?.name,
+        },
+      }).catch((e) => console.error("[notif:jornada]", e?.message ?? e));
+    }
     setSelfBusy(false);
   }
 
