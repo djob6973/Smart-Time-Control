@@ -390,7 +390,7 @@ function AbsencesPage() {
 
   const canCreate  = hasPermission("absences", "edit");
   const canApprove = hasLimit("canApproveAbsences");
-  const ownArea    = hasLimit("restrictToOwnArea") ? profile?.areaId : null;
+  const ownArea    = profile?.areaId ?? null;
 
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>("todas");
   const [typeFilter,     setTypeFilter]     = useState<"all" | AbsenceType>("all");

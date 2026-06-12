@@ -217,7 +217,7 @@ function ReportsPage() {
   const { shifts, employees, areas, absences } = useWFM();
   const { hasLimit, profile } = useAuth();
   const canExport = hasLimit("canExportReports");
-  const ownArea   = hasLimit("restrictToOwnArea") ? (profile?.areaId ?? null) : null;
+  const ownArea   = profile?.areaId ?? null;
 
   const now = new Date();
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

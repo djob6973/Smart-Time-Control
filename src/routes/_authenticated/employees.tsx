@@ -37,12 +37,13 @@ type StatusFilter = "all" | "active" | "inactive";
 
 function EmployeesPage() {
   const { employees, areas, removeEmployee, upsertEmployee } = useWFM();
-  const { hasPermission, hasLimit } = useAuth();
+  const { hasPermission, hasLimit, profile } = useAuth();
   const canEdit   = hasPermission("employees", "edit");
   const canDelete = hasLimit("canDeleteData");
+  const ownArea   = profile?.areaId ?? null;
 
   const [q, setQ]                         = useState("");
-  const [areaFilter, setAreaFilter]       = useState("all");
+  const [areaFilter, setAreaFilter]       = useState(ownArea ?? "all");
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("all");
   const [editing, setEditing]             = useState<string | null>(null);
 
@@ -55,9 +56,10 @@ function EmployeesPage() {
     [users],
   );
 
+  const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
   const list = employees.filter(e => {
     const matchQ = !q || e.fullName.toLowerCase().includes(q.toLowerCase()) || e.documentId.includes(q);
-    const matchA = areaFilter === "all" || e.areaId === areaFilter;
+    const matchA = !effectiveArea || e.areaId === effectiveArea;
     const matchS = statusFilter === "all" || e.status === statusFilter;
     return matchQ && matchA && matchS;
   });
@@ -95,14 +97,20 @@ function EmployeesPage() {
             />
           </div>
 
-          <select
-            value={areaFilter}
-            onChange={(e) => setAreaFilter(e.target.value)}
-            className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 outline-none"
-          >
-            <option value="all">Todas las áreas</option>
-            {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          {ownArea ? (
+            <span className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 text-muted-foreground">
+              {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
+            </span>
+          ) : (
+            <select
+              value={areaFilter}
+              onChange={(e) => setAreaFilter(e.target.value)}
+              className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 outline-none"
+            >
+              <option value="all">Todas las áreas</option>
+              {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          )}
 
           <div className="flex items-center rounded-pill border border-border bg-card overflow-hidden text-sm">
             {(["all", "active", "inactive"] as const).map((s, i) => (

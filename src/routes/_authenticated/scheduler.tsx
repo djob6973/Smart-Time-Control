@@ -25,10 +25,10 @@ function Scheduler() {
   const { hasLimit, hasPermission, profile } = useAuth();
   const canEdit    = hasPermission("scheduler", "edit");
   const canGenerate = hasLimit("canGenerateShifts");
-  const ownArea = hasLimit("restrictToOwnArea") ? (profile?.areaId ?? null) : null;
+  const ownArea = profile?.areaId ?? null;
 
   const [weekISO, setWeekISO] = useState(currentWeekISO());
-  // When restrictToOwnArea, force filter to user's area and don't let them change it
+  // When user has an area assigned, force filter to their area and don't let them change it
   const [areaFilter, setAreaFilter] = useState<string>(ownArea ?? "all");
   const [editing, setEditing] = useState<{ employeeId: string; date: string } | null>(null);
   const [numWeeks, setNumWeeks] = useState(1);
