@@ -23,7 +23,7 @@ COPY . .
 RUN node --stack-size=65536 node_modules/.bin/vite build
 
 # ── Runtime stage ───────────────────────────────────────────────────────────────
-FROM node:20-slim AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 
