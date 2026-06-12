@@ -274,7 +274,7 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
       status: "active" as const,
       contractType: "indefinido" as const,
       hireDate: new Date().toISOString().slice(0, 10),
-      availability: Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i, { start: 8, end: 18 }])),
+      availability: Object.fromEntries(DAY_LABELS.map(({ day }) => [day, day >= 1 && day <= 5 ? { start: 8, end: 18 } : null])),
     }),
     linkedUserId: currentLinkedUser?.id ?? "",
   }));
@@ -352,7 +352,7 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
         </div>
 
         {/* Body */}
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "68vh" }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Nombre completo">
               <input
@@ -433,21 +433,26 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
                     <button
                       type="button"
                       onClick={() => toggleDay(day, !active)}
-                      className={`w-9 h-9 shrink-0 rounded-full text-xs font-semibold transition-colors border ${
+                      title={active ? "Clic para desactivar este día" : "Clic para activar este día"}
+                      className={`w-9 h-9 shrink-0 rounded-full text-xs font-semibold transition-colors border cursor-pointer ${
                         active
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card text-muted-foreground border-border hover:border-primary/40"
+                          ? "bg-primary text-primary-foreground border-primary hover:bg-primary/80"
+                          : "bg-card text-muted-foreground border-border hover:border-primary hover:text-primary"
                       }`}
                     >
                       {label}
                     </button>
 
                     {/* Nombre del día */}
-                    <span className={`w-20 text-sm ${active ? "font-medium" : "text-muted-foreground"}`}>
+                    <span
+                      className={`w-20 text-sm cursor-pointer select-none ${active ? "font-medium" : "text-muted-foreground"}`}
+                      onClick={() => toggleDay(day, !active)}
+                      title={active ? "Clic para desactivar este día" : "Clic para activar este día"}
+                    >
                       {full}
                     </span>
 
-                    {/* Hora inicio */}
+                    {/* Hora inicio / No disponible */}
                     {active ? (
                       <>
                         <select
@@ -471,7 +476,13 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
                         </select>
                       </>
                     ) : (
-                      <span className="text-xs text-muted-foreground italic">No disponible</span>
+                      <span
+                        className="text-xs text-muted-foreground italic cursor-pointer hover:text-primary"
+                        onClick={() => toggleDay(day, true)}
+                        title="Clic para activar este día"
+                      >
+                        No trabaja — clic para activar
+                      </span>
                     )}
                   </div>
                 );

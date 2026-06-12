@@ -1154,7 +1154,7 @@ function EditarRegistroModal({ registro, onClose, onSave }: { registro: JornadaR
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4 overflow-y-auto max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-semibold">Editar hora de registro</h3>
         <p className="text-sm text-muted-foreground">
           Modificando: <strong>{TIPO_MOVIMIENTO_LABELS[registro.tipoMovimiento]}</strong> del {registro.fecha}
@@ -1196,7 +1196,7 @@ function AgregarManualModal({ employees, areas, fecha, onClose, onSave }: any) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-card shadow-card max-w-md w-full p-6 space-y-4 overflow-y-auto max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-semibold">Agregar registro manual</h3>
         <ModalField label="Empleado">
           <select className="input" value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })}>

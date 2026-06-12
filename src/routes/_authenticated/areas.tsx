@@ -49,9 +49,12 @@ function coverageColor(pct: number) {
 
 function AreasPage() {
   const { areas, employees, upsertArea, removeArea } = useWFM();
-  const { hasPermission, hasLimit } = useAuth();
+  const { hasPermission, hasLimit, profile } = useAuth();
   const canEdit   = hasPermission("areas", "edit");
   const canDelete = hasLimit("canDeleteData");
+
+  const ownArea = profile?.areaId ?? null;
+  const visibleAreas = ownArea ? areas.filter(a => a.id === ownArea) : areas;
 
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -63,7 +66,7 @@ function AreasPage() {
         title="Áreas y configuración"
         subtitle="Reglas operativas por área"
         right={
-          canEdit ? (
+          canEdit && !ownArea ? (
             <button
               onClick={() => setEditing("new")}
               className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
@@ -79,7 +82,7 @@ function AreasPage() {
         className="p-4 md:p-6"
         style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "1.25rem" }}
       >
-        {areas.map(area => {
+        {visibleAreas.map(area => {
           const areaEmps   = employees.filter(e => e.areaId === area.id);
           const active     = areaEmps.filter(e => e.status === "active").length;
           const inactive   = areaEmps.length - active;
@@ -184,7 +187,7 @@ function AreasPage() {
           );
         })}
 
-        {areas.length === 0 && (
+        {visibleAreas.length === 0 && (
           <div className="col-span-full py-16 text-center text-sm text-muted-foreground">
             Sin áreas configuradas
           </div>
@@ -217,6 +220,8 @@ function AreaModal({
   onSave: (a: Area) => void;
   onDelete: (id: string) => void;
 }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingSave, setConfirmingSave] = useState(false);
   const [form, setForm] = useState<Area>(() => area ?? {
     id: `area-${Date.now()}`,
     name: "",
@@ -234,10 +239,15 @@ function AreaModal({
     enableCoverageMode: false,
   });
 
-  const [newReq, setNewReq] = useState<CoverageRequirement>({ dayOfWeek: 1, startHour: 8, endHour: 16, minWorkers: 2, preferredWorkers: 3 });
+  const [newReq, setNewReq] = useState({ startHour: 8, endHour: 16, minWorkers: 2, preferredWorkers: 3 });
+  const [selectedDays, setSelectedDays] = useState<number[]>([1]);
 
   function set<K extends keyof Area>(k: K, v: Area[K]) {
     setForm(prev => ({ ...prev, [k]: v }));
+  }
+
+  function toggleNewDay(day: number) {
+    setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   }
 
   function addReq() {
@@ -245,14 +255,21 @@ function AreaModal({
       toast.error("La hora de fin debe ser posterior a la hora de inicio.");
       return;
     }
-    const isDuplicate = form.coverageRequirements.some(
-      r => r.dayOfWeek === newReq.dayOfWeek && r.startHour === newReq.startHour && r.endHour === newReq.endHour
-    );
-    if (isDuplicate) {
-      toast.error("Ya existe una franja con ese día y horario.");
+    if (selectedDays.length === 0) {
+      toast.error("Selecciona al menos un día.");
       return;
     }
-    set("coverageRequirements", [...form.coverageRequirements, { ...newReq }]);
+    const toAdd: CoverageRequirement[] = [];
+    const skipped: string[] = [];
+    for (const day of selectedDays) {
+      const isDuplicate = form.coverageRequirements.some(
+        r => r.dayOfWeek === day && r.startHour === newReq.startHour && r.endHour === newReq.endHour
+      );
+      if (isDuplicate) skipped.push(DAY_SHORT[day]);
+      else toAdd.push({ dayOfWeek: day, ...newReq });
+    }
+    if (toAdd.length > 0) set("coverageRequirements", [...form.coverageRequirements, ...toAdd]);
+    if (skipped.length > 0) toast.warning(`Franja ya existente para: ${skipped.join(", ")}`);
   }
 
   function removeReq(req: CoverageRequirement) {
@@ -473,19 +490,51 @@ function AreaModal({
               {/* Formulario para agregar nueva franja */}
               <div className="rounded-xl border border-dashed border-border p-3 space-y-2.5">
                 <p className="text-xs font-medium text-muted-foreground">Nueva franja</p>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  <div>
-                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Día</label>
-                    <select
-                      className="fi mt-0.5"
-                      value={newReq.dayOfWeek}
-                      onChange={e => setNewReq(r => ({ ...r, dayOfWeek: Number(e.target.value) }))}
-                    >
-                      {DAYS.map(({ day }) => (
-                        <option key={day} value={day}>{DAY_SHORT[day]}</option>
+
+                {/* Selector de días */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Días</label>
+                    <div className="flex gap-1">
+                      {[
+                        { label: "L–V", days: [1, 2, 3, 4, 5] },
+                        { label: "L–S", days: [1, 2, 3, 4, 5, 6] },
+                        { label: "Todos", days: [1, 2, 3, 4, 5, 6, 0] },
+                      ].map(({ label, days }) => (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={() => setSelectedDays(days)}
+                          className="text-[10px] px-2 py-0.5 rounded-full border border-border hover:border-primary/50 hover:text-primary text-muted-foreground transition-colors"
+                        >
+                          {label}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {DAYS.map(({ day, label }) => {
+                      const active = selectedDays.includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => toggleNewDay(day)}
+                          className={`h-8 min-w-8 px-2 rounded-pill text-xs font-semibold transition-colors border ${
+                            active
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-card text-muted-foreground border-border hover:border-primary/40"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Horario y trabajadores */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div>
                     <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Desde</label>
                     <input type="number" className="fi mt-0.5" min={0} max={23}
@@ -511,13 +560,14 @@ function AreaModal({
                       onChange={e => setNewReq(r => ({ ...r, preferredWorkers: Number(e.target.value) }))} />
                   </div>
                 </div>
+
                 <button
                   type="button"
                   onClick={addReq}
                   className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-pill bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
                 >
                   <Plus className="size-3.5" />
-                  Agregar franja
+                  {selectedDays.length > 1 ? `Agregar ${selectedDays.length} franjas` : "Agregar franja"}
                 </button>
               </div>
             </div>
@@ -527,27 +577,69 @@ function AreaModal({
         {/* Footer */}
         <div className="p-4 border-t border-border flex items-center gap-2">
           {area && canDelete && (
-            <button
-              onClick={() => onDelete(area.id)}
-              className="text-sm px-4 py-2 rounded-pill border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              Eliminar
-            </button>
+            confirmingDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-destructive font-medium">¿Eliminar esta área?</span>
+                <button
+                  onClick={() => onDelete(area.id)}
+                  className="text-sm px-3 py-1.5 rounded-pill bg-destructive text-white hover:opacity-90 transition-opacity"
+                >
+                  Sí, eliminar
+                </button>
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  className="text-sm px-3 py-1.5 rounded-pill border border-border hover:bg-secondary"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                className="text-sm px-4 py-2 rounded-pill border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                Eliminar
+              </button>
+            )
           )}
-          <div className="ml-auto flex gap-2">
-            <button
-              onClick={onClose}
-              className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => onSave(form)}
-              className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90"
-            >
-              {area ? "Guardar cambios" : "Crear área"}
-            </button>
-          </div>
+          {!confirmingDelete && (
+            <div className="ml-auto flex gap-2">
+              {confirmingSave ? (
+                <>
+                  <span className="text-sm text-foreground font-medium self-center">
+                    {area ? "¿Guardar cambios?" : "¿Crear el área?"}
+                  </span>
+                  <button
+                    onClick={() => onSave(form)}
+                    className="text-sm px-3 py-1.5 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                  >
+                    {area ? "Sí, guardar" : "Sí, crear"}
+                  </button>
+                  <button
+                    onClick={() => setConfirmingSave(false)}
+                    className="text-sm px-3 py-1.5 rounded-pill border border-border hover:bg-secondary"
+                  >
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={onClose}
+                    className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => setConfirmingSave(true)}
+                    className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90"
+                  >
+                    {area ? "Guardar cambios" : "Crear área"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <style>{`.fi{width:100%;border:1px solid var(--color-input);border-radius:999px;padding:.5rem .875rem;font-size:.875rem;background:var(--color-card);outline:none}.fi:focus{border-color:color-mix(in srgb,var(--color-primary) 40%,transparent)}`}</style>

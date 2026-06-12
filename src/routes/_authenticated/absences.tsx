@@ -160,7 +160,7 @@ function DetailModal({
         </div>
 
         {/* Body */}
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "68vh" }}>
           {/* KV list */}
           <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
             {[
@@ -305,7 +305,7 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
             {isEdit ? "Editar ausencia" : "Nueva solicitud de ausencia"}
           </h3>
         </div>
-        <div className="p-5 space-y-3">
+        <div className="p-5 space-y-3 overflow-y-auto" style={{ maxHeight: "68vh" }}>
           <label className="block">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Empleado</span>
             <select className={`${field} mt-1`} value={form.employeeId} onChange={e => setForm({ ...form, employeeId: e.target.value })}>

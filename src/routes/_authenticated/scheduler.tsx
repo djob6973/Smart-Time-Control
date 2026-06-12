@@ -4,7 +4,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM, currentWeekISO } from "@/lib/wfm/store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
-import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote } from "@/lib/wfm/calc";
+import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
 import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Filter, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -283,6 +283,27 @@ function Scheduler() {
     return sumBreakdowns(list.map(s => shiftBreakdown(s, area)));
   }
 
+  // Scheduled + absence + holiday hours (8h per holiday with no shift). Separate from weekTotal.
+  function weekHTotal(eid: string): number {
+    const emp = employees.find(e => e.id === eid);
+    const area = areas.find(a => a.id === emp?.areaId);
+    let total = 0;
+    for (const date of isoDays) {
+      const s = getEffectiveShift(eid, date);
+      const holiday = isHoliday(date);
+      if (!s || s.code === "OFF") {
+        if (holiday) total += 8;
+      } else if (s.code === "ABS") {
+        const info = parseAbsNote(s.note);
+        total += info ? info.absEnd - info.absStart : 8;
+        total += Math.max(0, s.end - s.start - (s.breakMinutes ?? 0) / 60);
+      } else {
+        total += shiftBreakdown(s, area).total;
+      }
+    }
+    return total;
+  }
+
   function shiftWeek(delta: number) {
     setWeekISO(toISO(addDays(ws, delta * 7)));
   }
@@ -472,6 +493,7 @@ function Scheduler() {
                   <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground w-64 sticky left-0 bg-secondary/60 z-10">Trabajador</th>
                   {days.map((d, i) => {
                     const isToday = isoDays[i] === toISO(new Date());
+                    const holiday = isHoliday(isoDays[i]);
                     return (
                       <th key={i} className="px-2 py-3 font-medium text-center min-w-[110px] border-l border-border">
                         <div className={cn("text-[11px] font-medium uppercase tracking-wide", isToday ? "text-primary" : "text-muted-foreground")}>{DAY_LABELS[i]}</div>
@@ -481,10 +503,18 @@ function Scheduler() {
                             : <span className="text-base font-semibold">{d.getDate()}</span>
                           }
                         </div>
+                        {holiday && (
+                          <div className="mt-1 flex justify-center">
+                            <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-700/40">
+                              Festivo
+                            </span>
+                          </div>
+                        )}
                       </th>
                     );
                   })}
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground text-right w-32 border-l border-border bg-secondary/80">Total</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground text-right w-28 border-l border-border bg-secondary/80">Total Prog.</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground text-right w-28 border-l border-border bg-secondary/80">Total Sem.</th>
                 </tr>
               </thead>
               <tbody>
@@ -522,6 +552,7 @@ function Scheduler() {
                                 ? (ev) => { ev.stopPropagation(); setSwapSource({ employeeId: e.id, date }); }
                                 : undefined}
                               swapState={swapState}
+                              isHolidayDay={isHoliday(date)}
                             />
                           </td>
                         );
@@ -529,6 +560,9 @@ function Scheduler() {
                       <td className={cn("px-4 py-2 text-right border-l border-border font-semibold", overload && "text-primary")}>
                         {fmtHours(total.total)}
                         {overload && <div className="text-[10px] font-normal text-primary">Sobrecarga</div>}
+                      </td>
+                      <td className="px-4 py-2 text-right border-l border-border">
+                        <span className="font-semibold tabular-nums">{fmtHours(weekHTotal(e.id))}</span>
                       </td>
                     </tr>
                   );
@@ -577,6 +611,7 @@ function Scheduler() {
                             : <span className="text-green-600">✓ OK</span>
                           }
                         </td>
+                        <td className="border-l border-border" />
                       </tr>
                     );
                   })}
@@ -856,12 +891,13 @@ function cellBg(code: string): [string, string, string] {
   return m[code] ?? ["bg-secondary/40", "text-muted-foreground", "var(--color-border)"];
 }
 
-function ShiftCell({ shift, area, onClick, onSwapClick, swapState }: {
+function ShiftCell({ shift, area, onClick, onSwapClick, swapState, isHolidayDay }: {
   shift?: Shift;
   area?: Area;
   onClick: () => void;
   onSwapClick?: (e: React.MouseEvent) => void;
   swapState?: "source" | "target";
+  isHolidayDay?: boolean;
 }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [tipPos, setTipPos] = useState<{ x: number; y: number } | null>(null);
@@ -890,14 +926,23 @@ function ShiftCell({ shift, area, onClick, onSwapClick, swapState }: {
           "w-full h-[60px] rounded-lg border border-dashed text-xs text-muted-foreground transition",
           swapState === "target"
             ? "border-primary/40 bg-primary/5 text-primary"
+            : isHolidayDay && shift?.code !== "OFF"
+            ? "border-amber-300/60 bg-amber-50/40 hover:bg-amber-50/80 hover:border-amber-400/60 dark:bg-amber-900/10 dark:border-amber-700/40"
             : "border-border/60 hover:bg-secondary/50 hover:border-primary/40"
         )}
       >
-        {swapState === "target"
-          ? <ArrowLeftRight className="size-3.5 mx-auto" />
-          : shift?.code === "OFF"
-            ? <span className="opacity-50">Descanso</span>
-            : "+ Asignar"}
+        {swapState === "target" ? (
+          <ArrowLeftRight className="size-3.5 mx-auto" />
+        ) : shift?.code === "OFF" ? (
+          <span className="opacity-50">Descanso</span>
+        ) : isHolidayDay ? (
+          <div className="flex flex-col items-center gap-0.5 leading-tight">
+            <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">Festivo</span>
+            <span className="text-[10px] text-muted-foreground/70">+ Asignar</span>
+          </div>
+        ) : (
+          "+ Asignar"
+        )}
       </button>
     );
   }

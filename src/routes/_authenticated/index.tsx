@@ -188,6 +188,55 @@ function Dashboard() {
   const overtime   = sum.HED + sum.HEN + sum.HEDF + sum.HENF;
   const surcharges = sum.RN  + sum.RDF + ((sum as any).RNF ?? 0);
 
+  // ── Período anterior (para deltas comparativos) ──────────────
+  const prevDateRange = useMemo((): [string, string] => {
+    const now = new Date();
+    const prevOffset = dateOffset - 1;
+    if (period === "dia") {
+      const d = new Date(now);
+      d.setDate(d.getDate() + prevOffset);
+      const iso = toISO(d);
+      return [iso, iso];
+    }
+    if (period === "semana") {
+      const wsCur = startOfWeek(now);
+      wsCur.setDate(wsCur.getDate() + prevOffset * 7);
+      const dys = weekDays(wsCur);
+      return [toISO(dys[0]), toISO(dys[dys.length - 1])];
+    }
+    const d = new Date(now.getFullYear(), now.getMonth() + prevOffset, 1);
+    const last = new Date(now.getFullYear(), now.getMonth() + prevOffset + 1, 0);
+    return [toISO(d), toISO(last)];
+  }, [period, dateOffset]);
+
+  const prevPeriodShifts = useMemo(
+    () => shifts.filter(s =>
+      s.date >= prevDateRange[0] && s.date <= prevDateRange[1] && filteredIds.has(s.employeeId)
+    ),
+    [shifts, prevDateRange, filteredIds]
+  );
+
+  const prevSum = useMemo(() => {
+    const bds = prevPeriodShifts.map(s =>
+      shiftBreakdown(s, areas.find(a => a.id === filteredEmployees.find(e => e.id === s.employeeId)?.areaId))
+    );
+    return sumBreakdowns(bds);
+  }, [prevPeriodShifts, filteredEmployees, areas]);
+
+  const prevOvertime = prevSum.HED + prevSum.HEN + prevSum.HEDF + prevSum.HENF;
+
+  const horasDelta = useMemo(() => {
+    if (prevSum.total === 0) return null;
+    const pct = Math.round(((sum.total - prevSum.total) / prevSum.total) * 100);
+    return { text: pct >= 0 ? `+${pct}%` : `${pct}%`, up: pct >= 0 };
+  }, [sum.total, prevSum.total]);
+
+  const extrasDelta = useMemo(() => {
+    if (prevOvertime === 0) return null;
+    const diff = +(overtime - prevOvertime).toFixed(1);
+    return { text: diff >= 0 ? `+${diff} h` : `${diff} h`, up: diff >= 0 };
+  }, [overtime, prevOvertime]);
+
   useEffect(() => {
     fetchApprovals(dateRange[0], dateRange[1]).then(setApprovals).catch(() => {});
   }, [dateRange[0], dateRange[1]]);
@@ -383,8 +432,8 @@ function Dashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Kpi icon={Users}       label="Empleados activos" value={activeCount}          hint={areaLabel} />
           <Kpi icon={CalendarOff} label="Ausencias"         value={approvedAbsences}     hint={`${pendingAbsences} pendientes`} />
-          <Kpi icon={Clock}       label="Horas programadas" value={fmtHours(sum.total)}  hint={dateLabelText} delta="+4%" deltaUp />
-          <Kpi icon={TrendingUp}  label="Horas extras"      value={fmtHours(overtime)}   hint="HED · HEN · HEDF" delta="+1,5 h" deltaUp alert />
+          <Kpi icon={Clock}       label="Horas programadas" value={fmtHours(sum.total)}  hint={dateLabelText} delta={horasDelta?.text} deltaUp={horasDelta?.up} />
+          <Kpi icon={TrendingUp}  label="Horas extras"      value={fmtHours(overtime)}   hint="HED · HEN · HEDF · HENF" delta={extrasDelta?.text} deltaUp={extrasDelta ? !extrasDelta.up : undefined} alert />
           <Kpi icon={Timer}       label="Recargos"          value={fmtHours(surcharges)} hint="RN · RDF" />
         </div>
 
