@@ -250,8 +250,10 @@ function JornadaPage() {
 
 function TabDashboard() {
   const { employees, areas, shifts } = useWFM();
+  const { profile } = useAuth();
   const { registros, fechaActiva, getEstadoEmpleado, getCuposDisponibles, setFechaActiva, reloadRegistros, getShiftProgramado, configuracion, horarios, horariosEmpleado } = useJornada();
-  const activeEmployees = employees.filter((e) => e.status === "active");
+  const ownArea = profile?.areaId ?? null;
+  const activeEmployees = employees.filter((e) => e.status === "active" && (!ownArea || e.areaId === ownArea));
 
   const estados = useMemo(
     () => activeEmployees.map((e) => {
@@ -504,8 +506,9 @@ function TabDashboard() {
 
 function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const { employees, areas, shifts } = useWFM();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado } = useJornada();
+  const ownArea = profile?.areaId ?? null;
 
   const isSelfMode = !!autoEmployeeId;
   const hoy = new Date().toISOString().slice(0, 10);
@@ -513,7 +516,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   // ── Admin state ──────────────────────────────────────────
   const [search,        setSearch]        = useState("");
-  const [areaFilter,    setAreaFilter]    = useState("all");
+  const [areaFilter,    setAreaFilter]    = useState(ownArea ?? "all");
   const [pendingAction, setPendingAction] = useState<{ empId: string; tipo: TipoMovimiento } | null>(null);
   const [busy,          setBusy]          = useState(false);
   const [lastMsg,       setLastMsg]       = useState<{ ok: boolean; text: string } | null>(null);
@@ -711,14 +714,20 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
             className="bg-transparent text-sm outline-none flex-1"
           />
         </div>
-        <select
-          value={areaFilter}
-          onChange={(e) => setAreaFilter(e.target.value)}
-          className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 outline-none"
-        >
-          <option value="all">Todas las áreas</option>
-          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
+        {ownArea ? (
+          <span className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 text-muted-foreground">
+            {areas.find((a) => a.id === ownArea)?.name ?? "Mi área"}
+          </span>
+        ) : (
+          <select
+            value={areaFilter}
+            onChange={(e) => setAreaFilter(e.target.value)}
+            className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 outline-none"
+          >
+            <option value="all">Todas las áreas</option>
+            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        )}
         <span className="text-sm text-muted-foreground ml-auto">
           {filtered.length} empleado{filtered.length !== 1 ? "s" : ""}
         </span>
@@ -943,10 +952,11 @@ function RegistrarModal({
 
 function TabHistorial() {
   const { employees, areas } = useWFM();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { registros, modificaciones, editarRegistro, eliminarRegistro, agregarRegistroManual, fechaActiva, setFechaActiva, reloadRegistros } = useJornada();
+  const ownArea = profile?.areaId ?? null;
   const [empFilter,  setEmpFilter]  = useState("all");
-  const [areaFilter, setAreaFilter] = useState("all");
+  const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
   const [tipoFilter, setTipoFilter] = useState("all");
   const [editingReg, setEditingReg] = useState<JornadaRegistro | null>(null);
   const [showAddManual,  setShowAddManual]  = useState(false);
@@ -977,10 +987,16 @@ function TabHistorial() {
           <option value="all">Todos los empleados</option>
           {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
         </select>
-        <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
-          <option value="all">Todas las áreas</option>
-          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
+        {ownArea ? (
+          <span className="text-sm rounded-pill border border-border bg-card px-3 py-2 text-muted-foreground">
+            {areas.find((a) => a.id === ownArea)?.name ?? "Mi área"}
+          </span>
+        ) : (
+          <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
+            <option value="all">Todas las áreas</option>
+            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        )}
         <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
           <option value="all">Todos los movimientos</option>
           {(Object.entries(TIPO_MOVIMIENTO_LABELS) as [TipoMovimiento, string][]).map(([v, l]) => (
@@ -1203,14 +1219,16 @@ function AgregarManualModal({ employees, areas, fecha, onClose, onSave }: any) {
 function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const isSelfMode = !!autoEmployeeId;
   const { employees, areas } = useWFM();
+  const { profile } = useAuth();
   const { registros, configuracion } = useJornada();
   const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
+  const ownArea = profile?.areaId ?? null;
 
   const [desde, setDesde] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
   });
   const [hasta,      setHasta]      = useState(new Date().toISOString().slice(0, 10));
-  const [areaFilter, setAreaFilter] = useState("all");
+  const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
 
   // Self mode
   const selfEmployee = useMemo(
@@ -1329,7 +1347,8 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   }
 
   // Admin mode
-  const empList = employees.filter((e) => e.status === "active" && (areaFilter === "all" || e.areaId === areaFilter));
+  const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
+  const empList = employees.filter((e) => e.status === "active" && (!effectiveArea || e.areaId === effectiveArea));
 
   const stats = empList.map((emp) => {
     const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);
@@ -1371,10 +1390,16 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           <span className="text-muted-foreground">Hasta</span>
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
         </label>
-        <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
-          <option value="all">Todas las áreas</option>
-          {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
+        {ownArea ? (
+          <span className="text-sm rounded-pill border border-border bg-card px-3 py-2 text-muted-foreground">
+            {areas.find((a) => a.id === ownArea)?.name ?? "Mi área"}
+          </span>
+        ) : (
+          <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
+            <option value="all">Todas las áreas</option>
+            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        )}
         <button onClick={exportCSV} className="ml-auto inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
           <Download className="size-4" /> Exportar CSV
         </button>
