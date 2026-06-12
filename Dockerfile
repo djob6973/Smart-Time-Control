@@ -16,12 +16,11 @@ ARG VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_mp_vdMThhERuSTHhhc-V9g_O40_CSp_
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
     VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
-    NITRO_PRESET=node \
-    NODE_OPTIONS="--stack-size=65536"
+    NITRO_PRESET=node
 
 COPY --from=installer /app/node_modules ./node_modules
 COPY . .
-RUN node node_modules/.bin/vite build
+RUN node --stack-size=65536 node_modules/.bin/vite build
 
 # ── Runtime stage ───────────────────────────────────────────────────────────────
 FROM node:20-slim AS runner
