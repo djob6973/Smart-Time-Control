@@ -270,3 +270,26 @@ export function getPasswordChecks(password: string) {
     { ok: /[^A-Za-z0-9]/.test(password),  label: "Al menos un símbolo" },
   ];
 }
+
+export function PasswordStrength({ password }: { password: string }) {
+  const checks = getPasswordChecks(password);
+  const score  = checks.filter((c) => c.ok).length;
+  const colors = ["bg-destructive", "bg-orange-400", "bg-yellow-400", "bg-emerald-400", "bg-emerald-500"];
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-1">
+        {checks.map((_, i) => (
+          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : "bg-muted"}`} />
+        ))}
+      </div>
+      <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+        {checks.map((c) => (
+          <li key={c.label} className={`flex items-center gap-1 text-xs ${c.ok ? "text-emerald-600" : "text-muted-foreground"}`}>
+            <span>{c.ok ? "✓" : "○"}</span>
+            {c.label}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
