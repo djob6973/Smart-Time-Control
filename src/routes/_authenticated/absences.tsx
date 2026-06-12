@@ -79,22 +79,22 @@ function KpiCard({
   return (
     <div className={`rounded-card p-5 flex flex-col gap-3 ${
       alert
-        ? "bg-foreground text-background"
+        ? "bg-foreground text-background dark:bg-primary/10 dark:text-foreground dark:border dark:border-primary/25"
         : "bg-card border border-border shadow-card"
     }`}>
       <div className="flex items-start justify-between gap-2">
-        <span className={`text-[13px] font-medium leading-snug ${alert ? "text-background/70" : "text-muted-foreground"}`}>
+        <span className={`text-[13px] font-medium leading-snug ${alert ? "text-background/70 dark:text-muted-foreground" : "text-muted-foreground"}`}>
           {label}
         </span>
-        <span className={`p-1.5 rounded-lg ${alert ? "bg-background/10" : "bg-secondary"}`}>
-          <Icon className={`size-4 ${alert ? "text-background/80" : "text-muted-foreground"}`} />
+        <span className={`p-1.5 rounded-lg ${alert ? "bg-background/10 dark:bg-primary/20" : "bg-secondary"}`}>
+          <Icon className={`size-4 ${alert ? "text-background/80 dark:text-primary/70" : "text-muted-foreground"}`} />
         </span>
       </div>
-      <div className={`text-[32px] font-semibold leading-none tracking-tight ${alert ? "text-background" : "text-foreground"}`}>
+      <div className={`text-[32px] font-semibold leading-none tracking-tight ${alert ? "text-background dark:text-foreground" : "text-foreground"}`}>
         {value}
-        {unit && <span className={`text-base font-medium ml-1 ${alert ? "text-background/60" : "text-muted-foreground"}`}>{unit}</span>}
+        {unit && <span className={`text-base font-medium ml-1 ${alert ? "text-background/60 dark:text-muted-foreground" : "text-muted-foreground"}`}>{unit}</span>}
       </div>
-      <div className={`text-xs ${alert ? "text-background/60" : "text-muted-foreground"}`}>{foot}</div>
+      <div className={`text-xs ${alert ? "text-background/60 dark:text-muted-foreground" : "text-muted-foreground"}`}>{foot}</div>
     </div>
   );
 }
@@ -725,6 +725,7 @@ function AbsencesPage() {
               absenceType: TYPE_META[a.type as AbsenceType]?.label ?? a.type,
               startDate: a.startDate,
               endDate: a.endDate,
+              areaId: emp?.areaId ?? null,
             }}).catch(e => console.error("[notif:absence]", e?.message ?? e));
           }}
         />

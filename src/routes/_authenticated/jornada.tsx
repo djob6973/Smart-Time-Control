@@ -579,6 +579,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           employeeName: emp?.fullName ?? empId,
           hora:         fmtHora(),
           areaName:     areas.find((a) => a.id === areaId)?.name,
+          areaId:       areaId ?? null,
         },
       }).catch((e) => console.error("[notif:jornada]", e?.message ?? e));
     }
@@ -604,6 +605,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           employeeName: emp?.fullName ?? autoEmployeeId,
           hora:         fmtHora(),
           areaName:     areas.find((a) => a.id === areaId)?.name,
+          areaId:       areaId ?? null,
         },
       }).catch((e) => console.error("[notif:jornada]", e?.message ?? e));
     }

@@ -246,11 +246,11 @@ function EmployeesPage() {
             setEditing(null);
             reloadUsers();
             if (isNew) {
-              dispatchEmployeeEvent({ data: { event: "employee_added", employeeName: emp.fullName } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
+              dispatchEmployeeEvent({ data: { event: "employee_added", employeeName: emp.fullName, areaId: emp.areaId ?? null } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
             } else if (wasActive && emp.status === "inactive") {
-              dispatchEmployeeEvent({ data: { event: "employee_deactivated", employeeName: emp.fullName } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
+              dispatchEmployeeEvent({ data: { event: "employee_deactivated", employeeName: emp.fullName, areaId: emp.areaId ?? null } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
             } else if (!wasActive && emp.status === "active") {
-              dispatchEmployeeEvent({ data: { event: "employee_reactivated", employeeName: emp.fullName } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
+              dispatchEmployeeEvent({ data: { event: "employee_reactivated", employeeName: emp.fullName, areaId: emp.areaId ?? null } }).catch(e => console.error("[notif:employee]", e?.message ?? e));
             }
           }}
         />

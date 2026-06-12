@@ -27,8 +27,13 @@ async function linkedUserId(employeeId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
-// Obtiene user_ids de todos los usuarios con alguno de los roles indicados.
-async function usersByRole(...roleNames: string[]): Promise<string[]> {
+// Obtiene user_ids de managers con los roles dados, filtrando por área.
+// Un manager con area_id = null recibe todo; uno con area_id específico solo recibe
+// notificaciones del área de ese evento. Si eventAreaId es null, todos reciben.
+async function managersForArea(
+  eventAreaId: string | null | undefined,
+  ...roleNames: string[]
+): Promise<string[]> {
   const { data: roleRows } = await supabaseAdmin
     .from("roles")
     .select("id")
@@ -40,7 +45,21 @@ async function usersByRole(...roleNames: string[]): Promise<string[]> {
     .from("user_roles")
     .select("user_id")
     .in("role_id", roleIds);
-  return [...new Set((userRoleRows ?? []).map((r: any) => r.user_id as string))];
+  const userIds = [...new Set((userRoleRows ?? []).map((r: any) => r.user_id as string))];
+  if (userIds.length === 0) return [];
+
+  const { data: profiles } = await supabaseAdmin
+    .from("user_profiles")
+    .select("id, area_id")
+    .in("id", userIds);
+
+  return (profiles ?? [])
+    .filter((p: any) =>
+      p.area_id === null ||        // usuario con acceso a todas las áreas
+      !eventAreaId ||              // evento sin área específica → notificar a todos
+      p.area_id === eventAreaId    // área del usuario coincide con la del evento
+    )
+    .map((p: any) => p.id as string);
 }
 
 function fmtDate(iso: string) {
@@ -102,6 +121,7 @@ export const dispatchAbsenceEvent = createServerFn({ method: "POST" })
       startDate:    z.string(),
       endDate:      z.string(),
       reason:       z.string().optional(),
+      areaId:       z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -111,7 +131,7 @@ export const dispatchAbsenceEvent = createServerFn({ method: "POST" })
         : `${fmtShort(data.startDate)} – ${fmtShort(data.endDate)}`;
 
     if (data.event === "absence_created") {
-      const managers = await usersByRole("admin", "supervisor", "lider");
+      const managers = await managersForArea(data.areaId, "admin", "supervisor", "lider");
       await insertNotifications(
         managers.map((uid) => ({
           user_id: uid,
@@ -146,10 +166,11 @@ export const dispatchEmployeeEvent = createServerFn({ method: "POST" })
     z.object({
       event:        z.enum(["employee_added", "employee_deactivated", "employee_reactivated"]),
       employeeName: z.string(),
+      areaId:       z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
-    const managers = await usersByRole("admin", "supervisor", "lider");
+    const managers = await managersForArea(data.areaId, "admin", "supervisor", "lider");
 
     const templates = {
       employee_added:       { type: "success", title: "Nuevo empleado registrado", body: `${data.employeeName} ha sido añadido al sistema` },
@@ -171,10 +192,11 @@ export const dispatchJornadaEvent = createServerFn({ method: "POST" })
       employeeName: z.string(),
       hora:         z.string(),
       areaName:     z.string().optional(),
+      areaId:       z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
-    const managers = await usersByRole("admin", "supervisor", "lider");
+    const managers = await managersForArea(data.areaId, "admin", "supervisor", "lider");
     if (managers.length === 0) return;
 
     const suffix = data.areaName ? ` · ${data.areaName}` : "";
