@@ -8,15 +8,7 @@ RUN bun install
 FROM node:20 AS builder
 WORKDIR /app
 
-# Public Supabase credentials — Vite las embebe en el bundle de cliente en build time.
-ARG VITE_SUPABASE_URL=https://vabfxtarxoenvkadfzym.supabase.co
-ARG VITE_SUPABASE_ANON_KEY=sb_publishable_mp_vdMThhERuSTHhhc-V9g_O40_CSp_
-ARG VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_mp_vdMThhERuSTHhhc-V9g_O40_CSp_
-
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
-    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
-    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
-    NITRO_PRESET=node
+ENV NITRO_PRESET=node
 
 COPY --from=installer /app/node_modules ./node_modules
 COPY . .
