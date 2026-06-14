@@ -356,7 +356,7 @@ function ReportsPage() {
           novedad: nr.code, horaInicio: nr.inicio, horaFin: nr.fin,
           horas: nr.horas,
           justificacion: abs?.reason ?? s.note ?? "",
-          lider: emp.leader ?? "",
+          lider: area?.leader ?? "",
           employeeId: s.employeeId,
         });
       });

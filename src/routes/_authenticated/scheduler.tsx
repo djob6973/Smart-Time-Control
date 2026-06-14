@@ -495,7 +495,7 @@ function Scheduler() {
                     const isToday = isoDays[i] === toISO(new Date());
                     const holiday = isHoliday(isoDays[i]);
                     return (
-                      <th key={i} className="px-2 py-3 font-medium text-center min-w-[110px] border-l border-border">
+                      <th key={i} className="px-2 py-3 font-medium text-center min-w-[110px] border-l border-border relative z-0">
                         <div className={cn("text-[11px] font-medium uppercase tracking-wide", isToday ? "text-primary" : "text-muted-foreground")}>{DAY_LABELS[i]}</div>
                         <div className="mt-0.5 flex justify-center">
                           {isToday
