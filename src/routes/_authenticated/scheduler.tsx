@@ -488,9 +488,9 @@ function Scheduler() {
         <div className={cn("rounded-card border border-border bg-card overflow-hidden shadow-card", view === "month" && "hidden")}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
-              <thead className="bg-secondary/60 sticky top-0">
+              <thead className="bg-secondary/60 sticky top-0 z-20">
                 <tr>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground w-64 sticky left-0 bg-secondary/60 z-10">Trabajador</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground w-64 sticky left-0 bg-secondary/60 z-30">Trabajador</th>
                   {days.map((d, i) => {
                     const isToday = isoDays[i] === toISO(new Date());
                     const holiday = isHoliday(isoDays[i]);
@@ -524,7 +524,7 @@ function Scheduler() {
                   const overload = area && total.total > area.maxHoursWeek;
                   return (
                     <tr key={e.id} className={cn("border-t border-border", idx % 2 === 1 && "bg-secondary/20")}>
-                      <td className="px-4 py-2 sticky left-0 bg-inherit z-10">
+                      <td className="px-4 py-2 sticky left-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
                         <div className="flex items-center gap-3">
                           <div className="size-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground">
                             {e.fullName.split(" ").map(n => n[0]).slice(0,2).join("")}
@@ -576,7 +576,7 @@ function Scheduler() {
                     const warnCount = daySlots.flat().filter(s => s.status === "warn").length;
                     return (
                       <tr key={area.id} className="border-t-2 border-border bg-secondary/30">
-                        <td className="px-4 py-2 sticky left-0 bg-secondary/40 z-10">
+                        <td className="px-4 py-2 sticky left-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
                           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Cobertura mínima</div>
                           <div className="text-xs font-medium truncate">{area.name}</div>
                         </td>
@@ -1062,9 +1062,9 @@ function MonthlyView({ summary }: {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
-            <thead className="bg-secondary/60 sticky top-0">
+            <thead className="bg-secondary/60 sticky top-0 z-20">
               <tr>
-                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground sticky left-0 bg-secondary/60 z-10 min-w-56">Trabajador</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground sticky left-0 bg-secondary/60 z-30 min-w-56">Trabajador</th>
                 <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap" title="Jornada estándar diurna">STD</th>
                 <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-amber-700" title="Hora extra diurna">HED</th>
                 <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-amber-700" title="Hora extra nocturna">HEN</th>
@@ -1150,7 +1150,7 @@ function MonthlyView({ summary }: {
             </tbody>
             <tfoot className="border-t-2 border-border bg-secondary/40">
               <tr>
-                <td className="px-4 py-2.5 sticky left-0 bg-secondary/40 z-10">
+                <td className="px-4 py-2.5 sticky left-0 z-10" style={{ backgroundColor: 'var(--color-secondary)' }}>
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total equipo</span>
                 </td>
                 <td className="px-3 py-2.5 text-right border-l border-border text-xs font-bold tabular-nums">{fmtHours(totals.std)}</td>
