@@ -262,7 +262,8 @@ export async function handleAuthRoute(req: Request): Promise<Response | null> {
   try {
     return await handler(req);
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error("[auth-handler]", err);
-    return json({ error: "Error interno del servidor" }, 500);
+    return json({ error: `Error interno del servidor: ${msg}` }, 500);
   }
 }
