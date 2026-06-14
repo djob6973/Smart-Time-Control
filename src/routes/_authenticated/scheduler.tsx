@@ -1653,13 +1653,23 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
     };
   }
 
+  function handleCodeChange(newCode: string) {
+    setCode(newCode);
+    if (newCode === "ABS") {
+      setStart(0);
+      setEnd(0);
+      setBreakMin(0);
+      setAbsError(null);
+    }
+  }
+
   function handleSave() {
     if (code === "OFF") {
       onSave({ code: "OFF", start: 0, end: 0, breakMinutes: 0, note: "", locked });
       return;
     }
 
-    if (end <= start) {
+    if (code !== "ABS" && end <= start) {
       toast.error("La hora de fin debe ser posterior a la hora de inicio.");
       return;
     }
@@ -1727,7 +1737,10 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
         reason:     existingAbsence?.reason ?? "",
         status:     existingAbsence?.status ?? "pendiente",
       });
-      onSave({ code: "ABS", start, end, breakMinutes: breakMin, note: absNote, locked });
+      const saveStart = absFullDay ? 0 : start;
+      const saveEnd   = absFullDay ? 0 : end;
+      const saveBreak = absFullDay ? 0 : breakMin;
+      onSave({ code: "ABS", start: saveStart, end: saveEnd, breakMinutes: saveBreak, note: absNote, locked });
       return;
     }
 
@@ -1772,7 +1785,7 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
               return (
                 <button
                   key={c}
-                  onClick={() => setCode(c)}
+                  onClick={() => handleCodeChange(c)}
                   className={cn(
                     "flex flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-center transition-all",
                     cc[0],
@@ -1824,7 +1837,7 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => { setAbsFullDay(true); setAbsError(null); }}
+                    onClick={() => { setAbsFullDay(true); setStart(0); setEnd(0); setBreakMin(0); setAbsError(null); }}
                     className={cn(
                       "flex-1 rounded-lg py-1.5 text-xs font-medium border transition-colors",
                       absFullDay
