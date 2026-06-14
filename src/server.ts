@@ -10,7 +10,6 @@ type ServerEntry = {
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
-let migrationRan = false;
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -43,11 +42,8 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      // Run DB migration once on first request
-      if (!migrationRan) {
-        migrationRan = true;
-        await runMigration().catch((err) => console.error("[migrate]", err));
-      }
+      // Run DB migration (idempotent — migrate.ts sets done=true only on success, retries if it failed)
+      await runMigration().catch((err) => console.error("[migrate]", err));
 
       // Intercept auth API routes before TanStack Start
       const url = new URL(request.url);
