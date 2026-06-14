@@ -120,13 +120,13 @@ async function handleRegister(req: Request): Promise<Response> {
       `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
        VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING`,
       [userId, roleRow.id, DEFAULT_ORG_ID],
-    );
+    ).catch((e) => console.error("[register] user_roles insert failed:", e.message));
   }
   await execute(
     `INSERT INTO public.user_organizations (user_id, organization_id, activo)
      VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
     [userId, DEFAULT_ORG_ID],
-  );
+  ).catch((e) => console.error("[register] user_organizations insert failed:", e.message));
 
   const token = await createSession(userId);
   return json(
