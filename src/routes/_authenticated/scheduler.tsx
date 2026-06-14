@@ -243,6 +243,12 @@ function Scheduler() {
     const month = monthDate.getMonth();
     const monthStartISO = toISO(new Date(year, month, 1));
     const monthEndISO = toISO(new Date(year, month + 1, 0));
+    const monthDays: string[] = [];
+    const cursor = new Date(year, month, 1);
+    while (cursor.getMonth() === month) {
+      monthDays.push(toISO(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
     return visibleEmployees.map(emp => {
       const area = areas.find(a => a.id === emp.areaId);
       const empShifts = shifts.filter(s =>
@@ -250,6 +256,20 @@ function Scheduler() {
       );
       const workShifts = empShifts.filter(s => s.code !== "ABS");
       const breakdown = sumBreakdowns(workShifts.map(s => shiftBreakdown(s, area)));
+      let monthHTotal = 0;
+      for (const date of monthDays) {
+        const s = getEffectiveShift(emp.id, date);
+        const holiday = isHoliday(date);
+        if (!s || s.code === "OFF") {
+          if (holiday) monthHTotal += 8;
+        } else if (s.code === "ABS") {
+          const info = parseAbsNote(s.note);
+          monthHTotal += info ? info.absEnd - info.absStart : 8;
+          monthHTotal += Math.max(0, s.end - s.start - (s.breakMinutes ?? 0) / 60);
+        } else {
+          monthHTotal += shiftBreakdown(s, area).total;
+        }
+      }
       return {
         employee: emp,
         area,
@@ -257,9 +277,10 @@ function Scheduler() {
         daysWorked: workShifts.length,
         absenceDays: empShifts.filter(s => s.code === "ABS").length,
         contractHours: area?.maxHoursMonth ?? 192,
+        monthHTotal,
       };
     });
-  }, [monthDate, visibleEmployees, shifts, areas]);
+  }, [monthDate, visibleEmployees, shifts, areas, shiftMap, absences]);
 
   // Equity: acumula domingos/festivos trabajados por cada empleado visible
   // usando todos los turnos existentes hasta hoy.
@@ -1037,6 +1058,7 @@ function MonthlyView({ summary }: {
     daysWorked: number;
     absenceDays: number;
     contractHours: number;
+    monthHTotal: number;
   }>;
 }) {
   const totals = summary.reduce(
@@ -1049,8 +1071,9 @@ function MonthlyView({ summary }: {
       otros: acc.otros + r.breakdown.HEDF + r.breakdown.HENF + r.breakdown.RNF,
       total: acc.total + r.breakdown.total,
       contract: acc.contract + r.contractHours,
+      monthHTotal: acc.monthHTotal + r.monthHTotal,
     }),
-    { std: 0, HED: 0, HEN: 0, RN: 0, RDF: 0, otros: 0, total: 0, contract: 0 }
+    { std: 0, HED: 0, HEN: 0, RN: 0, RDF: 0, otros: 0, total: 0, contract: 0, monthHTotal: 0 }
   );
 
   return (
@@ -1071,17 +1094,22 @@ function MonthlyView({ summary }: {
                 <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="Recargo nocturno">RN</th>
                 <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="Recargo dominical / festivo">RDF</th>
                 <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="HEDF + HENF + RNF">Otros</th>
-                <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total</th>
+                <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total Prog.</th>
                 <th className="px-3 py-3 text-right font-medium border-l border-border text-xs text-muted-foreground whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Meta</th>
+                <th className="px-4 py-3 font-medium border-l border-border text-xs whitespace-nowrap min-w-40 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Progreso mensual Prog.</th>
+                <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total Mes.</th>
                 <th className="px-4 py-3 font-medium border-l border-border text-xs whitespace-nowrap min-w-40 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Progreso mensual</th>
               </tr>
             </thead>
             <tbody>
-              {summary.map(({ employee, area, breakdown, daysWorked, absenceDays, contractHours }, idx) => {
+              {summary.map(({ employee, area, breakdown, daysWorked, absenceDays, contractHours, monthHTotal }, idx) => {
                 const otros = breakdown.HEDF + breakdown.HENF + breakdown.RNF;
                 const diff = breakdown.total - contractHours;
                 const pct = contractHours > 0 ? Math.min(110, (breakdown.total / contractHours) * 100) : 0;
                 const isOver = diff > 0;
+                const diffMes = monthHTotal - contractHours;
+                const pctMes = contractHours > 0 ? Math.min(110, (monthHTotal / contractHours) * 100) : 0;
+                const isOverMes = diffMes > 0;
                 return (
                   <tr key={employee.id} className={cn("border-t border-border", idx % 2 === 1 && "bg-secondary/20")}>
                     <td className="px-4 py-2.5 sticky left-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
@@ -1144,6 +1172,29 @@ function MonthlyView({ summary }: {
                         </span>
                       </div>
                     </td>
+                    <td className="px-3 py-2.5 text-right border-l border-border text-sm font-bold tabular-nums">{fmtHours(monthHTotal)}</td>
+                    <td className="px-4 py-2.5 border-l border-border">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden min-w-14">
+                          <div
+                            className={cn("h-full rounded-full transition-all",
+                              isOverMes ? "bg-destructive" : pctMes >= 100 ? "bg-green-500" : pctMes >= 70 ? "bg-primary" : "bg-amber-400"
+                            )}
+                            style={{ width: `${Math.min(100, pctMes)}%` }}
+                          />
+                        </div>
+                        <span className={cn("text-xs font-semibold tabular-nums w-8 text-right shrink-0",
+                          isOverMes ? "text-destructive" : pctMes >= 100 ? "text-green-600" : "text-muted-foreground"
+                        )}>
+                          {Math.round(pctMes)}%
+                        </span>
+                        <span className={cn("text-[10px] tabular-nums shrink-0 w-10 text-right",
+                          isOverMes ? "text-destructive font-semibold" : diffMes < -8 ? "text-amber-600" : "text-muted-foreground"
+                        )}>
+                          {diffMes >= 0 ? `+${fmtHours(diffMes)}` : fmtHours(diffMes)}
+                        </span>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -1167,6 +1218,15 @@ function MonthlyView({ summary }: {
                     totals.total >= totals.contract ? "text-green-600" : "text-muted-foreground"
                   )}>
                     {fmtHours(totals.total - totals.contract)} neto
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-right border-l border-border font-bold tabular-nums">{fmtHours(totals.monthHTotal)}</td>
+                <td className="border-l border-border px-4 py-2.5">
+                  <span className={cn("text-xs font-semibold",
+                    totals.monthHTotal > totals.contract ? "text-destructive" :
+                    totals.monthHTotal >= totals.contract ? "text-green-600" : "text-muted-foreground"
+                  )}>
+                    {fmtHours(totals.monthHTotal - totals.contract)} neto
                   </span>
                 </td>
               </tr>
