@@ -6,7 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
 import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
-import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Filter, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2 } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Filter, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info } from "lucide-react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { fetchShiftHistory } from "@/lib/wfm/db";
@@ -1050,6 +1051,32 @@ function padH(h: number) { return String(h).padStart(2,"0"); }
 
 const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
+function ColTooltip({ label, tip }: { label: string; tip: string }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  return (
+    <span
+      className="inline-flex items-center gap-1 cursor-default"
+      onMouseEnter={e => {
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setPos({ x: r.left + r.width / 2, y: r.bottom + 6 });
+      }}
+      onMouseLeave={() => setPos(null)}
+    >
+      {label}
+      <Info className="size-3 opacity-50 shrink-0" />
+      {pos && createPortal(
+        <div
+          style={{ position: "fixed", left: pos.x, top: pos.y, transform: "translateX(-50%)", zIndex: 9999 }}
+          className="max-w-[260px] rounded-lg border border-border bg-popover shadow-lg px-3 py-2 text-[11px] leading-relaxed text-popover-foreground pointer-events-none"
+        >
+          {tip}
+        </div>,
+        document.body
+      )}
+    </span>
+  );
+}
+
 function MonthlyView({ summary }: {
   summary: Array<{
     employee: Employee;
@@ -1096,9 +1123,13 @@ function MonthlyView({ summary }: {
                 <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="HEDF + HENF + RNF">Otros</th>
                 <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total Prog</th>
                 <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Meta</th>
-                <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap min-w-40 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Progreso mes Prog</th>
+                <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap min-w-40 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
+                  <ColTooltip label="Progreso mes Prog" tip="Horas programadas del mes vs. la meta mensual configurada para el área. Solo cuenta turnos activos, sin ausencias ni festivos." />
+                </th>
                 <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total Mes</th>
-                <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap min-w-40 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Progreso mes</th>
+                <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap min-w-40 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
+                  <ColTooltip label="Progreso mes" tip="Horas totales del mes vs. la meta del área: incluye turnos programados + horas de ausencias parciales + 8 h automáticas por cada día festivo sin turno asignado." />
+                </th>
               </tr>
             </thead>
             <tbody>
