@@ -488,14 +488,14 @@ function Scheduler() {
         <div className={cn("rounded-card border border-border bg-card overflow-hidden shadow-card", view === "month" && "hidden")}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
-              <thead className="bg-secondary/60 sticky top-0 z-20">
+              <thead>
                 <tr>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground w-64 sticky left-0 bg-secondary/60 z-30">Trabajador</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground w-64 sticky top-0 left-0 z-20" style={{ backgroundColor: 'var(--color-card)' }}>Trabajador</th>
                   {days.map((d, i) => {
                     const isToday = isoDays[i] === toISO(new Date());
                     const holiday = isHoliday(isoDays[i]);
                     return (
-                      <th key={i} className="px-2 py-3 font-medium text-center min-w-[110px] border-l border-border relative z-0">
+                      <th key={i} className="px-2 py-3 font-medium text-center min-w-[110px] border-l border-border sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
                         <div className={cn("text-[11px] font-medium uppercase tracking-wide", isToday ? "text-primary" : "text-muted-foreground")}>{DAY_LABELS[i]}</div>
                         <div className="mt-0.5 flex justify-center">
                           {isToday
@@ -513,8 +513,8 @@ function Scheduler() {
                       </th>
                     );
                   })}
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground text-right w-28 border-l border-border bg-secondary/80">Total Prog.</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground text-right w-28 border-l border-border bg-secondary/80">Total Sem.</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground text-right w-28 border-l border-border sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total Prog.</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground text-right w-28 border-l border-border sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total Sem.</th>
                 </tr>
               </thead>
               <tbody>
@@ -1062,18 +1062,18 @@ function MonthlyView({ summary }: {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
-            <thead className="bg-secondary/60 sticky top-0 z-20">
+            <thead>
               <tr>
-                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground sticky left-0 bg-secondary/60 z-30 min-w-56">Trabajador</th>
-                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap" title="Jornada estándar diurna">STD</th>
-                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-amber-700" title="Hora extra diurna">HED</th>
-                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-amber-700" title="Hora extra nocturna">HEN</th>
-                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground" title="Recargo nocturno">RN</th>
-                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground" title="Recargo dominical / festivo">RDF</th>
-                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground" title="HEDF + HENF + RNF">Otros</th>
-                <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap">Total</th>
-                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs text-muted-foreground whitespace-nowrap">Meta</th>
-                <th className="px-4 py-3 font-medium border-l border-border text-xs whitespace-nowrap min-w-40">Progreso mensual</th>
+                <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground sticky top-0 left-0 z-20 min-w-56" style={{ backgroundColor: 'var(--color-card)' }}>Trabajador</th>
+                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="Jornada estándar diurna">STD</th>
+                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-amber-700 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="Hora extra diurna">HED</th>
+                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-amber-700 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="Hora extra nocturna">HEN</th>
+                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="Recargo nocturno">RN</th>
+                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="Recargo dominical / festivo">RDF</th>
+                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs whitespace-nowrap text-muted-foreground sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }} title="HEDF + HENF + RNF">Otros</th>
+                <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground border-l border-border whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Total</th>
+                <th className="px-3 py-3 text-right font-medium border-l border-border text-xs text-muted-foreground whitespace-nowrap sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Meta</th>
+                <th className="px-4 py-3 font-medium border-l border-border text-xs whitespace-nowrap min-w-40 sticky top-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>Progreso mensual</th>
               </tr>
             </thead>
             <tbody>
@@ -1084,7 +1084,7 @@ function MonthlyView({ summary }: {
                 const isOver = diff > 0;
                 return (
                   <tr key={employee.id} className={cn("border-t border-border", idx % 2 === 1 && "bg-secondary/20")}>
-                    <td className="px-4 py-2.5 sticky left-0 bg-inherit z-10">
+                    <td className="px-4 py-2.5 sticky left-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
                       <div className="flex items-center gap-3">
                         <div className="size-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold shrink-0">
                           {employee.fullName.split(" ").map(n => n[0]).slice(0,2).join("")}
