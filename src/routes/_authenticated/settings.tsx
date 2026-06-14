@@ -343,7 +343,8 @@ function SettingsPage() {
       const dbRoles = await adminLoadRoles();
       setLocalRoles(
         INITIAL_ROLES.map(role => {
-          const db = dbRoles.find(r => r.nombre === role.id);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const db = dbRoles.find((r: any) => r.nombre === role.id);
           if (!db) return role;
           const p = db.permisos as Record<string, any>;
           return {

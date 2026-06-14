@@ -163,11 +163,12 @@ function LoginView({ onForgot }: { onForgot: () => void }) {
 
 function ForgotPasswordView({ onBack }: { onBack: () => void }) {
   const { requestPasswordReset } = useAuth();
-  const [email, setEmail]       = useState("");
-  const [sent, setSent]         = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
+  const [email, setEmail]         = useState("");
+  const [sent, setSent]           = useState(false);
+  const [resetUrl, setResetUrl]   = useState<string | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [cooldown, setCooldown]   = useState(0);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -179,22 +180,35 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const err = await requestPasswordReset(email);
+    const result = await requestPasswordReset(email);
     setLoading(false);
-    if (err) { setError(err); } else { setSent(true); setCooldown(60); }
+    if (result.error) { setError(result.error); }
+    else { setSent(true); setResetUrl(result.resetUrl ?? null); setCooldown(60); }
   }
 
   if (sent) {
     return (
-      <AuthCard title="Revisa tu correo" subtitle={`Enviamos un enlace a ${email}`}>
+      <AuthCard title="Enlace generado" subtitle={`Recuperación para ${email}`}>
         <div className="space-y-5">
           <div className="flex flex-col items-center gap-4 py-4">
             <div className="size-14 rounded-full bg-success/10 flex items-center justify-center">
               <CheckCircle2 className="size-7 text-success" />
             </div>
-            <p className="text-sm text-center text-muted-foreground leading-relaxed">
-              Si esa dirección está registrada, recibirás un email con el enlace. Revisa también la carpeta de spam.
-            </p>
+            {resetUrl ? (
+              <div className="w-full space-y-2">
+                <p className="text-sm text-center text-muted-foreground">
+                  Copia este enlace para restablecer tu contraseña:
+                </p>
+                <div className="rounded-lg border border-border bg-muted px-3 py-2 break-all">
+                  <a href={resetUrl} className="text-xs text-primary hover:underline font-mono">{resetUrl}</a>
+                </div>
+                <p className="text-xs text-center text-muted-foreground">Válido por 1 hora.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-center text-muted-foreground leading-relaxed">
+                Si esa dirección está registrada, el administrador puede proporcionarte el enlace de recuperación.
+              </p>
+            )}
           </div>
           {error && (
             <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3">
@@ -205,15 +219,16 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
           <button
             onClick={() => {
               setLoading(true);
-              requestPasswordReset(email).then(err => {
+              requestPasswordReset(email).then(result => {
                 setLoading(false);
-                if (err) setError(err); else setCooldown(60);
+                if (result.error) setError(result.error);
+                else { setResetUrl(result.resetUrl ?? null); setCooldown(60); }
               });
             }}
             disabled={cooldown > 0 || loading}
             className="w-full rounded-pill border border-border px-4 py-2.5 text-sm font-medium hover:bg-secondary transition-colors disabled:opacity-50"
           >
-            {loading ? "Enviando…" : cooldown > 0 ? `Reenviar en ${cooldown}s` : "Reenviar correo"}
+            {loading ? "Generando…" : cooldown > 0 ? `Nuevo enlace en ${cooldown}s` : "Generar nuevo enlace"}
           </button>
           <button
             onClick={onBack}

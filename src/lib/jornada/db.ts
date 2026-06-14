@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { query, execute } from "@/lib/db";
 import type {
   JornadaRegistro,
   JornadaModificacion,
@@ -27,35 +29,6 @@ function registroFromDB(r: Record<string, unknown>): JornadaRegistro {
   };
 }
 
-function registroToDB(r: Omit<JornadaRegistro, "id" | "createdAt"> & { id?: string }) {
-  return {
-    ...(r.id ? { id: r.id } : {}),
-    employee_id: r.employeeId,
-    fecha: r.fecha,
-    hora_exacta: r.horaExacta,
-    tipo_movimiento: r.tipoMovimiento,
-    area_id: r.areaId ?? null,
-    usuario_registro_id: r.usuarioRegistroId ?? null,
-    observaciones: r.observaciones ?? null,
-    estado: r.estado,
-    es_modificacion: r.esModificacion,
-    registro_original_id: r.registroOriginalId ?? null,
-  };
-}
-
-function modificacionFromDB(r: Record<string, unknown>): JornadaModificacion {
-  return {
-    id: r.id as string,
-    registroId: r.registro_id as string,
-    usuarioId: r.usuario_id as string,
-    fechaModificacion: r.fecha_modificacion as string,
-    motivo: r.motivo as string,
-    campoModificado: r.campo_modificado as string | undefined,
-    valorAnterior: r.valor_anterior as string | undefined,
-    valorNuevo: r.valor_nuevo as string | undefined,
-  };
-}
-
 function horarioFromDB(r: Record<string, unknown>): JornadaHorario {
   return {
     id: r.id as string,
@@ -72,25 +45,6 @@ function horarioFromDB(r: Record<string, unknown>): JornadaHorario {
     cargo: r.cargo as string | undefined,
     turno: r.turno as string | undefined,
     activo: (r.activo as boolean) ?? true,
-  };
-}
-
-function horarioToDB(h: JornadaHorario) {
-  return {
-    id: h.id,
-    nombre: h.nombre,
-    tipo_jornada: h.tipoJornada,
-    hora_entrada: h.horaEntrada ?? null,
-    hora_salida: h.horaSalida ?? null,
-    break_inicio: h.breakInicio ?? null,
-    break_fin: h.breakFin ?? null,
-    almuerzo_inicio: h.almuerzoInicio ?? null,
-    almuerzo_fin: h.almuerzoFin ?? null,
-    dias_aplicables: h.diasAplicables,
-    area_id: h.areaId ?? null,
-    cargo: h.cargo ?? null,
-    turno: h.turno ?? null,
-    activo: h.activo,
   };
 }
 
@@ -119,20 +73,6 @@ function cupoFromDB(r: Record<string, unknown>): JornadaCupo {
   };
 }
 
-function cupoToDB(c: JornadaCupo) {
-  return {
-    id: c.id,
-    area_id: c.areaId ?? null,
-    tipo: c.tipo,
-    max_simultaneos: c.maxSimultaneos,
-    cargo: c.cargo ?? null,
-    turno: c.turno ?? null,
-    hora_inicio: c.horaInicio ?? null,
-    hora_fin: c.horaFin ?? null,
-    activo: c.activo,
-  };
-}
-
 function configFromDB(r: Record<string, unknown>): JornadaConfiguracion {
   return {
     id: r.id as string,
@@ -147,147 +87,275 @@ function configFromDB(r: Record<string, unknown>): JornadaConfiguracion {
   };
 }
 
-function configToDB(c: JornadaConfiguracion) {
-  return {
-    id: c.id,
-    area_id: c.areaId ?? null,
-    tolerancia_llegada_min: c.toleranciaLlegadaMin,
-    tiempo_max_break_min: c.tiempoMaxBreakMin,
-    tiempo_max_almuerzo_min: c.tiempoMaxAlmuerzoMin,
-    dias_laborales: c.diasLaborales,
-    hora_inicio_jornada: c.horaInicioJornada,
-    hora_fin_jornada: c.horaFinJornada,
-    requiere_aprobacion_edicion: c.requiereAprobacionEdicion,
-  };
-}
+// ── Server functions internas ──────────────────────────────
 
-// ── Fetch ──────────────────────────────────────────────────
+const _fetchRegistros = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ fecha: z.string().optional() }))
+  .handler(async ({ data }) => {
+    let sql = "SELECT * FROM public.jornada_registros WHERE 1=1";
+    const params: unknown[] = [];
+    if (data.fecha) { sql += ` AND fecha = $${params.push(data.fecha)}`; }
+    sql += " ORDER BY hora_exacta";
+    const rows = await query(sql, params);
+    return rows.map(registroFromDB);
+  });
+
+const _fetchRegistrosRango = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ desde: z.string(), hasta: z.string() }))
+  .handler(async ({ data }) => {
+    const rows = await query(
+      "SELECT * FROM public.jornada_registros WHERE fecha >= $1 AND fecha <= $2 ORDER BY hora_exacta",
+      [data.desde, data.hasta],
+    );
+    return rows.map(registroFromDB);
+  });
+
+const _fetchModificaciones = createServerFn({ method: "GET" })
+  .inputValidator(z.object({ registroId: z.string().optional() }))
+  .handler(async ({ data }) => {
+    let sql = "SELECT * FROM public.jornada_modificaciones";
+    const params: unknown[] = [];
+    if (data.registroId) { sql += ` WHERE registro_id = $${params.push(data.registroId)}`; }
+    sql += " ORDER BY fecha_modificacion DESC";
+    const rows = await query(sql, params);
+    return rows.map(
+      (r): JornadaModificacion => ({
+        id: r.id as string,
+        registroId: r.registro_id as string,
+        usuarioId: r.usuario_id as string,
+        fechaModificacion: r.fecha_modificacion as string,
+        motivo: r.motivo as string,
+        campoModificado: r.campo_modificado as string | undefined,
+        valorAnterior: r.valor_anterior as string | undefined,
+        valorNuevo: r.valor_nuevo as string | undefined,
+      }),
+    );
+  });
+
+const _fetchHorarios = createServerFn({ method: "GET" }).handler(async () => {
+  const rows = await query("SELECT * FROM public.jornada_horarios ORDER BY nombre");
+  return rows.map(horarioFromDB);
+});
+
+const _fetchHorariosEmpleado = createServerFn({ method: "GET" }).handler(async () => {
+  const rows = await query("SELECT * FROM public.jornada_horarios_empleado WHERE activo = true");
+  return rows.map(horarioEmpleadoFromDB);
+});
+
+const _fetchCupos = createServerFn({ method: "GET" }).handler(async () => {
+  const rows = await query("SELECT * FROM public.jornada_cupos WHERE activo = true");
+  return rows.map(cupoFromDB);
+});
+
+const _fetchConfiguracion = createServerFn({ method: "GET" }).handler(async () => {
+  const rows = await query("SELECT * FROM public.jornada_configuracion");
+  return rows.map(configFromDB);
+});
+
+const _insertRegistro = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as Omit<JornadaRegistro, "id" | "createdAt">)
+  .handler(async ({ data: r }) => {
+    const rows = await query(
+      `INSERT INTO public.jornada_registros
+         (employee_id, fecha, hora_exacta, tipo_movimiento, area_id,
+          usuario_registro_id, observaciones, estado, es_modificacion, registro_original_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING *`,
+      [
+        r.employeeId, r.fecha, r.horaExacta, r.tipoMovimiento,
+        r.areaId ?? null, r.usuarioRegistroId ?? null, r.observaciones ?? null,
+        r.estado, r.esModificacion, r.registroOriginalId ?? null,
+      ],
+    );
+    return registroFromDB(rows[0]);
+  });
+
+const _updateRegistro = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as JornadaRegistro)
+  .handler(async ({ data: r }) => {
+    await execute(
+      `UPDATE public.jornada_registros SET
+         employee_id=$2, fecha=$3, hora_exacta=$4, tipo_movimiento=$5,
+         area_id=$6, usuario_registro_id=$7, observaciones=$8,
+         estado=$9, es_modificacion=$10, registro_original_id=$11
+       WHERE id=$1`,
+      [
+        r.id, r.employeeId, r.fecha, r.horaExacta, r.tipoMovimiento,
+        r.areaId ?? null, r.usuarioRegistroId ?? null, r.observaciones ?? null,
+        r.estado, r.esModificacion, r.registroOriginalId ?? null,
+      ],
+    );
+  });
+
+const _deleteRegistro = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    await execute("DELETE FROM public.jornada_registros WHERE id = $1", [data.id]);
+  });
+
+const _insertModificacion = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as Omit<JornadaModificacion, "id" | "fechaModificacion">)
+  .handler(async ({ data: m }) => {
+    await execute(
+      `INSERT INTO public.jornada_modificaciones
+         (registro_id, usuario_id, motivo, campo_modificado, valor_anterior, valor_nuevo)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [m.registroId, m.usuarioId, m.motivo, m.campoModificado ?? null, m.valorAnterior ?? null, m.valorNuevo ?? null],
+    );
+  });
+
+const _upsertHorario = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as JornadaHorario)
+  .handler(async ({ data: h }) => {
+    await execute(
+      `INSERT INTO public.jornada_horarios
+         (id, nombre, tipo_jornada, hora_entrada, hora_salida, break_inicio, break_fin,
+          almuerzo_inicio, almuerzo_fin, dias_aplicables, area_id, cargo, turno, activo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       ON CONFLICT (id) DO UPDATE SET
+         nombre=$2, tipo_jornada=$3, hora_entrada=$4, hora_salida=$5,
+         break_inicio=$6, break_fin=$7, almuerzo_inicio=$8, almuerzo_fin=$9,
+         dias_aplicables=$10, area_id=$11, cargo=$12, turno=$13, activo=$14`,
+      [
+        h.id, h.nombre, h.tipoJornada, h.horaEntrada ?? null, h.horaSalida ?? null,
+        h.breakInicio ?? null, h.breakFin ?? null, h.almuerzoInicio ?? null, h.almuerzoFin ?? null,
+        h.diasAplicables, h.areaId ?? null, h.cargo ?? null, h.turno ?? null, h.activo,
+      ],
+    );
+  });
+
+const _deleteHorario = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    await execute("DELETE FROM public.jornada_horarios WHERE id = $1", [data.id]);
+  });
+
+const _upsertHorarioEmpleado = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as JornadaHorarioEmpleado)
+  .handler(async ({ data: h }) => {
+    await execute(
+      `INSERT INTO public.jornada_horarios_empleado
+         (id, employee_id, horario_id, fecha_inicio, fecha_fin, activo)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (id) DO UPDATE SET
+         employee_id=$2, horario_id=$3, fecha_inicio=$4, fecha_fin=$5, activo=$6`,
+      [h.id, h.employeeId, h.horarioId, h.fechaInicio, h.fechaFin ?? null, h.activo],
+    );
+  });
+
+const _upsertCupo = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as JornadaCupo)
+  .handler(async ({ data: c }) => {
+    await execute(
+      `INSERT INTO public.jornada_cupos
+         (id, area_id, tipo, max_simultaneos, cargo, turno, hora_inicio, hora_fin, activo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (id) DO UPDATE SET
+         area_id=$2, tipo=$3, max_simultaneos=$4, cargo=$5, turno=$6,
+         hora_inicio=$7, hora_fin=$8, activo=$9`,
+      [
+        c.id, c.areaId ?? null, c.tipo, c.maxSimultaneos,
+        c.cargo ?? null, c.turno ?? null, c.horaInicio ?? null, c.horaFin ?? null, c.activo,
+      ],
+    );
+  });
+
+const _deleteCupo = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    await execute("DELETE FROM public.jornada_cupos WHERE id = $1", [data.id]);
+  });
+
+const _upsertConfiguracion = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => d as JornadaConfiguracion)
+  .handler(async ({ data: c }) => {
+    await execute(
+      `INSERT INTO public.jornada_configuracion
+         (id, area_id, tolerancia_llegada_min, tiempo_max_break_min, tiempo_max_almuerzo_min,
+          dias_laborales, hora_inicio_jornada, hora_fin_jornada, requiere_aprobacion_edicion)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (id) DO UPDATE SET
+         area_id=$2, tolerancia_llegada_min=$3, tiempo_max_break_min=$4,
+         tiempo_max_almuerzo_min=$5, dias_laborales=$6, hora_inicio_jornada=$7,
+         hora_fin_jornada=$8, requiere_aprobacion_edicion=$9`,
+      [
+        c.id, c.areaId ?? null, c.toleranciaLlegadaMin, c.tiempoMaxBreakMin,
+        c.tiempoMaxAlmuerzoMin, c.diasLaborales, c.horaInicioJornada,
+        c.horaFinJornada, c.requiereAprobacionEdicion,
+      ],
+    );
+  });
+
+// ── Exports públicos con la misma firma que antes ──────────
 
 export async function fetchRegistros(fecha?: string): Promise<JornadaRegistro[]> {
-  let q = supabase.from("jornada_registros").select("*").order("hora_exacta");
-  if (fecha) q = q.eq("fecha", fecha);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []).map(registroFromDB);
+  return _fetchRegistros({ data: { fecha } });
 }
 
 export async function fetchRegistrosRango(desde: string, hasta: string): Promise<JornadaRegistro[]> {
-  const { data, error } = await supabase
-    .from("jornada_registros")
-    .select("*")
-    .gte("fecha", desde)
-    .lte("fecha", hasta)
-    .order("hora_exacta");
-  if (error) throw error;
-  return (data ?? []).map(registroFromDB);
+  return _fetchRegistrosRango({ data: { desde, hasta } });
 }
 
 export async function fetchModificaciones(registroId?: string): Promise<JornadaModificacion[]> {
-  let q = supabase.from("jornada_modificaciones").select("*").order("fecha_modificacion", { ascending: false });
-  if (registroId) q = q.eq("registro_id", registroId);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []).map(modificacionFromDB);
+  return _fetchModificaciones({ data: { registroId } });
 }
 
 export async function fetchHorarios(): Promise<JornadaHorario[]> {
-  const { data, error } = await supabase.from("jornada_horarios").select("*").order("nombre");
-  if (error) throw error;
-  return (data ?? []).map(horarioFromDB);
+  return _fetchHorarios();
 }
 
 export async function fetchHorariosEmpleado(): Promise<JornadaHorarioEmpleado[]> {
-  const { data, error } = await supabase.from("jornada_horarios_empleado").select("*").eq("activo", true);
-  if (error) throw error;
-  return (data ?? []).map(horarioEmpleadoFromDB);
+  return _fetchHorariosEmpleado();
 }
 
 export async function fetchCupos(): Promise<JornadaCupo[]> {
-  const { data, error } = await supabase.from("jornada_cupos").select("*").eq("activo", true);
-  if (error) throw error;
-  return (data ?? []).map(cupoFromDB);
+  return _fetchCupos();
 }
 
 export async function fetchConfiguracion(): Promise<JornadaConfiguracion[]> {
-  const { data, error } = await supabase.from("jornada_configuracion").select("*");
-  if (error) throw error;
-  return (data ?? []).map(configFromDB);
+  return _fetchConfiguracion();
 }
-
-// ── Upserts ───────────────────────────────────────────────
 
 export async function insertRegistro(
   r: Omit<JornadaRegistro, "id" | "createdAt">,
 ): Promise<JornadaRegistro> {
-  const { data, error } = await supabase
-    .from("jornada_registros")
-    .insert(registroToDB(r))
-    .select()
-    .single();
-  if (error) throw error;
-  return registroFromDB(data as Record<string, unknown>);
+  return _insertRegistro({ data: r });
 }
 
 export async function updateRegistro(r: JornadaRegistro): Promise<void> {
-  const { error } = await supabase
-    .from("jornada_registros")
-    .update(registroToDB(r))
-    .eq("id", r.id);
-  if (error) throw error;
+  await _updateRegistro({ data: r });
 }
 
 export async function deleteRegistro(id: string): Promise<void> {
-  const { error } = await supabase.from("jornada_registros").delete().eq("id", id);
-  if (error) throw error;
+  await _deleteRegistro({ data: { id } });
 }
 
 export async function insertModificacion(
   m: Omit<JornadaModificacion, "id" | "fechaModificacion">,
 ): Promise<void> {
-  const { error } = await supabase.from("jornada_modificaciones").insert({
-    registro_id: m.registroId,
-    usuario_id: m.usuarioId,
-    motivo: m.motivo,
-    campo_modificado: m.campoModificado ?? null,
-    valor_anterior: m.valorAnterior ?? null,
-    valor_nuevo: m.valorNuevo ?? null,
-  });
-  if (error) throw error;
+  await _insertModificacion({ data: m });
 }
 
 export async function upsertHorario(h: JornadaHorario): Promise<void> {
-  const { error } = await supabase.from("jornada_horarios").upsert(horarioToDB(h));
-  if (error) throw error;
+  await _upsertHorario({ data: h });
 }
 
 export async function deleteHorario(id: string): Promise<void> {
-  const { error } = await supabase.from("jornada_horarios").delete().eq("id", id);
-  if (error) throw error;
+  await _deleteHorario({ data: { id } });
 }
 
 export async function upsertHorarioEmpleado(h: JornadaHorarioEmpleado): Promise<void> {
-  const { error } = await supabase.from("jornada_horarios_empleado").upsert({
-    id: h.id,
-    employee_id: h.employeeId,
-    horario_id: h.horarioId,
-    fecha_inicio: h.fechaInicio,
-    fecha_fin: h.fechaFin ?? null,
-    activo: h.activo,
-  });
-  if (error) throw error;
+  await _upsertHorarioEmpleado({ data: h });
 }
 
 export async function upsertCupo(c: JornadaCupo): Promise<void> {
-  const { error } = await supabase.from("jornada_cupos").upsert(cupoToDB(c));
-  if (error) throw error;
+  await _upsertCupo({ data: c });
 }
 
 export async function deleteCupo(id: string): Promise<void> {
-  const { error } = await supabase.from("jornada_cupos").delete().eq("id", id);
-  if (error) throw error;
+  await _deleteCupo({ data: { id } });
 }
 
 export async function upsertConfiguracion(c: JornadaConfiguracion): Promise<void> {
-  const { error } = await supabase.from("jornada_configuracion").upsert(configToDB(c));
-  if (error) throw error;
+  await _upsertConfiguracion({ data: c });
 }

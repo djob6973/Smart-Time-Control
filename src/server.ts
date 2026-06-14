@@ -2,12 +2,15 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { runMigration } from "./lib/migrate";
+import { handleAuthRoute } from "./lib/auth-handlers";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+let migrationRan = false;
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
@@ -40,6 +43,19 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      // Run DB migration once on first request
+      if (!migrationRan) {
+        migrationRan = true;
+        await runMigration().catch((err) => console.error("[migrate]", err));
+      }
+
+      // Intercept auth API routes before TanStack Start
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/auth/")) {
+        const authResponse = await handleAuthRoute(request);
+        if (authResponse) return authResponse;
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

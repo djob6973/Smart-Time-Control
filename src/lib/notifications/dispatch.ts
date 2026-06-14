@@ -1,30 +1,28 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/lib/supabase.server";
+import { query, execute } from "@/lib/db";
 
 // ── Internal helpers ───────────────────────────────────────────────────────
 
 async function insertNotifications(
-  rows: Array<{ user_id: string; type: string; title: string; body: string; data?: Record<string, unknown> }>,
+  rows: Array<{ user_id: string; type: string; title: string; body: string; data?: Record<string, any> }>,
 ) {
   if (rows.length === 0) return;
-  const { error } = await supabaseAdmin.from("notifications").insert(rows.map((r) => ({
-    user_id: r.user_id,
-    type:    r.type,
-    title:   r.title,
-    body:    r.body,
-    data:    r.data ?? {},
-  })));
-  if (error) console.error("[dispatch] insert error:", error.message);
+  for (const r of rows) {
+    await execute(
+      `INSERT INTO public.notifications (user_id, type, title, body, data)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [r.user_id, r.type, r.title, r.body, JSON.stringify(r.data ?? {})],
+    ).catch((err: unknown) => console.error("[dispatch] insert error:", err));
+  }
 }
 
 async function linkedUserId(employeeId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin
-    .from("user_profiles")
-    .select("id")
-    .eq("employee_id", employeeId)
-    .maybeSingle();
-  return data?.id ?? null;
+  const rows = await query<{ id: string }>(
+    `SELECT id FROM public.user_profiles WHERE employee_id = $1`,
+    [employeeId],
+  );
+  return rows[0]?.id ?? null;
 }
 
 // Obtiene user_ids de managers con los roles dados, filtrando por área.
@@ -34,32 +32,32 @@ async function managersForArea(
   eventAreaId: string | null | undefined,
   ...roleNames: string[]
 ): Promise<string[]> {
-  const { data: roleRows } = await supabaseAdmin
-    .from("roles")
-    .select("id")
-    .in("nombre", roleNames);
-  const roleIds = (roleRows ?? []).map((r: any) => r.id);
+  const roleRows = await query<{ id: string }>(
+    `SELECT id FROM public.roles WHERE nombre = ANY($1)`,
+    [roleNames],
+  );
+  const roleIds = roleRows.map((r) => r.id);
   if (roleIds.length === 0) return [];
 
-  const { data: userRoleRows } = await supabaseAdmin
-    .from("user_roles")
-    .select("user_id")
-    .in("role_id", roleIds);
-  const userIds = [...new Set((userRoleRows ?? []).map((r: any) => r.user_id as string))];
+  const userRoleRows = await query<{ user_id: string }>(
+    `SELECT DISTINCT user_id FROM public.user_roles WHERE role_id = ANY($1)`,
+    [roleIds],
+  );
+  const userIds = userRoleRows.map((r) => r.user_id);
   if (userIds.length === 0) return [];
 
-  const { data: profiles } = await supabaseAdmin
-    .from("user_profiles")
-    .select("id, area_id")
-    .in("id", userIds);
+  const profiles = await query<{ id: string; area_id: string | null }>(
+    `SELECT id, area_id FROM public.user_profiles WHERE id = ANY($1)`,
+    [userIds],
+  );
 
-  return (profiles ?? [])
-    .filter((p: any) =>
+  return profiles
+    .filter((p) =>
       p.area_id === null ||        // usuario con acceso a todas las áreas
       !eventAreaId ||              // evento sin área específica → notificar a todos
       p.area_id === eventAreaId    // área del usuario coincide con la del evento
     )
-    .map((p: any) => p.id as string);
+    .map((p) => p.id);
 }
 
 function fmtDate(iso: string) {

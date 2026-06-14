@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { resetPassword, useAuth } from "@/lib/auth";
 import { getPasswordChecks, PasswordStrength } from "./auth.login";
 
 export const Route = createFileRoute("/auth/reset-password")({
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/auth/reset-password")({
 });
 
 function ResetPasswordPage() {
-  const { updatePassword, signOut } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm]   = useState("");
@@ -20,6 +20,12 @@ function ResetPasswordPage() {
   const [error, setError]       = useState<string | null>(null);
   const [done, setDone]         = useState(false);
 
+  // Read reset token from URL search params
+  const token =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("token") ?? ""
+      : "";
+
   const score    = getPasswordChecks(password).filter((c) => c.ok).length;
   const mismatch = confirm.length > 0 && password !== confirm;
   const tooShort = password.length > 0 && password.length < 8;
@@ -28,11 +34,33 @@ function ResetPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
+    if (!token) {
+      setError("Enlace de recuperación inválido. Solicita uno nuevo.");
+      return;
+    }
     setSaving(true);
     setError(null);
-    const err = await updatePassword(password);
+    const err = await resetPassword(token, password);
     if (err) { setError(err); setSaving(false); }
-    else { setDone(true); setSaving(false); setTimeout(() => navigate({ to: "/" }), 2000); }
+    else { setDone(true); setSaving(false); setTimeout(() => navigate({ to: "/auth/login" }), 2000); }
+  }
+
+  if (!token && !done) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="inline-flex size-14 rounded-2xl bg-primary items-center justify-center text-2xl font-bold text-primary-foreground shadow-lg mb-4">W</div>
+          <h1 className="text-2xl font-bold tracking-tight mb-2">Enlace inválido</h1>
+          <p className="text-sm text-muted-foreground mb-6">Este enlace de recuperación no es válido o ha expirado.</p>
+          <button
+            onClick={() => navigate({ to: "/auth/login" })}
+            className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            Volver al inicio de sesión
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -53,7 +81,7 @@ function ResetPasswordPage() {
               <div className="size-14 rounded-full bg-emerald-100 flex items-center justify-center">
                 <CheckCircle2 className="size-7 text-emerald-600" />
               </div>
-              <p className="text-sm text-center text-muted-foreground">Redirigiendo al sistema…</p>
+              <p className="text-sm text-center text-muted-foreground">Redirigiendo al inicio de sesión…</p>
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent mt-2" />
             </div>
           ) : (
@@ -99,9 +127,6 @@ function ResetPasswordPage() {
                     <AlertCircle className="size-4 text-destructive shrink-0 mt-0.5" />
                     <p className="text-sm text-destructive leading-snug">{error}</p>
                   </div>
-                  <button type="button" onClick={signOut} className="w-full text-xs text-primary hover:underline text-center">
-                    Solicitar un nuevo enlace de recuperación
-                  </button>
                 </div>
               )}
               <button type="submit" disabled={!canSubmit}

@@ -1,25 +1,17 @@
 // Funciones de servidor para gestión de usuarios.
-// REQUIERE en .env: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY
+// Auth: manejo directo en PostgreSQL (password_hash, sessions)
+// Datos: Dokku PostgreSQL via pg pool
+//
+// REQUIERE en .env:
+//   DATABASE_URL → para todos los datos y autenticación
 
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
+import { query, queryOne, execute } from "@/lib/db";
+import { hashPassword } from "@/lib/password";
 
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
-function getAdminClient() {
-  const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error(
-      "Faltan variables de entorno: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY",
-    );
-  }
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
-
-// ── Tipos ─────────────────────────────────────────────────────────
+// ── Tipos ──────────────────────────────────────────────────────────
 
 export interface AppUser {
   id: string;
@@ -55,43 +47,44 @@ export interface UpdateUserInput {
 // ── Listar todos los usuarios ──────────────────────────────────────
 
 export const adminListUsers = createServerFn().handler(async () => {
-  const admin = getAdminClient();
+  const [profileRows, sessionRows] = await Promise.all([
+    query<{
+      id: string;
+      nombre: string;
+      email: string;
+      activo: boolean;
+      area_id: string | null;
+      role_id: string | null;
+      employee_id: string | null;
+      created_at: string;
+      area_name: string | null;
+    }>(
+      `SELECT up.id, up.nombre, up.email, up.activo, up.area_id, up.role_id,
+              up.employee_id, up.created_at, a.name as area_name
+       FROM public.user_profiles up
+       LEFT JOIN public.areas a ON a.id = up.area_id
+       ORDER BY up.created_at ASC`,
+    ),
+    query<{ user_id: string; last_sign_in: string }>(
+      `SELECT DISTINCT ON (user_id) user_id, created_at as last_sign_in
+       FROM public.sessions
+       ORDER BY user_id, created_at DESC`,
+    ),
+  ]);
 
-  // Intentar con employee_id; si la columna aún no existe (migración pendiente),
-  // reintentar sin ella para no bloquear la carga de usuarios.
-  let profilesRes: { data: any[] | null; error: any } = await admin
-    .from("user_profiles")
-    .select(`id, nombre, email, activo, area_id, role_id, employee_id, created_at, areas(name)`)
-    .order("created_at", { ascending: true });
-
-  const missingColumn =
-    profilesRes.error?.message?.includes("employee_id") ||
-    profilesRes.error?.code === "42703";
-
-  if (missingColumn) {
-    profilesRes = await admin
-      .from("user_profiles")
-      .select(`id, nombre, email, activo, area_id, role_id, created_at, areas(name)`)
-      .order("created_at", { ascending: true });
-  }
-
-  if (profilesRes.error) throw new Error(profilesRes.error.message);
-
-  // Obtener last_sign_in_at desde auth.users via Admin API
-  const { data: authData } = await admin.auth.admin.listUsers({ perPage: 1000 });
   const lastSignInMap: Record<string, string | null> = {};
-  for (const u of authData?.users ?? []) {
-    lastSignInMap[u.id] = u.last_sign_in_at ?? null;
+  for (const s of sessionRows) {
+    lastSignInMap[s.user_id] = s.last_sign_in;
   }
 
-  return (profilesRes.data ?? []).map(
-    (r: any): AppUser => ({
+  return profileRows.map(
+    (r): AppUser => ({
       id: r.id,
       email: r.email,
       fullName: r.nombre,
       roleId: r.role_id ?? null,
       areaId: r.area_id,
-      areaName: r.areas?.name ?? null,
+      areaName: r.area_name,
       isActive: r.activo,
       createdAt: r.created_at,
       employeeId: r.employee_id ?? null,
@@ -102,95 +95,52 @@ export const adminListUsers = createServerFn().handler(async () => {
 
 // ── Crear usuario ─────────────────────────────────────────────────
 
+import { randomUUID } from "node:crypto";
+
 export const adminCreateUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as CreateUserInput)
   .handler(async ({ data }: { data: CreateUserInput }) => {
-    const admin = getAdminClient();
-
-    const email = typeof data?.email === "string" ? data.email.trim() : undefined;
+    const email = typeof data?.email === "string" ? data.email.trim().toLowerCase() : undefined;
     const password = typeof data?.password === "string" ? data.password : undefined;
 
     if (!email) {
-      throw new Error(
-        `Email requerido. Handler recibió: ${JSON.stringify(data)}`
-      );
+      throw new Error(`Email requerido. Handler recibió: ${JSON.stringify(data)}`);
     }
 
-    // 1. Crear en Supabase Auth
-    const { data: authData, error: authError } =
-      await admin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { nombre: data.fullName },
-      });
-    if (authError || !authData.user) {
-      throw new Error(authError?.message ?? "Error al crear el usuario");
-    }
+    const existing = await queryOne(`SELECT id FROM public.user_profiles WHERE email = $1`, [email]);
+    if (existing) throw new Error(`El email ${email} ya está registrado`);
 
-    const userId = authData.user.id;
+    const userId = randomUUID();
+    const passwordHash = password ? hashPassword(password) : null;
 
-    // 2. Crear perfil en user_profiles (usar upsert por si el trigger ya lo creó)
-    const profilePayload: Record<string, any> = {
-      id: userId,
-      email: email,
-      nombre: data.fullName,
-      full_name: data.fullName,
-      area_id: data.areaId ?? null,
-      activo: true,
-      is_active: true,
-      role_id: data.roleId,
-    };
-    if (data.employeeId !== undefined) profilePayload.employee_id = data.employeeId ?? null;
+    // Buscar UUID del rol por nombre
+    const roleRows = await query<{ id: string }>(
+      `SELECT id FROM public.roles WHERE nombre = $1`,
+      [data.roleId],
+    );
+    if (!roleRows[0]) throw new Error(`Rol no encontrado: ${data.roleId}`);
+    const roleUUID = roleRows[0].id;
 
-    let { error: profileError } = await admin
-      .from("user_profiles")
-      .upsert(profilePayload, { onConflict: "id", ignoreDuplicates: false });
+    // Crear perfil
+    await execute(
+      `INSERT INTO public.user_profiles
+         (id, email, nombre, full_name, activo, is_active, password_hash, role_id, area_id, employee_id)
+       VALUES ($1, $2, $3, $3, true, true, $4, $5, $6, $7)`,
+      [userId, email, data.fullName, passwordHash, roleUUID, data.areaId ?? null, data.employeeId ?? null],
+    );
 
-    // Si falla por columna employee_id inexistente, reintentar sin ella
-    if (profileError?.message?.includes("employee_id") || profileError?.code === "42703") {
-      delete profilePayload.employee_id;
-      ({ error: profileError } = await admin
-        .from("user_profiles")
-        .upsert(profilePayload, { onConflict: "id", ignoreDuplicates: false }));
-    }
+    // Asignar rol
+    await execute(
+      `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
+       VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING`,
+      [userId, roleUUID, DEFAULT_ORG_ID],
+    );
 
-    if (profileError) {
-      await admin.auth.admin.deleteUser(userId);
-      throw new Error(profileError.message);
-    }
-
-    // 3. Obtener UUID del rol basado en el nombre
-    const { data: roleData, error: roleLookupError } = await admin
-      .from("roles")
-      .select("id")
-      .eq("nombre", data.roleId)
-      .single();
-
-    if (roleLookupError || !roleData) {
-      await admin.auth.admin.deleteUser(userId);
-      throw new Error(`Rol no encontrado: ${data.roleId}`);
-    }
-
-    // 4. Asignar rol en user_roles
-    const { error: roleError } = await admin
-      .from("user_roles")
-      .insert({
-        user_id: userId,
-        role_id: roleData.id,
-        organization_id: DEFAULT_ORG_ID,
-        assigned_at: new Date().toISOString(),
-      });
-
-    if (roleError) {
-      await admin.auth.admin.deleteUser(userId);
-      throw new Error(roleError.message);
-    }
-
-    // 5. Vincular usuario a la organización en user_organizations
-    await admin.from("user_organizations").upsert(
-      { user_id: userId, organization_id: DEFAULT_ORG_ID, activo: true },
-      { onConflict: "user_id,organization_id" },
+    // Vincular a la organización por defecto
+    await execute(
+      `INSERT INTO public.user_organizations (user_id, organization_id, activo)
+       VALUES ($1, $2, true) ON CONFLICT (user_id, organization_id) DO UPDATE SET activo = true`,
+      [userId, DEFAULT_ORG_ID],
     );
 
     return { id: userId, email };
@@ -201,69 +151,46 @@ export const adminCreateUser = createServerFn({ method: "POST" })
 export const adminUpdateUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as UpdateUserInput)
   .handler(async ({ data }: { data: UpdateUserInput }) => {
-    const admin = getAdminClient();
+    const fields: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
 
-    const patch: Record<string, any> = {};
-    if (data.fullName   !== undefined) { patch.nombre = data.fullName; patch.full_name = data.fullName; }
-    if (data.areaId     !== undefined) patch.area_id     = data.areaId;
-    if (data.isActive   !== undefined) { patch.activo = data.isActive; patch.is_active = data.isActive; }
-    if (data.roleId     !== undefined) patch.role_id     = data.roleId;
-    if (data.employeeId !== undefined) patch.employee_id = data.employeeId;
+    const add = (col: string, val: unknown) => {
+      fields.push(`${col} = $${idx++}`);
+      params.push(val);
+    };
 
-    if (Object.keys(patch).length > 0) {
-      let { error } = await admin
-        .from("user_profiles")
-        .update(patch)
-        .eq("id", data.id);
+    if (data.fullName   !== undefined) { add("nombre", data.fullName); add("full_name", data.fullName); }
+    if (data.areaId     !== undefined) add("area_id", data.areaId);
+    if (data.isActive   !== undefined) { add("activo", data.isActive); add("is_active", data.isActive); }
+    if (data.roleId     !== undefined) add("role_id", data.roleId);
+    if (data.employeeId !== undefined) add("employee_id", data.employeeId);
 
-      // Si falla por columna employee_id inexistente, reintentar sin ella
-      if (error?.message?.includes("employee_id") || error?.code === "42703") {
-        const safePatch = { ...patch };
-        delete safePatch.employee_id;
-        if (Object.keys(safePatch).length > 0) {
-          ({ error } = await admin
-            .from("user_profiles")
-            .update(safePatch)
-            .eq("id", data.id));
-        } else {
-          error = null;
-        }
-      }
-
-      if (error) throw new Error(error.message);
+    if (fields.length > 0) {
+      fields.push(`updated_at = NOW()`);
+      params.push(data.id);
+      await execute(
+        `UPDATE public.user_profiles SET ${fields.join(", ")} WHERE id = $${idx}`,
+        params,
+      );
     }
 
-    // Handle role update separately in user_roles table
+    // Actualizar asignación de rol en user_roles
     if (data.roleId !== undefined) {
-      // First, delete existing role assignment
-      await admin
-        .from("user_roles")
-        .delete()
-        .eq("user_id", data.id);
+      await execute(`DELETE FROM public.user_roles WHERE user_id = $1`, [data.id]);
 
-      // Then insert new role assignment
       if (data.roleId) {
-        // Obtener UUID del rol basado en el nombre
-        const { data: roleData, error: roleLookupError } = await admin
-          .from("roles")
-          .select("id")
-          .eq("nombre", data.roleId)
-          .single();
+        const roleRows = await query<{ id: string }>(
+          `SELECT id FROM public.roles WHERE nombre = $1`,
+          [data.roleId],
+        );
+        if (!roleRows[0]) throw new Error(`Rol no encontrado: ${data.roleId}`);
 
-        if (roleLookupError || !roleData) {
-          throw new Error(`Rol no encontrado: ${data.roleId}`);
-        }
-
-        const { error: roleError } = await admin
-          .from("user_roles")
-          .insert({
-            user_id: data.id,
-            role_id: roleData.id,
-            organization_id: DEFAULT_ORG_ID,
-            assigned_at: new Date().toISOString(),
-          });
-
-        if (roleError) throw new Error(roleError.message);
+        await execute(
+          `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
+           VALUES ($1, $2, $3, NOW())`,
+          [data.id, roleRows[0].id, DEFAULT_ORG_ID],
+        );
       }
     }
 
@@ -276,61 +203,52 @@ export interface DbRole {
   id: string;
   nombre: string;
   descripcion: string | null;
-  permisos: Record<string, any>;
+  permisos: Record<string, unknown>;
 }
 
 export interface UpdateRoleInput {
   id: string;
-  permisos: Record<string, any>;
+  permisos: Record<string, unknown>;
 }
 
 export interface CreateRoleInput {
   nombre: string;
   descripcion: string;
-  permisos: Record<string, any>;
+  permisos: Record<string, unknown>;
 }
 
-export const adminLoadRoles = createServerFn().handler(async () => {
-  const admin = getAdminClient();
-  const { data, error } = await admin
-    .from("roles")
-    .select("id, nombre, descripcion, permisos")
-    .order("created_at", { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as DbRole[];
-});
+export const adminLoadRoles = createServerFn()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  .handler(async (): Promise<any> => {
+    return query(
+      `SELECT id, nombre, descripcion, permisos FROM public.roles ORDER BY created_at ASC`,
+    );
+  });
 
 export const adminUpdateRole = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as UpdateRoleInput)
   .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const { error } = await admin
-      .from("roles")
-      .update({ permisos: data.permisos })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    await execute(
+      `UPDATE public.roles SET permisos = $1 WHERE id = $2`,
+      [JSON.stringify(data.permisos), data.id],
+    );
     return { success: true };
   });
 
 export const adminCreateRole = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as CreateRoleInput)
   .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const { data: row, error } = await admin
-      .from("roles")
-      .insert({ nombre: data.nombre, descripcion: data.descripcion, permisos: data.permisos })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    return { id: row.id };
+    const rows = await query<{ id: string }>(
+      `INSERT INTO public.roles (nombre, descripcion, permisos) VALUES ($1, $2, $3) RETURNING id`,
+      [data.nombre, data.descripcion, JSON.stringify(data.permisos)],
+    );
+    return { id: rows[0].id };
   });
 
 export const adminDeleteRole = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const { error } = await admin.from("roles").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    await execute(`DELETE FROM public.roles WHERE id = $1`, [data.id]);
     return { success: true };
   });
 
@@ -356,127 +274,116 @@ export interface CreateOrgInput {
 }
 
 function toSlug(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-    .replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").slice(0, 40);
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .slice(0, 40);
 }
 
 export const adminListOrgMembers = createServerFn()
   .inputValidator((data: unknown) => data as { orgId: string })
-  .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const { data: rows, error } = await admin
-      .from("user_organizations")
-      .select("user_id, creado_en")
-      .eq("organization_id", data.orgId)
-      .eq("activo", true);
-    if (error) throw new Error(error.message);
-    if (!rows?.length) return [] as OrgMember[];
-
-    const ids = rows.map((r: any) => r.user_id);
-    const { data: profiles, error: pe } = await admin
-      .from("user_profiles")
-      .select("id, email, nombre")
-      .in("id", ids);
-    if (pe) throw new Error(pe.message);
-
-    const profileMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p]));
-    return rows.map((r: any): OrgMember => ({
-      userId: r.user_id,
-      email: profileMap[r.user_id]?.email ?? "",
-      fullName: profileMap[r.user_id]?.nombre ?? "",
-      joinedAt: r.creado_en,
-    }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  .handler(async ({ data }): Promise<any> => {
+    return query(
+      `SELECT uo.user_id as "userId", up.email, up.nombre as "fullName", uo.creado_en as "joinedAt"
+       FROM public.user_organizations uo
+       JOIN public.user_profiles up ON up.id = uo.user_id
+       WHERE uo.organization_id = $1 AND uo.activo = true`,
+      [data.orgId],
+    );
   });
 
 export const adminUpdateOrg = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as UpdateOrgInput)
   .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const { error } = await admin
-      .from("organizations")
-      .update({ nombre: data.nombre, plan: data.plan })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    await execute(
+      `UPDATE public.organizations SET nombre = $1, plan = $2, actualizado_en = NOW() WHERE id = $3`,
+      [data.nombre, data.plan, data.id],
+    );
     return { success: true };
   });
 
 export const adminCreateOrg = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as CreateOrgInput)
   .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const slug = toSlug(data.nombre) + "-" + Date.now().toString(36);
+    const slug = toSlug(data.nombre) + "-" + Math.random().toString(36).slice(2, 8);
 
-    const { data: org, error } = await admin
-      .from("organizations")
-      .insert({ nombre: data.nombre, slug, plan: data.plan, activo: true })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
+    const orgRows = await query<{ id: string }>(
+      `INSERT INTO public.organizations (nombre, slug, plan, activo)
+       VALUES ($1, $2, $3, true) RETURNING id`,
+      [data.nombre, slug, data.plan],
+    );
+    const orgId = orgRows[0].id;
 
-    await admin.from("user_organizations").insert({
-      user_id: data.userId,
-      organization_id: org.id,
-      activo: true,
-    });
+    await execute(
+      `INSERT INTO public.user_organizations (user_id, organization_id, activo)
+       VALUES ($1, $2, true)`,
+      [data.userId, orgId],
+    );
 
-    const { data: adminRole } = await admin
-      .from("roles").select("id").eq("nombre", "admin").single();
-    if (adminRole) {
-      await admin.from("user_roles").insert({
-        user_id: data.userId,
-        role_id: adminRole.id,
-        organization_id: org.id,
-        assigned_at: new Date().toISOString(),
-      });
+    const adminRoleRows = await query<{ id: string }>(
+      `SELECT id FROM public.roles WHERE nombre = 'admin'`,
+    );
+    if (adminRoleRows[0]) {
+      await execute(
+        `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
+         VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING`,
+        [data.userId, adminRoleRows[0].id, orgId],
+      );
     }
 
-    return { id: org.id, slug };
+    return { id: orgId, slug };
   });
 
 export const adminAddOrgMember = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { orgId: string; email: string })
   .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const { data: profile, error: pe } = await admin
-      .from("user_profiles")
-      .select("id")
-      .eq("email", data.email.trim().toLowerCase())
-      .maybeSingle();
-    if (pe) throw new Error(pe.message);
+    const profile = await queryOne<{ id: string }>(
+      `SELECT id FROM public.user_profiles WHERE email = $1`,
+      [data.email.trim().toLowerCase()],
+    );
     if (!profile) throw new Error("Usuario no encontrado. Debe registrarse primero.");
 
-    const { error } = await admin
-      .from("user_organizations")
-      .upsert(
-        { user_id: profile.id, organization_id: data.orgId, activo: true },
-        { onConflict: "user_id,organization_id" },
-      );
-    if (error) throw new Error(error.message);
+    await execute(
+      `INSERT INTO public.user_organizations (user_id, organization_id, activo)
+       VALUES ($1, $2, true)
+       ON CONFLICT (user_id, organization_id) DO UPDATE SET activo = true`,
+      [profile.id, data.orgId],
+    );
     return { success: true };
   });
 
 export const adminRemoveOrgMember = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { orgId: string; userId: string })
   .handler(async ({ data }) => {
-    const admin = getAdminClient();
-    const { error } = await admin
-      .from("user_organizations")
-      .update({ activo: false })
-      .eq("user_id", data.userId)
-      .eq("organization_id", data.orgId);
-    if (error) throw new Error(error.message);
+    await execute(
+      `UPDATE public.user_organizations SET activo = false
+       WHERE user_id = $1 AND organization_id = $2`,
+      [data.userId, data.orgId],
+    );
     return { success: true };
   });
 
-// ── Restablecer contraseña ─────────────────────────────────────────
+// ── Restablecer contraseña (actualiza password_hash directamente) ──
 
 export const adminResetPassword = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { id: string; newPassword: string })
   .handler(async ({ data }: { data: { id: string; newPassword: string } }) => {
-    const admin = getAdminClient();
-    const { error } = await admin.auth.admin.updateUserById(data.id, {
-      password: data.newPassword,
-    });
-    if (error) throw new Error(error.message);
+    if (!data.newPassword || data.newPassword.length < 8) {
+      throw new Error("La contraseña debe tener al menos 8 caracteres");
+    }
+    const hash = hashPassword(data.newPassword);
+    await execute(
+      `UPDATE public.user_profiles
+       SET password_hash = $1, reset_token = NULL, reset_token_expires_at = NULL
+       WHERE id = $2`,
+      [hash, data.id],
+    );
+    // Invalidate all existing sessions for this user
+    await execute(`DELETE FROM public.sessions WHERE user_id = $1`, [data.id]);
     return { success: true };
   });
