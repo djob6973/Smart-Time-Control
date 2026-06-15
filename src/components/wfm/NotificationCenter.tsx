@@ -18,7 +18,7 @@ import {
 import { useNotifications } from "@/hooks/use-notifications";
 import { useAuth } from "@/lib/auth";
 import { useWFM } from "@/lib/wfm/store";
-import { runNotificationDiagnostic, type DiagStep } from "@/lib/notifications/diagnose";
+import { runNotificationDiagnostic, type DiagStep } from "@/lib/notifications/diagnose.server";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale/es";
 import { cn } from "@/lib/utils";

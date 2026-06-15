@@ -4,7 +4,7 @@ import { useWFM } from "@/lib/wfm/store";
 import { useJornada } from "@/lib/jornada/store";
 import { shiftBreakdown, sumBreakdowns, fmtHours } from "@/lib/wfm/calc";
 import { startOfWeek, weekDays, toISO } from "@/lib/wfm/date";
-import { fetchApprovals } from "@/lib/wfm/db";
+import { fetchApprovals } from "@/lib/wfm/db.server";
 import {
   Users, TrendingUp, CalendarOff, AlertTriangle,
   Clock, Timer, UserCheck, ChevronLeft, ChevronRight,

@@ -10,7 +10,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
-import { dispatchJornadaEvent } from "@/lib/notifications/dispatch";
+import { dispatchJornadaEvent } from "@/lib/notifications/dispatch.server";
 import type {
   TipoMovimiento,
   JornadaCupo,
