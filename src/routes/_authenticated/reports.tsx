@@ -10,6 +10,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import type { Shift, Area } from "@/lib/wfm/types";
 import { useAuth } from "@/lib/auth";
+import { useJornada } from "@/lib/jornada/store";
 import { fetchApprovals, upsertApproval } from "@/lib/wfm/db";
 import { dispatchApprovalEvent } from "@/lib/notifications/dispatch";
 import { toast } from "sonner";
@@ -216,6 +217,7 @@ function DownloadMenu({
 function ReportsPage() {
   const { shifts, employees, areas, absences } = useWFM();
   const { hasLimit, profile } = useAuth();
+  const { registros: jornadaRegistros, configuracion: jornadaConfig, loadRango } = useJornada();
   const canExport = hasLimit("canExportReports");
   const ownArea   = profile?.areaId ?? null;
 
@@ -233,6 +235,11 @@ function ReportsPage() {
     () => computeRange(period, selectedMonth || defaultMonth),
     [period, selectedMonth],
   );
+
+  // Cargar registros de jornada del período para cruzar con turnos
+  useEffect(() => {
+    loadRango(from, to);
+  }, [from, to]);
 
   /* Effective area filter (RBAC takes precedence) */
   const filterAreaId: string | null =
@@ -272,6 +279,26 @@ function ReportsPage() {
       workerCount:   workers.size,
     };
   }, [shifts, employees, areas, from, to, filterAreaId]);
+
+  /* ---------- Puntualidad media ---------- */
+  const { puntualidadPct, turnosAnalizados } = useMemo(() => {
+    const toleranciaMin = jornadaConfig.find(c => !c.areaId)?.toleranciaLlegadaMin ?? jornadaConfig[0]?.toleranciaLlegadaMin ?? 15;
+    let analizados = 0, aTiempo = 0;
+    shifts.filter(s => s.date >= from && s.date <= to && s.code !== "OFF" && s.code !== "ABS").forEach(s => {
+      const emp = employees.find(e => e.id === s.employeeId);
+      if (!emp || (filterAreaId && emp.areaId !== filterAreaId)) return;
+      // Buscar registro de entrada de ese empleado en esa fecha
+      const entrada = jornadaRegistros.find(r => r.employeeId === s.employeeId && r.fecha === s.date && r.tipoMovimiento === "entrada");
+      if (!entrada) return; // sin registro de entrada, no cuenta en el cálculo
+      analizados++;
+      const limiteMs = new Date(`${s.date}T${String(s.start).padStart(2, "0")}:00:00`).getTime() + toleranciaMin * 60_000;
+      if (new Date(entrada.horaExacta).getTime() <= limiteMs) aTiempo++;
+    });
+    return {
+      puntualidadPct: analizados > 0 ? Math.round((aTiempo / analizados) * 100) : null,
+      turnosAnalizados: analizados,
+    };
+  }, [shifts, employees, jornadaRegistros, jornadaConfig, from, to, filterAreaId]);
 
   /* ---------- Chart data (per area) ---------- */
   const visibleAreas = ownArea ? areas.filter(a => a.id === ownArea) : areas;
@@ -522,9 +549,9 @@ function ReportsPage() {
           />
           <KpiCard
             label="Puntualidad media"
-            value="—"
-            unit=""
-            footer="Próximamente disponible"
+            value={puntualidadPct !== null ? String(puntualidadPct) : "—"}
+            unit={puntualidadPct !== null ? "%" : ""}
+            footer={turnosAnalizados > 0 ? `${turnosAnalizados} turnos con registro de entrada` : "Sin registros de entrada en el período"}
             Icon={CheckCircle2}
           />
         </div>
