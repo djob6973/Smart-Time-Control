@@ -11,7 +11,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { fetchShiftHistory } from "@/lib/wfm/db";
-import { dispatchShiftEvent } from "@/lib/notifications/dispatch.server";
+import { dispatchShiftEvent } from "@/lib/notifications/dispatch";
 import type { ShiftHistory } from "@/lib/wfm/types";
 import { buildEquityMap } from "@/lib/wfm/coverage";
 import { isSundayOrHoliday } from "@/lib/wfm/calc";

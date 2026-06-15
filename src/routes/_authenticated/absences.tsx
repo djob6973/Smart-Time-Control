@@ -4,7 +4,7 @@ import { useWFM } from "@/lib/wfm/store";
 import { parseAbsNote } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useState, useMemo, type ElementType } from "react";
-import { dispatchAbsenceEvent } from "@/lib/notifications/dispatch.server";
+import { dispatchAbsenceEvent } from "@/lib/notifications/dispatch";
 import { Plus, CalendarX2, Clock, CheckCircle2, Calendar, PencilLine, Trash2 } from "lucide-react";
 import type { AbsenceStatus, AbsenceType, Absence } from "@/lib/wfm/types";
 

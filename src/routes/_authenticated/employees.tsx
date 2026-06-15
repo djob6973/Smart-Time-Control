@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, Pencil, Trash2, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { adminListUsers, adminUpdateUser, type AppUser } from "@/lib/auth/admin.server";
-import { dispatchEmployeeEvent } from "@/lib/notifications/dispatch.server";
+import { dispatchEmployeeEvent } from "@/lib/notifications/dispatch";
 
 export const Route = createFileRoute("/_authenticated/employees")({
   head: () => ({ meta: [{ title: "Trabajadores · STC" }] }),

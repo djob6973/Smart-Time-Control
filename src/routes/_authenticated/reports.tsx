@@ -11,7 +11,7 @@ import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import type { Shift, Area } from "@/lib/wfm/types";
 import { useAuth } from "@/lib/auth";
 import { fetchApprovals, upsertApproval } from "@/lib/wfm/db";
-import { dispatchApprovalEvent } from "@/lib/notifications/dispatch.server";
+import { dispatchApprovalEvent } from "@/lib/notifications/dispatch";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
