@@ -243,23 +243,6 @@ async function handleChangePassword(req: Request): Promise<Response> {
   return json({ ok: true });
 }
 
-// GET /api/auth/debug  — diagnóstico temporal
-async function handleDebug(_req: Request): Promise<Response> {
-  const tables = await query<{ table_name: string }>(
-    `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`,
-  ).catch((e) => ({ error: e.message }));
-
-  const roles = await query<{ nombre: string }>(
-    `SELECT nombre FROM public.roles ORDER BY nombre`,
-  ).catch((e) => ({ error: e.message }));
-
-  const userCount = await queryOne<{ count: string }>(
-    `SELECT COUNT(*) as count FROM public.user_profiles`,
-  ).catch((e) => ({ error: e.message }));
-
-  return json({ tables, roles, userCount });
-}
-
 export async function handleAuthRoute(req: Request): Promise<Response | null> {
   const url = new URL(req.url);
   const path = url.pathname;
@@ -273,7 +256,6 @@ export async function handleAuthRoute(req: Request): Promise<Response | null> {
   else if (path === "/api/auth/reset-request"  && req.method === "POST") handler = handleResetRequest;
   else if (path === "/api/auth/reset-password" && req.method === "POST") handler = handleResetPassword;
   else if (path === "/api/auth/change-password" && req.method === "POST") handler = handleChangePassword;
-  else if (path === "/api/auth/debug"      && req.method === "GET")  handler = handleDebug;
 
   if (!handler) return null;
 
