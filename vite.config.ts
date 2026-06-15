@@ -42,7 +42,11 @@ const pgBrowserStub: Plugin = {
           query() { return Promise.resolve({ rows: [], rowCount: 0 }); }
           end() { return Promise.resolve(); }
         }
-        export default { Pool, Client };
+        export const types = {
+          setTypeParser() {},
+          getTypeParser() { return function() { return null; }; },
+        };
+        export default { Pool, Client, types };
       `;
     }
   },
