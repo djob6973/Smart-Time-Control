@@ -10,7 +10,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type ElementType } from "react";
 import type { Shift, Area } from "@/lib/wfm/types";
 import { useAuth } from "@/lib/auth";
-import { fetchApprovals, upsertApproval } from "@/lib/wfm/db.server";
+import { fetchApprovals, upsertApproval } from "@/lib/wfm/db";
 import { dispatchApprovalEvent } from "@/lib/notifications/dispatch.server";
 import { toast } from "sonner";
 import {
