@@ -67,7 +67,15 @@
       "Bash(git push *)",
       "Bash(gh auth *)",
       "Bash(xargs cat)",
-      "Bash(grep -r \"toast\\\\\\\\.success\\\\|toast\\\\\\\\.error\" \"c:\\\\Users\\\\HP\\\\Documents\\\\David Ortega\\\\Mis Cursos\\\\IA\\\\smart-shift-pro-main\\\\src\\\\routes\" --include=\"*.tsx\")"
+      "Bash(grep -r \"toast\\\\\\\\.success\\\\|toast\\\\\\\\.error\" \"c:\\\\Users\\\\HP\\\\Documents\\\\David Ortega\\\\Mis Cursos\\\\IA\\\\smart-shift-pro-main\\\\src\\\\routes\" --include=\"*.tsx\")",
+      "Bash(git commit *)",
+      "Bash(node --stack-size=65536 node_modules/.bin/vite build)",
+      "Bash(ssh dokku@apps.dataico.world \"apps:unlock smarttimecontrol\")",
+      "Bash(ssh -p 2222 dokku@apps.dataico.world \"apps:unlock smarttimecontrol\")",
+      "Bash(Get-Content \"C:\\\\Users\\\\HP\\\\.claude\\\\projects\\\\c--Users-HP-Documents-David-Ortega-Mis-Cursos-IA-smart-shift-pro-main\\\\9ba6eff9-7c20-4794-bdb0-1da98344131a\\\\tool-results\\\\bkz3tga03.txt\")",
+      "Bash(Select-Object -Last 30)",
+      "PowerShell(git -C \"c:/Users/HP/Documents/David Ortega/Mis Cursos/IA/smart-shift-pro-main\" log --oneline -3)",
+      "Bash(ping -n 45 127.0.0.1)"
     ],
     "additionalDirectories": [
       "c:\\Users\\HP\\Documents\\David Ortega\\Mis Cursos\\IA\\smart-shift-pro-main",
