@@ -1036,7 +1036,7 @@ function TabHistorial() {
         />
         <select value={empFilter}  onChange={(e) => setEmpFilter(e.target.value)}  className="text-sm rounded-pill border border-border bg-card px-3 py-2">
           <option value="all">Todos los empleados</option>
-          {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+          {(ownArea ? employees.filter((e) => e.areaId === ownArea) : employees).map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
         </select>
         {ownArea ? (
           <span className="text-sm rounded-pill border border-border bg-card px-3 py-2 text-muted-foreground">
@@ -1560,10 +1560,18 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
 function TabConfiguracion() {
   const { areas } = useWFM();
+  const { profile } = useAuth();
   const { configuracion, upsertConfiguracion, cupos, upsertCupo, removeCupo } = useJornada();
+  const ownArea = profile?.areaId ?? null;
   const fallbackId = useMemo(() => crypto.randomUUID(), []);
-  const globalConfig = configuracion.find((c) => !c.areaId) ?? {
+
+  // Config activa: si el usuario tiene área, preferir config de esa área; si no, la global
+  const activeConfig = (ownArea
+    ? (configuracion.find((c) => c.areaId === ownArea) ?? configuracion.find((c) => !c.areaId))
+    : configuracion.find((c) => !c.areaId)
+  ) ?? {
     id: fallbackId,
+    areaId: ownArea ?? undefined,
     toleranciaLlegadaMin:      15,
     tiempoMaxBreakMin:         15,
     tiempoMaxAlmuerzoMin:      60,
@@ -1573,15 +1581,20 @@ function TabConfiguracion() {
     requiereAprobacionEdicion: true,
   };
 
-  const [cfg,       setCfg]       = useState<JornadaConfiguracion>(globalConfig as JornadaConfiguracion);
+  const [cfg,       setCfg]       = useState<JornadaConfiguracion>({ ...(activeConfig as JornadaConfiguracion), areaId: ownArea ?? (activeConfig as any).areaId });
   const [saving,    setSaving]    = useState(false);
   const [savingMsg, setSavingMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [cupoEditing, setCupoEditing] = useState<string | null>(null);
 
   useEffect(() => {
-    const storeConfig = configuracion.find((c) => !c.areaId);
-    if (storeConfig) setCfg(storeConfig);
-  }, [configuracion]);
+    const storeConfig = ownArea
+      ? (configuracion.find((c) => c.areaId === ownArea) ?? configuracion.find((c) => !c.areaId))
+      : configuracion.find((c) => !c.areaId);
+    if (storeConfig) setCfg({ ...storeConfig, areaId: ownArea ?? storeConfig.areaId });
+  }, [configuracion, ownArea]);
+
+  // Cupos visibles según área del usuario
+  const visibleCupos = ownArea ? cupos.filter((c) => !c.areaId || c.areaId === ownArea) : cupos;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -1589,7 +1602,9 @@ function TabConfiguracion() {
       <div className="rounded-card border border-border bg-card p-5 shadow-card">
         <div className="mb-5">
           <h3 className="font-semibold">Configuración general</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Valores por defecto para todo el sistema</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {ownArea ? `Valores para ${areas.find((a) => a.id === ownArea)?.name ?? "mi área"}` : "Valores por defecto para todo el sistema"}
+          </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <CfgField label="Tolerancia de llegada (min)">
@@ -1667,7 +1682,7 @@ function TabConfiguracion() {
               </tr>
             </thead>
             <tbody>
-              {cupos.map((c) => (
+              {visibleCupos.map((c) => (
                 <tr key={c.id} className="border-t border-border hover:bg-secondary/30">
                   <td className="px-4 py-3 capitalize font-medium">{c.tipo}</td>
                   <td className="px-4 py-3">{areas.find((a) => a.id === c.areaId)?.name ?? "Global"}</td>
@@ -1682,7 +1697,7 @@ function TabConfiguracion() {
                   </td>
                 </tr>
               ))}
-              {cupos.length === 0 && (
+              {visibleCupos.length === 0 && (
                 <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Sin cupos configurados</td></tr>
               )}
             </tbody>
@@ -1692,8 +1707,9 @@ function TabConfiguracion() {
 
       {cupoEditing && (
         <CupoModal
-          cupo={cupoEditing === "new" ? null : cupos.find((c) => c.id === cupoEditing)!}
+          cupo={cupoEditing === "new" ? null : visibleCupos.find((c) => c.id === cupoEditing)!}
           areas={areas}
+          ownArea={ownArea}
           onClose={() => setCupoEditing(null)}
           onSave={async (c: JornadaCupo) => { await upsertCupo(c); setCupoEditing(null); }}
         />
@@ -1711,9 +1727,9 @@ function CfgField({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function CupoModal({ cupo, areas, onClose, onSave }: any) {
+function CupoModal({ cupo, areas, ownArea, onClose, onSave }: any) {
   const newId = useMemo(() => crypto.randomUUID(), []);
-  const [form, setForm] = useState<JornadaCupo>(cupo ?? { id: newId, tipo: "break", maxSimultaneos: 3, activo: true });
+  const [form, setForm] = useState<JornadaCupo>(cupo ?? { id: newId, tipo: "break", maxSimultaneos: 3, activo: true, areaId: ownArea ?? undefined });
   const [busy,  setBusy]  = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1728,10 +1744,14 @@ function CupoModal({ cupo, areas, onClose, onSave }: any) {
           </select>
         </ModalField>
         <ModalField label="Área (vacío = global)">
-          <select className="input" value={form.areaId ?? ""} onChange={(e) => setForm({ ...form, areaId: e.target.value || undefined })}>
-            <option value="">Global</option>
-            {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          {ownArea ? (
+            <div className="input text-muted-foreground">{areas.find((a: any) => a.id === ownArea)?.name ?? "Mi área"}</div>
+          ) : (
+            <select className="input" value={form.areaId ?? ""} onChange={(e) => setForm({ ...form, areaId: e.target.value || undefined })}>
+              <option value="">Global</option>
+              {areas.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          )}
         </ModalField>
         <ModalField label="Máximo simultáneos">
           <input type="number" min={1} className="input" value={form.maxSimultaneos} onChange={(e) => setForm({ ...form, maxSimultaneos: Number(e.target.value) })} />
