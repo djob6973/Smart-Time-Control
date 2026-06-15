@@ -145,16 +145,16 @@ export async function runMigration(): Promise<void> {
 
   await execute(`
     INSERT INTO public.roles (nombre, descripcion, permisos) VALUES
-      ('admin',      'Administrador con acceso completo',
-       '{"scheduler":"full","employees":"full","areas":"full","absences":"full","reports":"full","settings":"full","dashboard":"full","jornada":"full","mi_horario":"full"}'),
+      ('admin', 'Administrador con acceso completo',
+       '{"dashboard":"full","scheduler":"full","mi_horario":"view","employees":"full","areas":"full","absences":"full","reports":"full","jornada":"full","jornada_dashboard":"full","jornada_registro":"full","jornada_historial":"full","jornada_reportes":"full","jornada_configuracion":"full","mi_jornada_reportes":"view","settings":"full","settings_roles":"full","settings_users":"full","settings_data":"full","restrictToOwnArea":false,"canApproveAbsences":true,"canGenerateShifts":true,"canExportReports":true,"canManageRoles":true,"canDeleteData":true}'),
       ('supervisor', 'Supervisor operacional',
-       '{"scheduler":"edit","employees":"edit","areas":"view","absences":"edit","reports":"view","settings":"view","dashboard":"full","jornada":"edit","mi_horario":"full"}'),
-      ('lider',      'Líder de área',
-       '{"scheduler":"edit","employees":"view","areas":"view","absences":"edit","reports":"view","settings":"none","dashboard":"full","jornada":"view","mi_horario":"full"}'),
-      ('gestor',     'Gestor de turnos',
-       '{"scheduler":"edit","employees":"view","areas":"view","absences":"view","reports":"view","settings":"none","dashboard":"full","jornada":"view","mi_horario":"full"}'),
-      ('consulta',   'Acceso de sólo lectura',
-       '{"scheduler":"view","employees":"view","areas":"view","absences":"view","reports":"view","settings":"none","dashboard":"full","jornada":"view","mi_horario":"full"}')
+       '{"dashboard":"view","scheduler":"edit","mi_horario":"view","employees":"edit","areas":"view","absences":"edit","reports":"view","jornada":"edit","jornada_dashboard":"view","jornada_registro":"edit","jornada_historial":"edit","jornada_reportes":"view","jornada_configuracion":"none","mi_jornada_reportes":"view","settings":"view","settings_roles":"none","settings_users":"none","settings_data":"none","restrictToOwnArea":true,"canApproveAbsences":true,"canGenerateShifts":true,"canExportReports":true,"canManageRoles":false,"canDeleteData":false}'),
+      ('lider', 'Líder de área',
+       '{"dashboard":"view","scheduler":"edit","mi_horario":"view","employees":"view","areas":"view","absences":"edit","reports":"view","jornada":"edit","jornada_dashboard":"view","jornada_registro":"edit","jornada_historial":"view","jornada_reportes":"view","jornada_configuracion":"none","mi_jornada_reportes":"view","settings":"none","settings_roles":"none","settings_users":"none","settings_data":"none","restrictToOwnArea":true,"canApproveAbsences":false,"canGenerateShifts":false,"canExportReports":false,"canManageRoles":false,"canDeleteData":false}'),
+      ('gestor', 'Gestor de turnos',
+       '{"dashboard":"view","scheduler":"edit","mi_horario":"view","employees":"view","areas":"view","absences":"view","reports":"view","jornada":"edit","jornada_dashboard":"view","jornada_registro":"edit","jornada_historial":"view","jornada_reportes":"none","jornada_configuracion":"none","mi_jornada_reportes":"view","settings":"none","settings_roles":"none","settings_users":"none","settings_data":"none","restrictToOwnArea":false,"canApproveAbsences":false,"canGenerateShifts":false,"canExportReports":false,"canManageRoles":false,"canDeleteData":false}'),
+      ('consulta', 'Acceso de sólo lectura',
+       '{"dashboard":"view","scheduler":"view","mi_horario":"view","employees":"view","areas":"view","absences":"view","reports":"view","jornada":"view","jornada_dashboard":"view","jornada_registro":"none","jornada_historial":"view","jornada_reportes":"none","jornada_configuracion":"none","mi_jornada_reportes":"view","settings":"none","settings_roles":"none","settings_users":"none","settings_data":"none","restrictToOwnArea":false,"canApproveAbsences":false,"canGenerateShifts":false,"canExportReports":false,"canManageRoles":false,"canDeleteData":false}')
     ON CONFLICT (nombre) DO NOTHING
   `);
 

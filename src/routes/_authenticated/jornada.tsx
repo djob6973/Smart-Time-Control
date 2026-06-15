@@ -187,7 +187,12 @@ function JornadaPage() {
 
   const visibleTabs = TABS.filter((t) => {
     if (t.id === "registro" && isLinkedEmployee) return true;
-    if (t.id === "reportes" && isLinkedEmployee) return hasPermission("mi_jornada_reportes" as any, "view");
+    if (t.id === "reportes") {
+      return (
+        hasPermission("jornada_reportes" as any, "view") ||
+        (isLinkedEmployee && hasPermission("mi_jornada_reportes" as any, "view"))
+      );
+    }
     return hasPermission(`jornada_${t.id}` as any, "view");
   });
   const defaultTab = (visibleTabs[0]?.id ?? "registro") as Tab;
