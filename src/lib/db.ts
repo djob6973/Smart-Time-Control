@@ -1,4 +1,13 @@
-import { Pool } from "pg";
+import { Pool, types } from "pg";
+
+// pg convierte DATE, TIMESTAMP y TIMESTAMPTZ a objetos Date de JS por defecto.
+// Las columnas DATE del esquema (shifts.date, absences.start_date, etc.) deben
+// llegar al cliente como strings "YYYY-MM-DD" para que isSundayOrHoliday y otras
+// funciones de cálculo puedan llamar .slice() sin errores.
+types.setTypeParser(1082, (val: string) => val);           // DATE → string
+types.setTypeParser(1114, (val: string) => val);           // TIMESTAMP → string
+types.setTypeParser(1115, (val: string) => val);           // TIMESTAMP[] → string
+types.setTypeParser(1182, (val: string) => val);           // DATE[] → string
 
 let _pool: Pool | undefined;
 
