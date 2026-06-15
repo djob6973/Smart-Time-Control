@@ -305,7 +305,7 @@ export async function runMigration(): Promise<void> {
   await execute(`
     CREATE TABLE IF NOT EXISTS public.jornada_modificaciones (
       id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-      registro_id        UUID        NOT NULL REFERENCES public.jornada_registros(id) ON DELETE CASCADE,
+      registro_id        UUID,
       usuario_id         UUID        NOT NULL,
       fecha_modificacion TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       motivo             TEXT        NOT NULL,
@@ -314,6 +314,11 @@ export async function runMigration(): Promise<void> {
       valor_nuevo        TEXT
     )
   `);
+
+  // Migración para instancias existentes: eliminar FK CASCADE para que el audit
+  // trail persista al borrar un registro (sin CASCADE el registro_id queda intacto).
+  await execute(`ALTER TABLE public.jornada_modificaciones DROP CONSTRAINT IF EXISTS jornada_modificaciones_registro_id_fkey`);
+  await execute(`ALTER TABLE public.jornada_modificaciones ALTER COLUMN registro_id DROP NOT NULL`);
 
   await execute(`
     CREATE TABLE IF NOT EXISTS public.jornada_cupos (

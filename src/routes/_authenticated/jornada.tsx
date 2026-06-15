@@ -513,11 +513,13 @@ function TabDashboard() {
 function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const { employees, areas, shifts } = useWFM();
   const { user, profile } = useAuth();
-  const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado } = useJornada();
+  const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado } = useJornada();
   const ownArea = profile?.areaId ?? null;
 
   const isSelfMode = !!autoEmployeeId;
-  const hoy = new Date().toISOString().slice(0, 10);
+  const nowLocal = new Date();
+  const hoy = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
+  const hoyDia = new Date(`${hoy}T12:00:00`).getDay();
   const activeEmployees = employees.filter((e) => e.status === "active");
 
   // ── Admin state ──────────────────────────────────────────
@@ -554,6 +556,19 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     ? [...registros.filter((r) => r.employeeId === autoEmployeeId && r.fecha === hoy)]
         .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime())
     : [];
+  // Verificar si el empleado tiene un horario de jornada activo para hoy (sin turno WFM)
+  const selfHasJornadaHorario = useMemo(() => {
+    if (!autoEmployeeId) return false;
+    const asig = horariosEmpleado.find(
+      (x) => x.employeeId === autoEmployeeId && x.activo &&
+        x.fechaInicio <= hoy && (!x.fechaFin || x.fechaFin >= hoy),
+    );
+    if (!asig) return false;
+    return horarios.some((h) => h.id === asig.horarioId && h.activo && h.diasAplicables.includes(hoyDia));
+  }, [autoEmployeeId, horariosEmpleado, horarios, hoy, hoyDia]);
+
+  const selfCanRegister = (!!selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS") || selfHasJornadaHorario;
+
   const selfBreaks    = selfRegs.filter((r) => r.tipoMovimiento === "salida_break").length;
   const selfAlmuerzos = selfRegs.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
   const selfSiguientes = selfEst
@@ -675,7 +690,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
         <div className="rounded-card border border-border bg-card p-5 shadow-card space-y-4">
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registrar movimiento</h4>
-          {!selfShift || selfShift.code === "OFF" || selfShift.code === "ABS" ? (
+          {!selfCanRegister ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               No se permiten registros: sin turno activo para hoy.
             </p>
@@ -1256,14 +1271,19 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const isSelfMode = !!autoEmployeeId;
   const { employees, areas } = useWFM();
   const { profile } = useAuth();
-  const { registros, configuracion } = useJornada();
+  const { registros, configuracion, loadRango } = useJornada();
   const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
   const ownArea = profile?.areaId ?? null;
 
   const [desde, setDesde] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
   });
-  const [hasta,      setHasta]      = useState(new Date().toISOString().slice(0, 10));
+  const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
+
+  // Cargar registros del rango seleccionado desde el servidor
+  useEffect(() => {
+    loadRango(desde, hasta);
+  }, [desde, hasta]);
   const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
 
   // Self mode

@@ -111,11 +111,14 @@ const _fetchRegistrosRango = createServerFn({ method: "GET" })
   });
 
 const _fetchModificaciones = createServerFn({ method: "GET" })
-  .inputValidator(z.object({ registroId: z.string().optional() }))
+  .inputValidator(z.object({ registroId: z.string().optional(), desde: z.string().optional() }))
   .handler(async ({ data }) => {
     let sql = "SELECT * FROM public.jornada_modificaciones";
     const params: unknown[] = [];
-    if (data.registroId) { sql += ` WHERE registro_id = $${params.push(data.registroId)}`; }
+    const conds: string[] = [];
+    if (data.registroId) { conds.push(`registro_id = $${params.push(data.registroId)}`); }
+    if (data.desde) { conds.push(`fecha_modificacion >= $${params.push(data.desde)}`); }
+    if (conds.length) { sql += ` WHERE ${conds.join(" AND ")}`; }
     sql += " ORDER BY fecha_modificacion DESC";
     const rows = await query(sql, params);
     return rows.map(
@@ -296,8 +299,8 @@ export async function fetchRegistrosRango(desde: string, hasta: string): Promise
   return _fetchRegistrosRango({ data: { desde, hasta } });
 }
 
-export async function fetchModificaciones(registroId?: string): Promise<JornadaModificacion[]> {
-  return _fetchModificaciones({ data: { registroId } });
+export async function fetchModificaciones(registroId?: string, desde?: string): Promise<JornadaModificacion[]> {
+  return _fetchModificaciones({ data: { registroId, desde } });
 }
 
 export async function fetchHorarios(): Promise<JornadaHorario[]> {

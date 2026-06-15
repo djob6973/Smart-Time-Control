@@ -28,6 +28,7 @@ interface JornadaState {
   initFromDB: (fecha?: string) => Promise<void>;
   setFechaActiva: (fecha: string) => void;
   reloadRegistros: (fecha: string) => Promise<void>;
+  loadRango: (desde: string, hasta: string) => Promise<void>;
 
   // Registro de movimientos
   registrarMovimiento: (
@@ -226,20 +227,26 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   configuracion: [],
   initialized: false,
   loading: false,
-  fechaActiva: new Date().toISOString().slice(0, 10),
+  fechaActiva: (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })(),
 
   initFromDB: async (fecha) => {
     set({ loading: true });
     try {
-      const hoy = fecha ?? new Date().toISOString().slice(0, 10);
-      const [registros, horarios, horariosEmpleado, cupos, configuracion] = await Promise.all([
+      const now = new Date();
+      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const hoy = fecha ?? localToday;
+      // Modificaciones: últimos 90 días para no traer toda la historia
+      const desde90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const desde90str = `${desde90.getFullYear()}-${String(desde90.getMonth() + 1).padStart(2, "0")}-${String(desde90.getDate()).padStart(2, "0")}`;
+      const [registros, modificaciones, horarios, horariosEmpleado, cupos, configuracion] = await Promise.all([
         db.fetchRegistros(hoy),
+        db.fetchModificaciones(undefined, desde90str),
         db.fetchHorarios(),
         db.fetchHorariosEmpleado(),
         db.fetchCupos(),
         db.fetchConfiguracion(),
       ]);
-      set({ registros, horarios, horariosEmpleado, cupos, configuracion, initialized: true, fechaActiva: hoy });
+      set({ registros, modificaciones, horarios, horariosEmpleado, cupos, configuracion, initialized: true, fechaActiva: hoy });
     } finally {
       set({ loading: false });
     }
@@ -260,6 +267,15 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     }));
   },
 
+  loadRango: async (desde, hasta) => {
+    const data = await db.fetchRegistrosRango(desde, hasta);
+    set((s) => {
+      const existingIds = new Set(s.registros.map((r) => r.id));
+      const nuevos = data.filter((r) => !existingIds.has(r.id));
+      return nuevos.length > 0 ? { registros: [...s.registros, ...nuevos] } : s;
+    });
+  },
+
   registrarMovimiento: async (employeeId, tipo, areaId, usuarioId, observaciones) => {
     const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
     if (config?.diasLaborales?.length && !config.diasLaborales.includes(new Date().getDay())) {
@@ -267,7 +283,8 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     }
 
     const { registros } = get();
-    const hoy = new Date().toISOString().slice(0, 10);
+    const nowLocal = new Date();
+    const hoy = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
     const registrosHoy = registros.filter(
       (r) => r.employeeId === employeeId && r.fecha === hoy,
     );
