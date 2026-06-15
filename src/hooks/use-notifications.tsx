@@ -8,7 +8,7 @@ import {
   deleteNotification,
   type Notification,
   type NotificationType,
-} from "@/lib/api/notifications.server";
+} from "@/lib/api/notifications";
 import { useAuth } from "@/lib/auth";
 
 export function useNotifications() {

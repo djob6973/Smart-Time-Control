@@ -1,5 +1,5 @@
-import { notifyUser } from "@/lib/api/notifications.server";
-import type { NotificationType } from "@/lib/api/notifications.server";
+import { notifyUser } from "@/lib/api/notifications";
+import type { NotificationType } from "@/lib/api/notifications";
 
 // ── Notification Types for Events ─────────────────────────────────────
 
