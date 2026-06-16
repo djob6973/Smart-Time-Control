@@ -49,10 +49,17 @@ function Scheduler() {
   const days = weekDays(ws);
   const isoDays = days.map(toISO);
 
-  const visibleEmployees = useMemo(
-    () => employees.filter(e => areaFilter === "all" || e.areaId === areaFilter),
-    [employees, areaFilter]
-  );
+  const visibleEmployees = useMemo(() => {
+    // Para la vista de semana: ocultar empleados cuya inactiveDate sea anterior al lunes visible.
+    // Para la vista de mes: usar el primer día del mes como referencia.
+    const viewStart = view === "week" ? weekISO : toISO(monthDate);
+    return employees.filter(e => {
+      if (areaFilter !== "all" && e.areaId !== areaFilter) return false;
+      if (e.status === "active") return true;
+      // Inactivo: mostrar solo si su fecha de inactivación es dentro del período visible o posterior
+      return !!e.inactiveDate && e.inactiveDate >= viewStart;
+    });
+  }, [employees, areaFilter, weekISO, view, monthDate]);
 
   const shiftMap = useMemo(() => {
     const m = new Map<string, Shift>();

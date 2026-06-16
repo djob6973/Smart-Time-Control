@@ -41,6 +41,7 @@ export interface Employee {
   status: "active" | "inactive";
   contractType: "indefinido" | "fijo" | "obra" | "aprendiz";
   hireDate: string;
+  inactiveDate?: string; // YYYY-MM-DD — fecha efectiva de inactivación
   availability: Availability;
 }
 

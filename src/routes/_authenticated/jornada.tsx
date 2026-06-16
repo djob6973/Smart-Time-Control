@@ -259,7 +259,10 @@ function TabDashboard() {
   const { profile } = useAuth();
   const { registros, fechaActiva, getEstadoEmpleado, getCuposDisponibles, setFechaActiva, reloadRegistros, getShiftProgramado, configuracion, horarios, horariosEmpleado } = useJornada();
   const ownArea = profile?.areaId ?? null;
-  const activeEmployees = employees.filter((e) => e.status === "active" && (!ownArea || e.areaId === ownArea));
+  const activeEmployees = employees.filter((e) =>
+    (!ownArea || e.areaId === ownArea) &&
+    (e.status === "active" || (e.status === "inactive" && !!e.inactiveDate && e.inactiveDate >= fechaActiva))
+  );
 
   const estados = useMemo(
     () => activeEmployees.map((e) => {
@@ -523,7 +526,9 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const nowLocal = new Date();
   const hoy = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
   const hoyDia = new Date(`${hoy}T12:00:00`).getDay();
-  const activeEmployees = employees.filter((e) => e.status === "active");
+  const activeEmployees = employees.filter((e) =>
+    e.status === "active" || (e.status === "inactive" && !!e.inactiveDate && e.inactiveDate >= hoy)
+  );
 
   // ── Admin state ──────────────────────────────────────────
   const [search,        setSearch]        = useState("");
@@ -1407,7 +1412,10 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   // Admin mode
   const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
-  const empList = employees.filter((e) => e.status === "active" && (!effectiveArea || e.areaId === effectiveArea));
+  const empList = employees.filter((e) =>
+    (!effectiveArea || e.areaId === effectiveArea) &&
+    (e.status === "active" || (e.status === "inactive" && !!e.inactiveDate && e.inactiveDate >= desde))
+  );
 
   const stats = empList.map((emp) => {
     const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);

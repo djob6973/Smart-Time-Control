@@ -36,6 +36,7 @@ function employeeFromDB(r: Record<string, unknown>): Employee {
     status: r.status as Employee["status"],
     contractType: r.contract_type as Employee["contractType"],
     hireDate: r.hire_date as string,
+    inactiveDate: r.inactive_date as string | undefined,
     availability: (r.availability as Employee["availability"]) ?? {},
   };
 }
@@ -124,14 +125,15 @@ const _upsertEmployee = createServerFn({ method: "POST" })
   .handler(async ({ data: e }) => {
     await execute(
       `INSERT INTO public.employees
-         (id, full_name, document_id, position, area_id, leader, status, contract_type, hire_date, availability)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         (id, full_name, document_id, position, area_id, leader, status, contract_type, hire_date, inactive_date, availability)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        ON CONFLICT (id) DO UPDATE SET
          full_name=$2, document_id=$3, position=$4, area_id=$5, leader=$6,
-         status=$7, contract_type=$8, hire_date=$9, availability=$10`,
+         status=$7, contract_type=$8, hire_date=$9, inactive_date=$10, availability=$11`,
       [
         e.id, e.fullName, e.documentId, e.position, e.areaId ?? null,
-        e.leader, e.status, e.contractType, e.hireDate, JSON.stringify(e.availability),
+        e.leader, e.status, e.contractType, e.hireDate,
+        e.inactiveDate ?? null, JSON.stringify(e.availability),
       ],
     );
   });

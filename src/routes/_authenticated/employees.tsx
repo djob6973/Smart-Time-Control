@@ -274,6 +274,7 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
       status: "active" as const,
       contractType: "indefinido" as const,
       hireDate: new Date().toISOString().slice(0, 10),
+      inactiveDate: "",
       availability: Object.fromEntries(DAY_LABELS.map(({ day }) => [day, day >= 1 && day <= 5 ? { start: 8, end: 18 } : null])),
     }),
     linkedUserId: currentLinkedUser?.id ?? "",
@@ -314,7 +315,13 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
       toast.error("Ya existe un trabajador con ese número de documento.");
       return;
     }
+    if (form.status === "inactive" && !form.inactiveDate) {
+      toast.error("Debes indicar la fecha de inactivación del trabajador.");
+      return;
+    }
     const { linkedUserId, ...emp } = form;
+    // Limpiar inactiveDate si el empleado vuelve a estar activo
+    if (emp.status === "active") emp.inactiveDate = "";
     const prevLinkedUserId = currentLinkedUser?.id ?? "";
 
     if (linkedUserId !== prevLinkedUserId) {
@@ -399,6 +406,17 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
                 <option value="inactive">Inactivo</option>
               </select>
             </Field>
+            {form.status === "inactive" && (
+              <Field label="Fecha de inactivación *">
+                <input
+                  type="date"
+                  className="fi"
+                  value={form.inactiveDate ?? ""}
+                  onChange={e => update("inactiveDate", e.target.value)}
+                  required
+                />
+              </Field>
+            )}
             <Field label="Acceso (usuario vinculado)">
               <select
                 className="fi"

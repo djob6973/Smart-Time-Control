@@ -43,10 +43,12 @@ export async function runMigration(): Promise<void> {
       contract_type TEXT        NOT NULL DEFAULT 'indefinido'
                       CHECK (contract_type IN ('indefinido','fijo','obra','aprendiz')),
       hire_date     DATE        NOT NULL,
+      inactive_date DATE,
       availability  JSONB       NOT NULL DEFAULT '{}',
       created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await execute(`ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS inactive_date DATE`);
 
   await execute(`
     CREATE TABLE IF NOT EXISTS public.shifts (
