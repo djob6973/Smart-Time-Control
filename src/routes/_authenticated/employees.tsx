@@ -321,7 +321,7 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
     }
     const { linkedUserId, ...emp } = form;
     // Limpiar inactiveDate si el empleado vuelve a estar activo
-    if (emp.status === "active") emp.inactiveDate = "";
+    if (emp.status === "active") emp.inactiveDate = undefined;
     const prevLinkedUserId = currentLinkedUser?.id ?? "";
 
     if (linkedUserId !== prevLinkedUserId) {

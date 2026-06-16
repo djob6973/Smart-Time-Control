@@ -133,7 +133,7 @@ const _upsertEmployee = createServerFn({ method: "POST" })
       [
         e.id, e.fullName, e.documentId, e.position, e.areaId ?? null,
         e.leader, e.status, e.contractType, e.hireDate,
-        e.inactiveDate ?? null, JSON.stringify(e.availability),
+        e.inactiveDate || null, JSON.stringify(e.availability),
       ],
     );
   });
