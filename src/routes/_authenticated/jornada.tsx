@@ -1566,50 +1566,85 @@ function TabConfiguracion() {
   const { profile } = useAuth();
   const { configuracion, upsertConfiguracion, cupos, upsertCupo, removeCupo } = useJornada();
   const ownArea = profile?.areaId ?? null;
-  const fallbackId = useMemo(() => crypto.randomUUID(), []);
 
-  // Config activa: si el usuario tiene área, preferir config de esa área; si no, la global
-  const activeConfig = (ownArea
-    ? (configuracion.find((c) => c.areaId === ownArea) ?? configuracion.find((c) => !c.areaId))
-    : configuracion.find((c) => !c.areaId)
-  ) ?? {
-    id: fallbackId,
-    areaId: ownArea ?? undefined,
-    toleranciaLlegadaMin:      15,
-    tiempoMaxBreakMin:         15,
-    tiempoMaxAlmuerzoMin:      60,
-    maxBreaksPorJornada:       2,
-    maxAlmuerzosPorJornada:    1,
-    diasLaborales:             [1, 2, 3, 4, 5],
-    horaInicioJornada:         "08:00",
-    horaFinJornada:            "18:00",
-    requiereAprobacionEdicion: true,
-  };
+  // Admin: selector de área (null = global); área restringida: fijo en ownArea
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const effectiveAreaId = ownArea ?? selectedAreaId; // null = global
 
-  const [cfg,       setCfg]       = useState<JornadaConfiguracion>({ ...(activeConfig as JornadaConfiguracion), areaId: ownArea ?? (activeConfig as any).areaId });
+  const [cfg,       setCfg]       = useState<JornadaConfiguracion | null>(null);
   const [saving,    setSaving]    = useState(false);
   const [savingMsg, setSavingMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [cupoEditing, setCupoEditing] = useState<string | null>(null);
 
+  // Recarga cfg cuando cambia el área seleccionada o llegan datos del store
   useEffect(() => {
-    const storeConfig = ownArea
-      ? (configuracion.find((c) => c.areaId === ownArea) ?? configuracion.find((c) => !c.areaId))
+    const existing = effectiveAreaId
+      ? configuracion.find((c) => c.areaId === effectiveAreaId)
       : configuracion.find((c) => !c.areaId);
-    if (storeConfig) setCfg({ ...storeConfig, areaId: ownArea ?? storeConfig.areaId });
-  }, [configuracion, ownArea]);
+    if (existing) {
+      setCfg({ ...existing });
+    } else {
+      const global = configuracion.find((c) => !c.areaId);
+      setCfg({
+        id: crypto.randomUUID(),
+        areaId: effectiveAreaId ?? undefined,
+        toleranciaLlegadaMin:      global?.toleranciaLlegadaMin      ?? 15,
+        tiempoMaxBreakMin:         global?.tiempoMaxBreakMin          ?? 15,
+        tiempoMaxAlmuerzoMin:      global?.tiempoMaxAlmuerzoMin       ?? 60,
+        maxBreaksPorJornada:       global?.maxBreaksPorJornada        ?? 2,
+        maxAlmuerzosPorJornada:    global?.maxAlmuerzosPorJornada     ?? 1,
+        diasLaborales:             global?.diasLaborales              ?? [1, 2, 3, 4, 5],
+        horaInicioJornada:         global?.horaInicioJornada          ?? "08:00",
+        horaFinJornada:            global?.horaFinJornada             ?? "18:00",
+        requiereAprobacionEdicion: global?.requiereAprobacionEdicion  ?? true,
+      });
+    }
+  }, [configuracion, ownArea, selectedAreaId]);
 
   // Cupos visibles según área del usuario
   const visibleCupos = ownArea ? cupos.filter((c) => !c.areaId || c.areaId === ownArea) : cupos;
+
+  const hasOwnConfig = !!effectiveAreaId && !!configuracion.find((c) => c.areaId === effectiveAreaId);
+
+  if (!cfg) return null;
+
+  const areaLabel = effectiveAreaId
+    ? (areas.find((a) => a.id === effectiveAreaId)?.name ?? effectiveAreaId)
+    : "Global (sin área)";
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* General config */}
       <div className="rounded-card border border-border bg-card p-5 shadow-card">
-        <div className="mb-5">
-          <h3 className="font-semibold">Configuración general</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {ownArea ? `Valores para ${areas.find((a) => a.id === ownArea)?.name ?? "mi área"}` : "Valores por defecto para todo el sistema"}
-          </p>
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="font-semibold">Configuración general</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {ownArea
+                ? `Valores para ${areas.find((a) => a.id === ownArea)?.name ?? "mi área"}`
+                : effectiveAreaId
+                  ? `Valores específicos para ${areaLabel}`
+                  : "Valores por defecto para todo el sistema"}
+            </p>
+          </div>
+          {!ownArea && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área:</span>
+              <select
+                className="text-sm rounded-pill border border-border bg-card px-3 py-1.5 outline-none"
+                value={selectedAreaId ?? ""}
+                onChange={(e) => { setSelectedAreaId(e.target.value || null); setSavingMsg(null); }}
+              >
+                <option value="">Global (sin área)</option>
+                {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+              {effectiveAreaId && !hasOwnConfig && (
+                <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+                  Sin config propia — valores heredados del global
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <CfgField label="Tolerancia de llegada (min)">
@@ -1652,8 +1687,8 @@ function TabConfiguracion() {
               setSaving(true);
               setSavingMsg(null);
               try {
-                await upsertConfiguracion(cfg);
-                setSavingMsg({ ok: true, text: "Configuración guardada." });
+                await upsertConfiguracion({ ...cfg, areaId: effectiveAreaId ?? undefined });
+                setSavingMsg({ ok: true, text: `Configuración guardada para ${areaLabel}.` });
               } catch {
                 setSavingMsg({ ok: false, text: "Error al guardar." });
               } finally {
