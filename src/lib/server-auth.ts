@@ -52,7 +52,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
   const session = await queryOne<{ user_id: string; email: string }>(
     `SELECT s.user_id, up.email
      FROM public.sessions s
-     JOIN public.user_profiles up ON up.id = s.user_id
+     JOIN public.user_profiles up ON up.id::text = s.user_id
      WHERE s.token = $1 AND s.expires_at > NOW()`,
     [token],
   );

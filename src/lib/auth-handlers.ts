@@ -18,7 +18,11 @@ function clearCookie(): string {
 function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", ...extraHeaders },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      ...extraHeaders,
+    },
   });
 }
 
@@ -145,7 +149,7 @@ async function handleMe(req: Request): Promise<Response> {
   const session = await queryOne<{ user_id: string; email: string; nombre: string }>(
     `SELECT s.user_id, up.email, up.nombre
      FROM public.sessions s
-     JOIN public.user_profiles up ON up.id = s.user_id
+     JOIN public.user_profiles up ON up.id::text = s.user_id
      WHERE s.token = $1 AND s.expires_at > NOW()`,
     [token],
   );
