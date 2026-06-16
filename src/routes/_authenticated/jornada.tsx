@@ -513,7 +513,10 @@ function TabDashboard() {
 function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const { employees, areas, shifts } = useWFM();
   const { user, profile } = useAuth();
-  const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado } = useJornada();
+  const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado, configuracion } = useJornada();
+  const jornadaCfg = configuracion.find((c) => !c.areaId) ?? configuracion[0];
+  const maxBreaks    = jornadaCfg?.maxBreaksPorJornada    ?? 2;
+  const maxAlmuerzos = jornadaCfg?.maxAlmuerzosPorJornada ?? 1;
   const ownArea = profile?.areaId ?? null;
 
   const isSelfMode = !!autoEmployeeId;
@@ -573,8 +576,8 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const selfAlmuerzos = selfRegs.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
   const selfSiguientes = selfEst
     ? (SIGUIENTES_MOVIMIENTOS[selfEst.estado] ?? []).filter((tipo) => {
-        if (tipo === "salida_break")    return selfBreaks    < 2;
-        if (tipo === "salida_almuerzo") return selfAlmuerzos < 1;
+        if (tipo === "salida_break")    return selfBreaks    < maxBreaks;
+        if (tipo === "salida_almuerzo") return selfAlmuerzos < maxAlmuerzos;
         return true;
       })
     : [];
@@ -804,8 +807,8 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           const breaksUsados    = regsHoy.filter((r) => r.tipoMovimiento === "salida_break").length;
           const almuerzosUsados = regsHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
           const siguientes      = (SIGUIENTES_MOVIMIENTOS[est.estado] ?? []).filter((tipo) => {
-            if (tipo === "salida_break")    return breaksUsados    < 2;
-            if (tipo === "salida_almuerzo") return almuerzosUsados < 1;
+            if (tipo === "salida_break")    return breaksUsados    < maxBreaks;
+            if (tipo === "salida_almuerzo") return almuerzosUsados < maxAlmuerzos;
             return true;
           });
           const initials    = emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -1575,6 +1578,8 @@ function TabConfiguracion() {
     toleranciaLlegadaMin:      15,
     tiempoMaxBreakMin:         15,
     tiempoMaxAlmuerzoMin:      60,
+    maxBreaksPorJornada:       2,
+    maxAlmuerzosPorJornada:    1,
     diasLaborales:             [1, 2, 3, 4, 5],
     horaInicioJornada:         "08:00",
     horaFinJornada:            "18:00",
@@ -1615,6 +1620,12 @@ function TabConfiguracion() {
           </CfgField>
           <CfgField label="Tiempo máx. almuerzo (min)">
             <input type="number" min={1} max={180} className="cfg-input" value={cfg.tiempoMaxAlmuerzoMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxAlmuerzoMin: Number(e.target.value) })} />
+          </CfgField>
+          <CfgField label="Máx. breaks por jornada">
+            <input type="number" min={0} max={10} className="cfg-input" value={cfg.maxBreaksPorJornada ?? 2} onChange={(e) => setCfg({ ...cfg, maxBreaksPorJornada: Number(e.target.value) })} />
+          </CfgField>
+          <CfgField label="Máx. almuerzos por jornada">
+            <input type="number" min={0} max={5} className="cfg-input" value={cfg.maxAlmuerzosPorJornada ?? 1} onChange={(e) => setCfg({ ...cfg, maxAlmuerzosPorJornada: Number(e.target.value) })} />
           </CfgField>
           <CfgField label="Hora inicio jornada">
             <input type="time" className="cfg-input" value={cfg.horaInicioJornada} onChange={(e) => setCfg({ ...cfg, horaInicioJornada: e.target.value })} />

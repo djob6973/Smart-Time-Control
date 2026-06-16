@@ -80,6 +80,8 @@ function configFromDB(r: Record<string, unknown>): JornadaConfiguracion {
     toleranciaLlegadaMin: r.tolerancia_llegada_min as number,
     tiempoMaxBreakMin: r.tiempo_max_break_min as number,
     tiempoMaxAlmuerzoMin: r.tiempo_max_almuerzo_min as number,
+    maxBreaksPorJornada: (r.max_breaks_por_jornada as number) ?? 2,
+    maxAlmuerzosPorJornada: (r.max_almuerzos_por_jornada as number) ?? 1,
     diasLaborales: (r.dias_laborales as number[]) ?? [1, 2, 3, 4, 5],
     horaInicioJornada: r.hora_inicio_jornada as string,
     horaFinJornada: r.hora_fin_jornada as string,
@@ -275,15 +277,18 @@ const _upsertConfiguracion = createServerFn({ method: "POST" })
     await execute(
       `INSERT INTO public.jornada_configuracion
          (id, area_id, tolerancia_llegada_min, tiempo_max_break_min, tiempo_max_almuerzo_min,
+          max_breaks_por_jornada, max_almuerzos_por_jornada,
           dias_laborales, hora_inicio_jornada, hora_fin_jornada, requiere_aprobacion_edicion)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        ON CONFLICT (id) DO UPDATE SET
          area_id=$2, tolerancia_llegada_min=$3, tiempo_max_break_min=$4,
-         tiempo_max_almuerzo_min=$5, dias_laborales=$6, hora_inicio_jornada=$7,
-         hora_fin_jornada=$8, requiere_aprobacion_edicion=$9`,
+         tiempo_max_almuerzo_min=$5, max_breaks_por_jornada=$6, max_almuerzos_por_jornada=$7,
+         dias_laborales=$8, hora_inicio_jornada=$9,
+         hora_fin_jornada=$10, requiere_aprobacion_edicion=$11`,
       [
         c.id, c.areaId ?? null, c.toleranciaLlegadaMin, c.tiempoMaxBreakMin,
-        c.tiempoMaxAlmuerzoMin, c.diasLaborales, c.horaInicioJornada,
+        c.tiempoMaxAlmuerzoMin, c.maxBreaksPorJornada ?? 2, c.maxAlmuerzosPorJornada ?? 1,
+        c.diasLaborales, c.horaInicioJornada,
         c.horaFinJornada, c.requiereAprobacionEdicion,
       ],
     );

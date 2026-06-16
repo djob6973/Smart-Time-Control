@@ -341,6 +341,8 @@ export async function runMigration(): Promise<void> {
       tolerancia_llegada_min      INT         NOT NULL DEFAULT 15,
       tiempo_max_break_min        INT         NOT NULL DEFAULT 15,
       tiempo_max_almuerzo_min     INT         NOT NULL DEFAULT 60,
+      max_breaks_por_jornada      INT         NOT NULL DEFAULT 2,
+      max_almuerzos_por_jornada   INT         NOT NULL DEFAULT 1,
       dias_laborales              INT[]       NOT NULL DEFAULT '{1,2,3,4,5}',
       hora_inicio_jornada         TIME        NOT NULL DEFAULT '08:00',
       hora_fin_jornada            TIME        NOT NULL DEFAULT '18:00',
@@ -348,6 +350,8 @@ export async function runMigration(): Promise<void> {
       updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS max_breaks_por_jornada INT NOT NULL DEFAULT 2`);
+  await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS max_almuerzos_por_jornada INT NOT NULL DEFAULT 1`);
 
   await execute(`
     INSERT INTO public.jornada_configuracion

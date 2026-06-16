@@ -296,15 +296,17 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     }
 
     if (tipo === "salida_break") {
+      const maxBreaks = config?.maxBreaksPorJornada ?? 2;
       const breaks = registrosHoy.filter((r) => r.tipoMovimiento === "salida_break").length;
-      if (breaks >= 2) {
-        return { ok: false, error: "Ya se han usado los 2 breaks permitidos por jornada." };
+      if (breaks >= maxBreaks) {
+        return { ok: false, error: `Ya se han usado los ${maxBreaks} break${maxBreaks !== 1 ? "s" : ""} permitidos por jornada.` };
       }
     }
     if (tipo === "salida_almuerzo") {
+      const maxAlmuerzos = config?.maxAlmuerzosPorJornada ?? 1;
       const almuerzos = registrosHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
-      if (almuerzos >= 1) {
-        return { ok: false, error: "Ya se ha usado el almuerzo permitido para esta jornada." };
+      if (almuerzos >= maxAlmuerzos) {
+        return { ok: false, error: `Ya se ${maxAlmuerzos === 1 ? "ha usado el almuerzo permitido" : `han usado los ${maxAlmuerzos} almuerzos permitidos`} para esta jornada.` };
       }
     }
 

@@ -96,6 +96,8 @@ export interface JornadaConfiguracion {
   toleranciaLlegadaMin: number;
   tiempoMaxBreakMin: number;
   tiempoMaxAlmuerzoMin: number;
+  maxBreaksPorJornada: number;
+  maxAlmuerzosPorJornada: number;
   diasLaborales: number[];
   horaInicioJornada: string;
   horaFinJornada: string;
