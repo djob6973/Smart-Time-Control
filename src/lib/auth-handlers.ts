@@ -6,13 +6,16 @@ const COOKIE_NAME = "smartpath_session";
 const SESSION_DAYS = 30;
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
+const IS_PROD = process.env.NODE_ENV === "production";
+const SECURE = IS_PROD ? "; Secure" : "";
+
 function sessionCookie(token: string): string {
   const maxAge = SESSION_DAYS * 24 * 60 * 60;
-  return `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Path=/`;
+  return `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Path=/${SECURE}`;
 }
 
 function clearCookie(): string {
-  return `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Max-Age=0; Path=/`;
+  return `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Max-Age=0; Path=/${SECURE}`;
 }
 
 function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
@@ -189,7 +192,7 @@ async function handleResetRequest(req: Request): Promise<Response> {
     [token, expires.toISOString(), user.id],
   );
 
-  const resetUrl = `/auth/reset-password?token=${token}`;
+  const resetUrl = IS_PROD ? null : `/auth/reset-password?token=${token}`;
   return json({ message: "Enlace de recuperación generado", resetUrl });
 }
 
@@ -266,8 +269,7 @@ export async function handleAuthRoute(req: Request): Promise<Response | null> {
   try {
     return await handler(req);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
     console.error("[auth-handler]", err);
-    return json({ error: `Error interno del servidor: ${msg}` }, 500);
+    return json({ error: "Error interno del servidor" }, 500);
   }
 }

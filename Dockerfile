@@ -20,7 +20,8 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 
 ENV NODE_ENV=production \
-    NITRO_HOST=0.0.0.0
+    NITRO_HOST=0.0.0.0 \
+    NITRO_PORT=3000
 
 EXPOSE 3000
 CMD ["node", "dist/server/index.mjs"]

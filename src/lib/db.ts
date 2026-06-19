@@ -17,9 +17,10 @@ export function getPool(): Pool {
     if (!connectionString) {
       throw new Error("DATABASE_URL no está configurado en las variables de entorno");
     }
+    const sslEnabled = process.env.DB_SSL !== "false";
     _pool = new Pool({
       connectionString,
-      ssl: { rejectUnauthorized: false },
+      ssl: sslEnabled ? { rejectUnauthorized: false } : false,
     });
   }
   return _pool;
