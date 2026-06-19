@@ -26,7 +26,9 @@ interface WFMState {
 
   initialized: boolean;
   loading: boolean;
+  currentUserId: string | null;
 
+  setCurrentUser: (id: string | null) => void;
   initFromDB: () => Promise<void>;
   seedDemoData: () => Promise<void>;
 
@@ -55,6 +57,9 @@ export const useWFM = create<WFMState>()((set, get) => ({
   shifts: [],
   initialized: false,
   loading: false,
+  currentUserId: null,
+
+  setCurrentUser: (id) => set({ currentUserId: id }),
 
   // Carga datos reales desde Supabase al iniciar la app
   initFromDB: async () => {
@@ -159,7 +164,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
       const next = [...s.shifts];
       if (idx >= 0) next[idx] = merged;
       else next.push(merged);
-      db.upsertShift(merged).catch(dbErr("turno"));
+      db.upsertShift(merged, get().currentUserId).catch(dbErr("turno"));
       return { shifts: next };
     });
   },
@@ -288,7 +293,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
     });
 
     // Persiste en Supabase en lote
-    db.upsertShiftsBatch(newShifts).catch(dbErr("generación"));
+    db.upsertShiftsBatch(newShifts, get().currentUserId).catch(dbErr("generación"));
   },
 
   // ── Generación multi-semana con rotación desde semana ancla ──
@@ -429,7 +434,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
     });
 
     const workingCount = allNewShifts.filter(s => s.code !== "OFF" && s.code !== "ABS").length;
-    db.upsertShiftsBatch(allNewShifts)
+    db.upsertShiftsBatch(allNewShifts, get().currentUserId)
       .then(() => {
         if (coverageWarnings.length > 0) {
           toast.warning(
@@ -474,7 +479,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
     const toUpdate = updated.filter(sh =>
       dates.has(sh.date) && (!areaId || employees.find(e => e.id === sh.employeeId)?.areaId === areaId)
     );
-    db.upsertShiftsBatch(toUpdate).catch(dbErr("bloqueo"));
+    db.upsertShiftsBatch(toUpdate, get().currentUserId).catch(dbErr("bloqueo"));
   },
 
   unlockWeek: (weekStartISO, areaId) => {
@@ -490,7 +495,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
     const toUpdate = updated.filter(sh =>
       dates.has(sh.date) && (!areaId || employees.find(e => e.id === sh.employeeId)?.areaId === areaId)
     );
-    db.upsertShiftsBatch(toUpdate).catch(dbErr("desbloqueo"));
+    db.upsertShiftsBatch(toUpdate, get().currentUserId).catch(dbErr("desbloqueo"));
   },
 
   // ── Intercambio de turnos entre dos empleados ─────────────
@@ -539,7 +544,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
 
     [newA, newB].forEach(sh => {
       if (sh.code === "OFF") db.removeShift(sh.employeeId, sh.date).catch(dbErr("intercambio"));
-      else db.upsertShift(sh).catch(dbErr("intercambio"));
+      else db.upsertShift(sh, get().currentUserId).catch(dbErr("intercambio"));
     });
 
     return "ok";

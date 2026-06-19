@@ -22,8 +22,10 @@ export const Route = createFileRoute("/_authenticated/scheduler")({
 });
 
 function Scheduler() {
-  const { employees, areas, shifts, absences, setShift, clearShift, clearWeek, generateWeeks, lockWeek, unlockWeek, swapShifts } = useWFM();
-  const { hasLimit, hasPermission, profile } = useAuth();
+  const { employees, areas, shifts, absences, setShift, clearShift, clearWeek, generateWeeks, lockWeek, unlockWeek, swapShifts, setCurrentUser } = useWFM();
+  const { hasLimit, hasPermission, profile, user } = useAuth();
+
+  useEffect(() => { setCurrentUser(user?.id ?? null); }, [user?.id]);
   const canEdit    = hasPermission("scheduler", "edit");
   const canGenerate = hasLimit("canGenerateShifts");
   const ownArea = profile?.areaId ?? null;
