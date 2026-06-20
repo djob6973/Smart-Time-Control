@@ -775,22 +775,22 @@ function AbsencesPage() {
                             </button>
                           )}
                           {canCreate && (
-                            <>
-                              <button
-                                onClick={() => setEditAbsence(a)}
-                                title="Editar ausencia"
-                                className="size-7 rounded-full flex items-center justify-center hover:bg-secondary text-muted-foreground transition-colors"
-                              >
-                                <PencilLine className="size-3.5" />
-                              </button>
-                              <button
-                                onClick={() => setDeleteAbsence(a)}
-                                title="Eliminar ausencia"
-                                className="size-7 rounded-full flex items-center justify-center hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => setEditAbsence(a)}
+                              title="Editar ausencia"
+                              className="size-7 rounded-full flex items-center justify-center hover:bg-secondary text-muted-foreground transition-colors"
+                            >
+                              <PencilLine className="size-3.5" />
+                            </button>
+                          )}
+                          {(canApprove || (canCreate && status === "pendiente")) && (
+                            <button
+                              onClick={() => setDeleteAbsence(a)}
+                              title="Eliminar ausencia"
+                              className="size-7 rounded-full flex items-center justify-center hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
                           )}
                         </div>
                       </td>
