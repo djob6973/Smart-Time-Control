@@ -1729,6 +1729,24 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
     }
     setAbsError(null);
 
+    // Block when area doesn't allow overtime or Sunday/holiday work
+    if (!area?.allowOvertime && code !== "OFF" && code !== "ABS") {
+      if (isSundayOrHoliday(date)) {
+        toast.error(
+          `El área "${area?.name}" no permite trabajo dominical ni festivo. Revisa la configuración del área.`,
+          { duration: 6000 },
+        );
+        return;
+      }
+      if (anyOvertime) {
+        toast.error(
+          `El área "${area?.name}" no permite horas extras. Ajusta el turno para no superar los límites del área.`,
+          { duration: 6000 },
+        );
+        return;
+      }
+    }
+
     if (anyOvertime && !showConfirm) { setShowConfirm(true); return; }
 
     if (code === "ABS") {
@@ -1946,6 +1964,17 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                 </div>
               )}
 
+              {/* Bloqueo: área sin horas extras — trabajo dominical/festivo */}
+              {!area?.allowOvertime && code !== "OFF" && code !== "ABS" && isSundayOrHoliday(date) && (
+                <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-xs text-red-800">
+                  <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-red-500" />
+                  <span>
+                    El área <strong>{area?.name}</strong> no permite trabajo dominical ni festivo.
+                    No es posible guardar este turno hasta que se habilite la opción en la configuración del área.
+                  </span>
+                </div>
+              )}
+
               <Field label="Break (min)">
                 <input type="number" min={0} max={180} value={breakMin} onChange={handleInputChange(setBreakMin)} className="input" />
               </Field>
@@ -2110,14 +2139,19 @@ function HoursProgress({ projDay, maxDay, projWeek, maxWeek, projMonth, maxMonth
     { label: "Mes", proj: projMonth, max: maxMonth },
   ];
 
+  const blockedOvertime = anyOvertime && !allowOvertime;
+
   return (
     <div className={cn(
       "rounded-xl border p-3 space-y-3 transition-colors",
-      anyOvertime ? "bg-amber-50 border-amber-200" : "bg-secondary/40 border-border"
+      blockedOvertime ? "bg-red-50 border-red-200" : anyOvertime ? "bg-amber-50 border-amber-200" : "bg-secondary/40 border-border"
     )}>
       {/* Section title */}
       <div className="flex items-center gap-2">
-        {anyOvertime ? (
+        {blockedOvertime ? (
+          <><AlertTriangle className="size-3.5 text-red-600 shrink-0" />
+          <span className="text-xs font-semibold text-red-700">Horas extras no permitidas en esta área</span></>
+        ) : anyOvertime ? (
           <><Zap className="size-3.5 text-amber-600 shrink-0" />
           <span className="text-xs font-semibold text-amber-700">Límite alcanzado · horas adicionales = extras</span></>
         ) : (
@@ -2135,11 +2169,14 @@ function HoursProgress({ projDay, maxDay, projWeek, maxWeek, projMonth, maxMonth
         return (
           <div key={label} className="space-y-1">
             <div className="flex justify-between items-center text-xs">
-              <span className={cn("font-medium", over ? "text-amber-700" : "text-foreground")}>{label}</span>
-              <span className={cn(over ? "text-amber-700 font-semibold" : "text-muted-foreground")}>
+              <span className={cn("font-medium", over ? (allowOvertime ? "text-amber-700" : "text-red-700") : "text-foreground")}>{label}</span>
+              <span className={cn(over ? (allowOvertime ? "text-amber-700 font-semibold" : "text-red-700 font-semibold") : "text-muted-foreground")}>
                 {proj.toFixed(1)}h / {max}h
                 {over && (
-                  <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                  <span className={cn(
+                    "ml-1.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                    allowOvertime ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                  )}>
                     +{extraH.toFixed(1)}h extras
                   </span>
                 )}
@@ -2149,7 +2186,7 @@ function HoursProgress({ projDay, maxDay, projWeek, maxWeek, projMonth, maxMonth
               <div
                 className={cn(
                   "h-full rounded-full transition-all duration-300",
-                  over ? "bg-amber-500" : nearLimit ? "bg-yellow-400" : "bg-primary"
+                  over ? (allowOvertime ? "bg-amber-500" : "bg-red-500") : nearLimit ? "bg-yellow-400" : "bg-primary"
                 )}
                 style={{ width: `${pct}%` }}
               />
@@ -2160,10 +2197,10 @@ function HoursProgress({ projDay, maxDay, projWeek, maxWeek, projMonth, maxMonth
 
       {/* Context note */}
       {anyOvertime && (
-        <p className="text-[11px] leading-relaxed text-amber-600">
+        <p className={cn("text-[11px] leading-relaxed", !allowOvertime ? "text-red-600 font-medium" : "text-amber-600")}>
           {allowOvertime
             ? "Las horas que superen el estándar se clasificarán como horas extras (HED/HEN)."
-            : "⚠️ Esta área no tiene configuradas horas extras. Considera ajustar el turno."}
+            : "⚠️ Esta área no permite horas extras. Reduce las horas del turno para poder guardar."}
         </p>
       )}
     </div>
@@ -2233,12 +2270,21 @@ function OvertimeConfirm({ employee, area, overDay, projDay, maxDay, overWeek, p
         >
           ← Volver a editar
         </button>
-        <button
-          onClick={onConfirm}
-          className="text-sm px-4 py-2 rounded-pill bg-amber-500 text-white hover:bg-amber-600 font-medium inline-flex items-center gap-2"
-        >
-          <Zap className="size-3.5" /> Confirmar · guardar con extras
-        </button>
+        {area?.allowOvertime !== false ? (
+          <button
+            onClick={onConfirm}
+            className="text-sm px-4 py-2 rounded-pill bg-amber-500 text-white hover:bg-amber-600 font-medium inline-flex items-center gap-2"
+          >
+            <Zap className="size-3.5" /> Confirmar · guardar con extras
+          </button>
+        ) : (
+          <button
+            disabled
+            className="text-sm px-4 py-2 rounded-pill bg-red-100 text-red-400 font-medium inline-flex items-center gap-2 cursor-not-allowed"
+          >
+            No permitido · horas extras desactivadas
+          </button>
+        )}
       </div>
     </>
   );
