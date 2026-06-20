@@ -23,16 +23,19 @@ export const Route = createFileRoute("/auth/login")({
 });
 
 function LoginPage() {
-  const { user, role, loading, hasPermission } = useAuth();
+  const { user, role, loading, roleLoading, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [view, setView] = useState<"login" | "forgot" | "register">("login");
 
   useEffect(() => {
-    if (!loading && user && role) {
+    if (loading || roleLoading) return;
+    if (user && role) {
       const first = ORDERED_HOME_ROUTES.find(r => hasPermission(r.resource, "view"));
       navigate({ to: first?.to ?? "/", replace: true });
+    } else if (user && !role) {
+      navigate({ to: "/pending-approval", replace: true });
     }
-  }, [user, role, loading, navigate, hasPermission]);
+  }, [user, role, loading, roleLoading, navigate, hasPermission]);
 
   if (view === "forgot")    return <ForgotPasswordView onBack={() => setView("login")} />;
   if (view === "register")  return <RegisterView onBack={() => setView("login")} />;
