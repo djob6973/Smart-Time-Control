@@ -102,14 +102,17 @@ async function handleRegister(req: Request): Promise<Response> {
   );
   if (existing) return json({ error: "Email ya registrado" }, 409);
 
-  const countRows = await query<{ count: string }>(
-    `SELECT COUNT(*) as count FROM public.user_profiles`,
+  // Only assign admin if no admin user exists yet in the system.
+  // This prevents any new registration from getting admin when one already exists.
+  const existingAdmin = await queryOne(
+    `SELECT up.id FROM public.user_profiles up
+     JOIN public.roles r ON r.id = up.role_id
+     WHERE r.nombre = 'admin'
+     LIMIT 1`,
   );
-  const isFirst = parseInt(countRows[0]?.count ?? "0", 10) === 0;
+  const noAdminYet = !existingAdmin;
 
-  // First user → admin (with org membership). Subsequent users: no role, no area —
-  // the administrator assigns them manually.
-  const adminRoleRow = isFirst
+  const adminRoleRow = noAdminYet
     ? await queryOne<{ id: string }>(`SELECT id FROM public.roles WHERE nombre = 'admin'`)
     : null;
 
@@ -122,7 +125,7 @@ async function handleRegister(req: Request): Promise<Response> {
     [userId, normalizedEmail, nombre.trim(), hash, adminRoleRow?.id ?? null],
   );
 
-  if (isFirst && adminRoleRow) {
+  if (noAdminYet && adminRoleRow) {
     await execute(
       `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
        VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING`,
