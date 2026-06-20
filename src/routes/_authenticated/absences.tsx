@@ -774,7 +774,7 @@ function AbsencesPage() {
                               Ver detalle
                             </button>
                           )}
-                          {canCreate && (
+                          {canCreate && status === "pendiente" && (
                             <button
                               onClick={() => setEditAbsence(a)}
                               title="Editar ausencia"
@@ -820,7 +820,7 @@ function AbsencesPage() {
           onDecide={handleDecide}
           canApprove={canApprove}
           initialStep={detailStep}
-          onEdit={canCreate ? () => { setEditAbsence(detailAbsence); setDetailId(null); } : undefined}
+          onEdit={canCreate && (detailAbsence.status ?? "pendiente") === "pendiente" ? () => { setEditAbsence(detailAbsence); setDetailId(null); } : undefined}
         />
       )}
 
