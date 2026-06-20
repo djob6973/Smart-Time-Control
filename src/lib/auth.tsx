@@ -53,7 +53,7 @@ export interface AuthContextValue {
   hasLimit: (key: keyof AccessLimits) => boolean;
   reloadRole: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null; resetUrl?: string | null }>;
-  updatePassword: (newPassword: string) => Promise<string | null>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -225,11 +225,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null, resetUrl: data.resetUrl ?? null };
   }, []);
 
-  const updatePassword = useCallback(async (newPassword: string): Promise<string | null> => {
+  const updatePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
     const r = await fetch("/api/auth/change-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newPassword }),
+      body: JSON.stringify({ currentPassword, newPassword }),
     });
     const data = await r.json();
     if (!r.ok) return data.error ?? "No se pudo actualizar la contraseña";

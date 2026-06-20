@@ -236,9 +236,20 @@ async function handleChangePassword(req: Request): Promise<Response> {
   );
   if (!session) return json({ error: "Sesión expirada. Inicia sesión nuevamente." }, 401);
 
-  const { newPassword } = await parseBody(req);
+  const { currentPassword, newPassword } = await parseBody(req);
+  if (typeof currentPassword !== "string") {
+    return json({ error: "La contraseña actual es requerida" }, 400);
+  }
   if (typeof newPassword !== "string" || newPassword.length < 8) {
-    return json({ error: "La contraseña debe tener al menos 8 caracteres" }, 400);
+    return json({ error: "La nueva contraseña debe tener al menos 8 caracteres" }, 400);
+  }
+
+  const user = await queryOne<{ password_hash: string | null }>(
+    `SELECT password_hash FROM public.user_profiles WHERE id = $1`,
+    [session.user_id],
+  );
+  if (!user?.password_hash || !verifyPassword(currentPassword, user.password_hash)) {
+    return json({ error: "La contraseña actual es incorrecta" }, 400);
   }
 
   const hash = hashPassword(newPassword);
