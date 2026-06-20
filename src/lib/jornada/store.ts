@@ -46,12 +46,14 @@ interface JornadaState {
     nuevaHora: string,
     motivo: string,
     usuarioId: string,
+    nombreUsuario?: string,
   ) => Promise<void>;
-  eliminarRegistro: (id: string, motivo: string, usuarioId: string) => Promise<void>;
+  eliminarRegistro: (id: string, motivo: string, usuarioId: string, nombreUsuario?: string) => Promise<void>;
   agregarRegistroManual: (
     r: Omit<JornadaRegistro, "id" | "createdAt">,
     motivo: string,
     usuarioId: string,
+    nombreUsuario?: string,
   ) => Promise<void>;
 
   // Horarios
@@ -364,7 +366,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     }
   },
 
-  editarRegistro: async (registro, nuevaHora, motivo, usuarioId) => {
+  editarRegistro: async (registro, nuevaHora, motivo, usuarioId, nombreUsuario) => {
     const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
     const estadoResultante = config?.requiereAprobacionEdicion ? "pendiente" : "modificado";
     const actualizado: JornadaRegistro = {
@@ -380,6 +382,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     await db.insertModificacion({
       registroId: registro.id,
       usuarioId,
+      nombreUsuario,
       motivo,
       campoModificado: "hora_exacta",
       valorAnterior: registro.horaExacta,
@@ -394,13 +397,14 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     }));
   },
 
-  eliminarRegistro: async (id, motivo, usuarioId) => {
+  eliminarRegistro: async (id, motivo, usuarioId, nombreUsuario) => {
     const registro = get().registros.find((r) => r.id === id);
     if (!registro) return;
     set((s) => ({ registros: s.registros.filter((r) => r.id !== id) }));
     await db.insertModificacion({
       registroId: id,
       usuarioId,
+      nombreUsuario,
       motivo,
       campoModificado: "eliminado",
       valorAnterior: registro.horaExacta,
@@ -409,7 +413,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     await db.deleteRegistro(id);
   },
 
-  agregarRegistroManual: async (r, motivo, usuarioId) => {
+  agregarRegistroManual: async (r, motivo, usuarioId, nombreUsuario) => {
     const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
     const estadoResultante = config?.requiereAprobacionEdicion ? "pendiente" : "modificado";
     const nuevo = await db.insertRegistro({ ...r, esModificacion: true, estado: estadoResultante });
@@ -417,6 +421,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     await db.insertModificacion({
       registroId: nuevo.id,
       usuarioId,
+      nombreUsuario,
       motivo,
       campoModificado: "registro_manual",
       valorAnterior: undefined,

@@ -322,6 +322,7 @@ export async function runMigration(): Promise<void> {
   // trail persista al borrar un registro (sin CASCADE el registro_id queda intacto).
   await execute(`ALTER TABLE public.jornada_modificaciones DROP CONSTRAINT IF EXISTS jornada_modificaciones_registro_id_fkey`);
   await execute(`ALTER TABLE public.jornada_modificaciones ALTER COLUMN registro_id DROP NOT NULL`);
+  await execute(`ALTER TABLE public.jornada_modificaciones ADD COLUMN IF NOT EXISTS nombre_usuario TEXT`);
 
   await execute(`
     CREATE TABLE IF NOT EXISTS public.jornada_cupos (

@@ -128,6 +128,7 @@ const _fetchModificaciones = createServerFn({ method: "GET" })
         id: r.id as string,
         registroId: r.registro_id as string,
         usuarioId: r.usuario_id as string,
+        nombreUsuario: r.nombre_usuario as string | undefined,
         fechaModificacion: r.fecha_modificacion as string,
         motivo: r.motivo as string,
         campoModificado: r.campo_modificado as string | undefined,
@@ -203,9 +204,9 @@ const _insertModificacion = createServerFn({ method: "POST" })
   .handler(async ({ data: m }) => {
     await execute(
       `INSERT INTO public.jornada_modificaciones
-         (registro_id, usuario_id, motivo, campo_modificado, valor_anterior, valor_nuevo)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [m.registroId, m.usuarioId, m.motivo, m.campoModificado ?? null, m.valorAnterior ?? null, m.valorNuevo ?? null],
+         (registro_id, usuario_id, nombre_usuario, motivo, campo_modificado, valor_anterior, valor_nuevo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [m.registroId, m.usuarioId, m.nombreUsuario ?? null, m.motivo, m.campoModificado ?? null, m.valorAnterior ?? null, m.valorNuevo ?? null],
     );
   });
 

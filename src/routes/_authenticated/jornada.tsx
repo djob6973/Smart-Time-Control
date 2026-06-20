@@ -1077,7 +1077,7 @@ function TabHistorial() {
           <table className="w-full text-sm">
             <thead className="bg-secondary/60 text-left">
               <tr>
-                {["Empleado","Área","Movimiento","Hora","Estado","Observaciones",""].map((h, i) => (
+                {["Empleado","Área","Movimiento","Hora","Estado","Observaciones","Modificación",""].map((h, i) => (
                   <th key={i} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
                 ))}
               </tr>
@@ -1086,6 +1086,9 @@ function TabHistorial() {
               {list.map((r) => {
                 const emp  = employees.find((e) => e.id === r.employeeId);
                 const area = areas.find((a) => a.id === (emp?.areaId ?? r.areaId));
+                const lastMod = modificaciones
+                  .filter((m) => m.registroId === r.id)
+                  .sort((a, b) => new Date(b.fechaModificacion).getTime() - new Date(a.fechaModificacion).getTime())[0];
                 return (
                   <tr key={r.id} className="border-t border-border hover:bg-secondary/30">
                     <td className="px-4 py-3 font-medium">{emp?.fullName ?? r.employeeId}</td>
@@ -1103,6 +1106,16 @@ function TabHistorial() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{r.observaciones ?? "—"}</td>
+                    <td className="px-4 py-3 max-w-[220px]">
+                      {lastMod ? (
+                        <div className="space-y-0.5">
+                          <p className="text-xs text-foreground leading-snug line-clamp-2" title={lastMod.motivo}>{lastMod.motivo}</p>
+                          <p className="text-[11px] text-muted-foreground">{lastMod.nombreUsuario ?? lastMod.usuarioId.slice(0, 8)}</p>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex gap-1">
                         <button onClick={() => setEditingReg(r)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"><Edit3 className="size-4" /></button>
@@ -1113,7 +1126,7 @@ function TabHistorial() {
                 );
               })}
               {list.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Sin registros para los filtros seleccionados</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Sin registros para los filtros seleccionados</td></tr>
               )}
             </tbody>
           </table>
@@ -1125,7 +1138,8 @@ function TabHistorial() {
           registro={editingReg}
           onClose={() => setEditingReg(null)}
           onSave={async (nuevaHora, motivo) => {
-            await editarRegistro(editingReg, nuevaHora, motivo, user.id);
+            const nombre = profile?.nombre || profile?.fullName || user.email;
+            await editarRegistro(editingReg, nuevaHora, motivo, user.id, nombre);
             setEditingReg(null);
           }}
         />
@@ -1148,7 +1162,8 @@ function TabHistorial() {
               <button
                 disabled={!deleteConfirm.motivo.trim()}
                 onClick={async () => {
-                  await eliminarRegistro(deleteConfirm.reg.id, deleteConfirm.motivo, user.id);
+                  const nombre = profile?.nombre || profile?.fullName || user.email;
+                  await eliminarRegistro(deleteConfirm.reg.id, deleteConfirm.motivo, user.id, nombre);
                   setDeleteConfirm(null);
                 }}
                 className="text-sm px-4 py-2 rounded-pill bg-destructive text-white hover:opacity-90 disabled:opacity-50"
@@ -1167,7 +1182,8 @@ function TabHistorial() {
           fecha={fechaActiva}
           onClose={() => setShowAddManual(false)}
           onSave={async (r: Omit<JornadaRegistro, "id" | "createdAt">, motivo: string) => {
-            await agregarRegistroManual(r, motivo, user.id);
+            const nombre = profile?.nombre || profile?.fullName || user.email;
+            await agregarRegistroManual(r, motivo, user.id, nombre);
             setShowAddManual(false);
           }}
         />

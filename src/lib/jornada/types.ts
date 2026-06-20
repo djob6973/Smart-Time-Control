@@ -45,6 +45,7 @@ export interface JornadaModificacion {
   id: string;
   registroId: string;
   usuarioId: string;
+  nombreUsuario?: string; // nombre capturado al momento del cambio para trazabilidad
   fechaModificacion: string;
   motivo: string;
   campoModificado?: string;
