@@ -107,7 +107,7 @@ async function handleRegister(req: Request): Promise<Response> {
     `SELECT COUNT(*) as count FROM public.user_profiles`,
   );
   const isFirst = parseInt(countRows[0]?.count ?? "0", 10) === 0;
-  const roleName = isFirst ? "admin" : "consulta";
+  const roleName = isFirst ? "admin" : "gestor";
   const roleRow = await queryOne<{ id: string }>(
     `SELECT id FROM public.roles WHERE nombre = $1`,
     [roleName],
