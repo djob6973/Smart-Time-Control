@@ -688,6 +688,7 @@ function SettingsPage() {
                             style={ROLE_SEL_STYLE}
                           >
                             <option value="">Sin área asignada</option>
+                            <option value="">Todas las áreas</option>
                             {areas.map(a => (
                               <option key={a.id} value={a.id}>{a.name}</option>
                             ))}
