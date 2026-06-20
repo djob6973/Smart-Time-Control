@@ -67,6 +67,12 @@ function fmtPeriod(a: Absence): string {
   return a.startDate === a.endDate ? from : `${from} – ${to}`;
 }
 
+function fmtDatetime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                      */
 /* ------------------------------------------------------------------ */
@@ -190,6 +196,45 @@ function DetailModal({
               <div className="rounded-lg bg-secondary/60 px-3 py-2.5 text-sm text-foreground leading-relaxed">
                 {absence.reason}
               </div>
+            </div>
+          )}
+
+          {/* Decision details — visible to everyone once decided */}
+          {(status === "aprobada" || status === "rechazada") && (absence.decidedBy || absence.decisionNote) && (
+            <div>
+              <div className={`text-xs font-medium uppercase tracking-wider mb-1.5 ${
+                status === "aprobada" ? "text-[#1F8A5B]" : "text-[var(--brand-coral)]"
+              }`}>
+                {status === "aprobada" ? "Aprobación" : "Rechazo"}
+              </div>
+              <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                {absence.decidedBy && (
+                  <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+                    <span className="text-muted-foreground text-xs">
+                      {status === "aprobada" ? "Aprobado por" : "Rechazado por"}
+                    </span>
+                    <span className="font-medium text-xs">{absence.decidedBy}</span>
+                  </div>
+                )}
+                {absence.decidedAt && (
+                  <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+                    <span className="text-muted-foreground text-xs">Fecha de decisión</span>
+                    <span className="font-medium text-xs">{fmtDatetime(absence.decidedAt)}</span>
+                  </div>
+                )}
+              </div>
+              {absence.decisionNote && (
+                <div className={`mt-2 rounded-lg px-3 py-2.5 text-sm leading-relaxed ${
+                  status === "aprobada"
+                    ? "bg-[color-mix(in_srgb,#1F8A5B_8%,transparent)] text-[#1F8A5B]"
+                    : "bg-primary/5 text-foreground"
+                }`}>
+                  <span className="text-[11px] font-medium uppercase tracking-wider block mb-1 opacity-70">
+                    {status === "aprobada" ? "Nota" : "Motivo del rechazo"}
+                  </span>
+                  {absence.decisionNote}
+                </div>
+              )}
             </div>
           )}
 
@@ -496,7 +541,13 @@ function AbsencesPage() {
   function handleDecide(id: string, status: AbsenceStatus, note?: string) {
     const a = absences.find(ab => ab.id === id);
     if (!a) return;
-    upsertAbsence({ ...a, status });
+    upsertAbsence({
+      ...a,
+      status,
+      decisionNote: note ?? undefined,
+      decidedBy: profile?.fullName ?? undefined,
+      decidedAt: new Date().toISOString(),
+    });
     if (status === "aprobada" || status === "rechazada") {
       const emp = employees.find(e => e.id === a.employeeId);
       dispatchAbsenceEvent({ data: {

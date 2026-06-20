@@ -72,6 +72,9 @@ export interface Absence {
   endHour?: number;
   reason: string;
   status?: AbsenceStatus;
+  decisionNote?: string;
+  decidedBy?: string;
+  decidedAt?: string;
 }
 
 export type NoveltyCode =

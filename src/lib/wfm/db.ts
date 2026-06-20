@@ -68,6 +68,9 @@ function absenceFromDB(r: Record<string, unknown>): Absence {
     endHour: r.end_hour != null ? (r.end_hour as number) : undefined,
     reason: r.reason as string,
     status: (r.status as Absence["status"]) ?? "pendiente",
+    decisionNote: r.decision_note != null ? (r.decision_note as string) : undefined,
+    decidedBy: r.decided_by != null ? (r.decided_by as string) : undefined,
+    decidedAt: r.decided_at != null ? (r.decided_at as string) : undefined,
   };
 }
 
@@ -218,14 +221,17 @@ const _upsertAbsence = createServerFn({ method: "POST" })
   .handler(async ({ data: a }) => {
     await execute(
       `INSERT INTO public.absences
-         (id, employee_id, type, start_date, end_date, start_hour, end_hour, reason, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         (id, employee_id, type, start_date, end_date, start_hour, end_hour, reason, status,
+          decision_note, decided_by, decided_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        ON CONFLICT (id) DO UPDATE SET
          employee_id=$2, type=$3, start_date=$4, end_date=$5,
-         start_hour=$6, end_hour=$7, reason=$8, status=$9`,
+         start_hour=$6, end_hour=$7, reason=$8, status=$9,
+         decision_note=$10, decided_by=$11, decided_at=$12`,
       [
         a.id, a.employeeId, a.type, a.startDate, a.endDate,
         a.startHour ?? null, a.endHour ?? null, a.reason, a.status ?? "pendiente",
+        a.decisionNote ?? null, a.decidedBy ?? null, a.decidedAt ?? null,
       ],
     );
   });
