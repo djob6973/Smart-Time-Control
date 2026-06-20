@@ -272,7 +272,7 @@ function SettingsPage() {
 
   // Create user modal state
   const [createUserOpen, setCreateUserOpen]     = useState(false);
-  const [createUserForm, setCreateUserForm]     = useState({ email: "", password: "", fullName: "", roleId: "consulta", areaId: "" });
+  const [createUserForm, setCreateUserForm]     = useState({ email: "", password: "", fullName: "", roleId: "", areaId: "" });
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [createUserError, setCreateUserError]   = useState<string | null>(null);
 
@@ -509,7 +509,7 @@ function SettingsPage() {
         },
       });
       setCreateUserOpen(false);
-      setCreateUserForm({ email: "", password: "", fullName: "", roleId: "consulta", areaId: "" });
+      setCreateUserForm({ email: "", password: "", fullName: "", roleId: "", areaId: "" });
       await fetchUsers();
     } catch (e: any) {
       setCreateUserError(e.message ?? "Error al crear el usuario");
@@ -674,6 +674,8 @@ function SettingsPage() {
                             onChange={e => handleRoleChange(u.id, e.target.value)}
                             style={ROLE_SEL_STYLE}
                           >
+                            <option value="">Sin rol asignado</option>
+                            <option value="">Sin rol asignado</option>
                             {Object.entries(ROLE_MAP).map(([id, r]) => (
                               <option key={id} value={id}>{r.name}</option>
                             ))}
@@ -686,7 +688,7 @@ function SettingsPage() {
                             onChange={e => handleAreaChange(u.id, e.target.value)}
                             style={ROLE_SEL_STYLE}
                           >
-                            <option value="">Todas las áreas</option>
+                            <option value="">Sin área asignada</option>
                             {areas.map(a => (
                               <option key={a.id} value={a.id}>{a.name}</option>
                             ))}

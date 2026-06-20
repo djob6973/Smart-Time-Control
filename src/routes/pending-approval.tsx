@@ -43,12 +43,12 @@ function PendingApprovalPage() {
           </div>
           <div className="space-y-2">
             <h2 className="text-lg font-semibold">
-              {isInactive ? "Cuenta desactivada" : "Acceso pendiente de aprobación"}
+              {isInactive ? "Cuenta desactivada" : "Sin acceso asignado"}
             </h2>
             <p className="text-sm text-muted-foreground">
               {isInactive
                 ? "Tu cuenta ha sido desactivada. Contacta al administrador para recuperar el acceso."
-                : "Un administrador debe asignarte un rol para que puedas acceder al sistema."
+                : "Actualmente no tienes un rol y área asignada. Por favor contacta al administrador."
               }
             </p>
           </div>
