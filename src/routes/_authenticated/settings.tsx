@@ -675,7 +675,6 @@ function SettingsPage() {
                             style={ROLE_SEL_STYLE}
                           >
                             <option value="">Sin rol asignado</option>
-                            <option value="">Sin rol asignado</option>
                             {Object.entries(ROLE_MAP).map(([id, r]) => (
                               <option key={id} value={id}>{r.name}</option>
                             ))}
@@ -1234,6 +1233,7 @@ function SettingsPage() {
                     onChange={e => setCreateUserForm(f => ({ ...f, roleId: e.target.value }))}
                     className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
+                    <option value="">Sin rol asignado</option>
                     {Object.entries(ROLE_MAP).map(([id, r]) => (
                       <option key={id} value={id}>{r.name}</option>
                     ))}
