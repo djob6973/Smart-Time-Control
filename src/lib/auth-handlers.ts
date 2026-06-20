@@ -102,16 +102,16 @@ async function handleRegister(req: Request): Promise<Response> {
   );
   if (existing) return json({ error: "Email ya registrado" }, 409);
 
-  // First user → admin, subsequent → consulta
   const countRows = await query<{ count: string }>(
     `SELECT COUNT(*) as count FROM public.user_profiles`,
   );
   const isFirst = parseInt(countRows[0]?.count ?? "0", 10) === 0;
-  const roleName = isFirst ? "admin" : "gestor";
-  const roleRow = await queryOne<{ id: string }>(
-    `SELECT id FROM public.roles WHERE nombre = $1`,
-    [roleName],
-  );
+
+  // First user → admin (with org membership). Subsequent users: no role, no area —
+  // the administrator assigns them manually.
+  const adminRoleRow = isFirst
+    ? await queryOne<{ id: string }>(`SELECT id FROM public.roles WHERE nombre = 'admin'`)
+    : null;
 
   const userId = randomUUID();
   const hash = hashPassword(password);
@@ -119,21 +119,22 @@ async function handleRegister(req: Request): Promise<Response> {
   await execute(
     `INSERT INTO public.user_profiles (id, email, nombre, full_name, activo, is_active, password_hash, role_id)
      VALUES ($1, $2, $3, $3, true, true, $4, $5)`,
-    [userId, normalizedEmail, nombre.trim(), hash, roleRow?.id ?? null],
+    [userId, normalizedEmail, nombre.trim(), hash, adminRoleRow?.id ?? null],
   );
 
-  if (roleRow) {
+  if (isFirst && adminRoleRow) {
     await execute(
       `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
        VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING`,
-      [userId, roleRow.id, DEFAULT_ORG_ID],
+      [userId, adminRoleRow.id, DEFAULT_ORG_ID],
     ).catch((e) => console.error("[register] user_roles insert failed:", e.message));
+
+    await execute(
+      `INSERT INTO public.user_organizations (user_id, organization_id, activo)
+       VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
+      [userId, DEFAULT_ORG_ID],
+    ).catch((e) => console.error("[register] user_organizations insert failed:", e.message));
   }
-  await execute(
-    `INSERT INTO public.user_organizations (user_id, organization_id, activo)
-     VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
-    [userId, DEFAULT_ORG_ID],
-  ).catch((e) => console.error("[register] user_organizations insert failed:", e.message));
 
   const token = await createSession(userId);
   return json(
