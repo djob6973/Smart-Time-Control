@@ -197,6 +197,16 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export const adminDeleteUser = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => data as { id: string })
+  .handler(async ({ data }) => {
+    await execute(`DELETE FROM public.sessions WHERE user_id = $1`, [data.id]);
+    await execute(`DELETE FROM public.user_roles WHERE user_id = $1`, [data.id]);
+    await execute(`DELETE FROM public.user_organizations WHERE user_id = $1`, [data.id]);
+    await execute(`DELETE FROM public.user_profiles WHERE id = $1`, [data.id]);
+    return { success: true };
+  });
+
 // ── Roles ──────────────────────────────────────────────────────────
 
 export interface DbRole {

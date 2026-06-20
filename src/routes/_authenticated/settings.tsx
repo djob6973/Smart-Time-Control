@@ -4,7 +4,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
 import {
-  adminListUsers, adminCreateUser, adminUpdateUser, adminResetPassword,
+  adminListUsers, adminCreateUser, adminUpdateUser, adminResetPassword, adminDeleteUser,
   adminLoadRoles, adminUpdateRole, adminCreateRole, adminDeleteRole,
   adminListOrgMembers, adminUpdateOrg, adminCreateOrg, adminAddOrgMember, adminRemoveOrgMember,
   type AppUser, type DbRole, type OrgMember,
@@ -423,6 +423,32 @@ function SettingsPage() {
     }
   }
 
+  async function handleStatusToggle(userId: string, newActive: boolean) {
+    try {
+      await adminUpdateUser({ data: { id: userId, isActive: newActive } });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isActive: newActive } : u));
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    }
+  }
+
+  const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  async function handleDeleteUser() {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await adminDeleteUser({ data: { id: deleteTarget.id } });
+      setUsers(prev => prev.filter(u => u.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
+
   // ── Org handlers ─────────────────────────────────────────────────
 
   async function loadOrgMembers() {
@@ -693,28 +719,40 @@ function SettingsPage() {
                             ))}
                           </select>
                         </td>
-                        {/* Status pill */}
+                        {/* Status pill — clickable toggle */}
                         <td className="px-4 py-3">
-                          <span
-                            className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-medium tracking-[0.02em]"
+                          <button
+                            onClick={() => handleStatusToggle(u.id, !u.isActive)}
+                            title={u.isActive ? "Clic para desactivar" : "Clic para activar"}
+                            className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-medium tracking-[0.02em] transition-opacity hover:opacity-70 cursor-pointer"
                             style={u.isActive
                               ? { background: "color-mix(in srgb, #1F8A5B 14%, transparent)", color: "#1F8A5B" }
                               : { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
                           >
                             <span className={`size-1.5 rounded-full ${u.isActive ? "bg-[#1F8A5B]" : "bg-muted-foreground/40"}`} />
                             {u.isActive ? "Activo" : "Inactivo"}
-                          </span>
+                          </button>
                         </td>
                         {/* Last access */}
                         <td className="px-4 py-3 text-muted-foreground text-xs">{relativeTime(u.lastSignIn)}</td>
-                        {/* Reset password */}
+                        {/* Actions */}
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => { setResetTarget(u); setNewPass(""); setPassError(null); }}
-                            className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-pill border border-border bg-card hover:bg-secondary transition-colors whitespace-nowrap"
-                          >
-                            <Key className="size-3.5" /> Restablecer clave
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => { setResetTarget(u); setNewPass(""); setPassError(null); }}
+                              className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-pill border border-border bg-card hover:bg-secondary transition-colors whitespace-nowrap"
+                            >
+                              <Key className="size-3.5" /> Restablecer clave
+                            </button>
+                            {u.id !== user?.id && (
+                              <button
+                                onClick={() => setDeleteTarget(u)}
+                                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-pill border border-destructive/30 text-destructive bg-card hover:bg-destructive/10 transition-colors whitespace-nowrap"
+                              >
+                                <Trash2 className="size-3.5" /> Eliminar
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1321,6 +1359,41 @@ function SettingsPage() {
                 className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
                 {passLoading ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete user confirmation modal ───────────────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-sm p-6 space-y-5">
+            <div className="flex items-start gap-3">
+              <div className="size-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <Trash2 className="size-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base">Eliminar usuario</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  ¿Estás seguro de que deseas eliminar a <span className="font-medium text-foreground">{deleteTarget.fullName || deleteTarget.email}</span>? Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteLoading}
+                className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleteLoading}
+                className="text-sm px-4 py-2 rounded-pill bg-destructive text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {deleteLoading ? "Eliminando…" : "Eliminar"}
               </button>
             </div>
           </div>
