@@ -112,20 +112,25 @@ function StatusPill({ status }: { status: AbsenceStatus }) {
 /* ------------------------------------------------------------------ */
 /*  Detail / Approval modal                                             */
 /* ------------------------------------------------------------------ */
+type DetailStep = "view" | "approving" | "rejecting";
+
 function DetailModal({
-  absence, empName, onClose, onDecide, onEdit, canApprove,
+  absence, empName, onClose, onDecide, onEdit, canApprove, initialStep,
 }: {
   absence: Absence;
   empName: string;
   onClose: () => void;
-  onDecide: (id: string, status: AbsenceStatus) => void;
+  onDecide: (id: string, status: AbsenceStatus, note?: string) => void;
   onEdit?: () => void;
   canApprove: boolean;
+  initialStep?: DetailStep;
 }) {
-  const [note, setNote] = useState("");
+  const [step, setStep] = useState<DetailStep>(initialStep ?? "view");
+  const [rejectNote, setRejectNote] = useState("");
   const status: AbsenceStatus = absence.status ?? "pendiente";
   const tm = TYPE_META[absence.type];
   const days = countDays(absence);
+  const isPending = status === "pendiente" && canApprove;
 
   return (
     <div
@@ -181,26 +186,40 @@ function DetailModal({
           {/* Reason */}
           {absence.reason && (
             <div>
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Motivo</div>
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Motivo de la solicitud</div>
               <div className="rounded-lg bg-secondary/60 px-3 py-2.5 text-sm text-foreground leading-relaxed">
                 {absence.reason}
               </div>
             </div>
           )}
 
-          {/* Approval note — only for pending */}
-          {status === "pendiente" && canApprove && (
+          {/* Confirm approve */}
+          {step === "approving" && (
+            <div className="rounded-lg border border-[#1F8A5B]/30 bg-[color-mix(in_srgb,#1F8A5B_8%,transparent)] px-4 py-3">
+              <p className="text-sm font-medium text-[#1F8A5B]">¿Confirmas que deseas aprobar esta solicitud?</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                El trabajador recibirá una notificación con la decisión.
+              </p>
+            </div>
+          )}
+
+          {/* Reject reason (required) */}
+          {step === "rejecting" && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                Nota de aprobación <span className="normal-case font-normal">(opcional)</span>
+                Motivo del rechazo <span className="normal-case font-normal text-[var(--brand-coral)]">*&nbsp;obligatorio</span>
               </label>
               <textarea
                 className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
-                rows={2}
-                placeholder="Comentario para el trabajador…"
-                value={note}
-                onChange={e => setNote(e.target.value)}
+                rows={3}
+                placeholder="Indica el motivo por el que se rechaza la solicitud…"
+                value={rejectNote}
+                onChange={e => setRejectNote(e.target.value)}
+                autoFocus
               />
+              {rejectNote.trim() === "" && (
+                <p className="text-xs text-[var(--brand-coral)] mt-1">Debes ingresar un motivo para rechazar.</p>
+              )}
             </div>
           )}
         </div>
@@ -208,7 +227,7 @@ function DetailModal({
         {/* Footer */}
         <div className="px-5 py-4 border-t border-border flex items-center justify-between gap-2">
           <div>
-            {onEdit && (
+            {step === "view" && onEdit && (
               <button
                 onClick={() => { onClose(); onEdit(); }}
                 className="inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary text-muted-foreground transition-colors"
@@ -219,19 +238,50 @@ function DetailModal({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {status === "pendiente" && canApprove ? (
+            {step === "view" && isPending ? (
               <>
                 <button
-                  onClick={() => { onDecide(absence.id, "rechazada"); onClose(); }}
+                  onClick={() => setStep("rejecting")}
                   className="text-sm px-4 py-2 rounded-pill border border-[var(--brand-coral)] text-[var(--brand-coral)] hover:bg-primary/8 transition-colors"
                 >
                   Rechazar
                 </button>
                 <button
-                  onClick={() => { onDecide(absence.id, "aprobada"); onClose(); }}
+                  onClick={() => setStep("approving")}
                   className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
                 >
                   Aprobar solicitud
+                </button>
+              </>
+            ) : step === "approving" ? (
+              <>
+                <button
+                  onClick={() => setStep("view")}
+                  className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => { onDecide(absence.id, "aprobada"); onClose(); }}
+                  className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                >
+                  Confirmar aprobación
+                </button>
+              </>
+            ) : step === "rejecting" ? (
+              <>
+                <button
+                  onClick={() => { setStep("view"); setRejectNote(""); }}
+                  className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={rejectNote.trim() === ""}
+                  onClick={() => { onDecide(absence.id, "rechazada", rejectNote.trim()); onClose(); }}
+                  className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Confirmar rechazo
                 </button>
               </>
             ) : (
@@ -395,9 +445,15 @@ function AbsencesPage() {
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>("todas");
   const [typeFilter,     setTypeFilter]     = useState<"all" | AbsenceType>("all");
   const [detailId,       setDetailId]       = useState<string | null>(null);
+  const [detailStep,     setDetailStep]     = useState<DetailStep>("view");
   const [createOpen,     setCreateOpen]     = useState(false);
   const [editAbsence,    setEditAbsence]    = useState<Absence | null>(null);
   const [deleteAbsence,  setDeleteAbsence]  = useState<Absence | null>(null);
+
+  function openDetail(id: string, step: DetailStep = "view") {
+    setDetailId(id);
+    setDetailStep(step);
+  }
 
   const visibleAbsences = useMemo(() =>
     ownArea
@@ -437,7 +493,7 @@ function AbsencesPage() {
     { key: "rechazada", label: "Rechazadas" },
   ];
 
-  function handleDecide(id: string, status: AbsenceStatus) {
+  function handleDecide(id: string, status: AbsenceStatus, note?: string) {
     const a = absences.find(ab => ab.id === id);
     if (!a) return;
     upsertAbsence({ ...a, status });
@@ -450,6 +506,7 @@ function AbsencesPage() {
         absenceType: TYPE_META[a.type]?.label ?? a.type,
         startDate: a.startDate,
         endDate: a.endDate,
+        ...(note ? { note } : {}),
       }}).catch(e => console.error("[notif:absence]", e?.message ?? e));
     }
   }
@@ -640,13 +697,19 @@ function AbsencesPage() {
                           {status === "pendiente" && canApprove ? (
                             <>
                               <button
-                                onClick={() => handleDecide(a.id, "rechazada")}
+                                onClick={() => openDetail(a.id, "view")}
+                                className="text-[12px] px-2.5 py-1 rounded-pill hover:bg-secondary text-muted-foreground transition-colors"
+                              >
+                                Ver detalle
+                              </button>
+                              <button
+                                onClick={() => openDetail(a.id, "rejecting")}
                                 className="text-[12px] px-2.5 py-1 rounded-pill border border-[var(--brand-coral)] text-[var(--brand-coral)] hover:bg-primary/8 transition-colors"
                               >
                                 Rechazar
                               </button>
                               <button
-                                onClick={() => handleDecide(a.id, "aprobada")}
+                                onClick={() => openDetail(a.id, "approving")}
                                 className="text-[12px] px-2.5 py-1 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
                               >
                                 Aprobar
@@ -654,7 +717,7 @@ function AbsencesPage() {
                             </>
                           ) : (
                             <button
-                              onClick={() => setDetailId(a.id)}
+                              onClick={() => openDetail(a.id)}
                               className="text-[12px] px-2.5 py-1 rounded-pill hover:bg-secondary text-muted-foreground transition-colors"
                             >
                               Ver detalle
@@ -702,9 +765,10 @@ function AbsencesPage() {
         <DetailModal
           absence={detailAbsence}
           empName={detailEmp.fullName}
-          onClose={() => setDetailId(null)}
+          onClose={() => { setDetailId(null); setDetailStep("view"); }}
           onDecide={handleDecide}
           canApprove={canApprove}
+          initialStep={detailStep}
           onEdit={canCreate ? () => { setEditAbsence(detailAbsence); setDetailId(null); } : undefined}
         />
       )}
