@@ -83,6 +83,9 @@ export async function runMigration(): Promise<void> {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await execute(`ALTER TABLE public.absences ADD COLUMN IF NOT EXISTS decision_note TEXT`);
+  await execute(`ALTER TABLE public.absences ADD COLUMN IF NOT EXISTS decided_by    TEXT`);
+  await execute(`ALTER TABLE public.absences ADD COLUMN IF NOT EXISTS decided_at    TIMESTAMPTZ`);
 
   await execute(`
     CREATE TABLE IF NOT EXISTS public.shift_history (
