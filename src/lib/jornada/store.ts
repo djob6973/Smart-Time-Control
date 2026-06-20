@@ -37,6 +37,7 @@ interface JornadaState {
     areaId: string | undefined,
     usuarioId: string,
     observaciones?: string,
+    areaWorkingDays?: number[],
   ) => Promise<{ ok: boolean; error?: string }>;
 
   // Modificación manual
@@ -276,10 +277,12 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     });
   },
 
-  registrarMovimiento: async (employeeId, tipo, areaId, usuarioId, observaciones) => {
+  registrarMovimiento: async (employeeId, tipo, areaId, usuarioId, observaciones, areaWorkingDays) => {
     const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
-    if (config?.diasLaborales?.length && !config.diasLaborales.includes(new Date().getDay())) {
-      return { ok: false, error: "Hoy no es un día laboral según la configuración." };
+    // Priorizar los días laborales del área; si no están disponibles, usar la config de jornada
+    const diasEfectivos = areaWorkingDays ?? config?.diasLaborales;
+    if (diasEfectivos?.length && !diasEfectivos.includes(new Date().getDay())) {
+      return { ok: false, error: "Hoy no es un día laboral según la configuración del área." };
     }
 
     const { registros } = get();

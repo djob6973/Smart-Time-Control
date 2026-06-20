@@ -597,7 +597,8 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     setBusy(true);
     const emp    = employees.find((e) => e.id === empId);
     const areaId = emp?.areaId;
-    const result = await registrarMovimiento(empId, tipo, areaId, user.id, obsText || undefined);
+    const area   = areas.find((a) => a.id === areaId);
+    const result = await registrarMovimiento(empId, tipo, areaId, user.id, obsText || undefined, area?.workingDays);
     setLastMsg({ ok: result.ok, text: result.ok ? "Movimiento registrado." : result.error ?? "Error." });
     if (result.ok) {
       await reloadRegistros(hoy);
@@ -622,7 +623,8 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     setMsg(null);
     const emp    = employees.find((e) => e.id === autoEmployeeId);
     const areaId = emp?.areaId;
-    const result = await registrarMovimiento(autoEmployeeId, tipo, areaId, user.id, obs || undefined);
+    const area   = areas.find((a) => a.id === areaId);
+    const result = await registrarMovimiento(autoEmployeeId, tipo, areaId, user.id, obs || undefined, area?.workingDays);
     setMsg({ ok: result.ok, text: result.ok ? "Movimiento registrado exitosamente." : result.error ?? "Error." });
     if (result.ok) {
       setObs("");
