@@ -49,6 +49,7 @@ export async function runMigration(): Promise<void> {
     )
   `);
   await execute(`ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS inactive_date DATE`);
+  await execute(`ALTER TABLE public.areas ADD COLUMN IF NOT EXISTS holiday_schedule JSONB NOT NULL DEFAULT '{"active":false,"start":8,"end":18}'`);
 
   await execute(`
     CREATE TABLE IF NOT EXISTS public.shifts (

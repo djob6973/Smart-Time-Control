@@ -9,6 +9,12 @@ export interface CoverageRequirement {
   preferredWorkers?: number; // Preferido (si hay suficientes)
 }
 
+export interface HolidaySchedule {
+  active: boolean;
+  start: number; // 0-23
+  end: number;   // 0-24
+}
+
 export interface Area {
   id: AreaId;
   name: string;
@@ -24,6 +30,7 @@ export interface Area {
   minRestHours: number;
   coverageRequirements: CoverageRequirement[]; // Requisitos de cobertura por día/horario
   enableCoverageMode: boolean; // Activar modo basado en cobertura
+  holidaySchedule: HolidaySchedule; // Horario especial para días festivos
 }
 
 export interface Availability {

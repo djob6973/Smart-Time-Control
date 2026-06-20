@@ -1729,6 +1729,19 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
     }
     setAbsError(null);
 
+    // Validate against area's holiday schedule when date is a holiday
+    if (code !== "OFF" && code !== "ABS" && isSundayOrHoliday(date) && area?.holidaySchedule?.active) {
+      const hs = area.holidaySchedule;
+      if (start < hs.start || end > hs.end) {
+        toast.error(
+          `Fuera del horario festivo del área "${area.name}" (${pad(hs.start)}:00 – ${pad(hs.end)}:00). ` +
+          `Ajusta el horario del turno para este festivo.`,
+          { duration: 7000 },
+        );
+        return;
+      }
+    }
+
     // Block when area doesn't allow overtime or Sunday/holiday work
     if (!area?.allowOvertime && code !== "OFF" && code !== "ABS") {
       if (isSundayOrHoliday(date)) {
@@ -1971,6 +1984,26 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                   <span>
                     El área <strong>{area?.name}</strong> no permite trabajo dominical ni festivo.
                     No es posible guardar este turno hasta que se habilite la opción en la configuración del área.
+                  </span>
+                </div>
+              )}
+
+              {/* Info: horario especial para festivos */}
+              {area?.holidaySchedule?.active && code !== "OFF" && code !== "ABS" && isSundayOrHoliday(date) && (
+                <div className={`flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs border ${
+                  (start < area.holidaySchedule.start || end > area.holidaySchedule.end)
+                    ? "bg-red-50 border-red-200 text-red-800"
+                    : "bg-blue-50 border-blue-200 text-blue-800"
+                }`}>
+                  <AlertTriangle className={`size-3.5 shrink-0 mt-0.5 ${
+                    (start < area.holidaySchedule.start || end > area.holidaySchedule.end)
+                      ? "text-red-500" : "text-blue-500"
+                  }`} />
+                  <span>
+                    Día festivo · horario del área: <strong>{pad(area.holidaySchedule.start)}:00 – {pad(area.holidaySchedule.end)}:00</strong>.
+                    {(start < area.holidaySchedule.start || end > area.holidaySchedule.end) && (
+                      <> El turno configurado queda fuera de este rango y no podrá guardarse.</>
+                    )}
                   </span>
                 </div>
               )}

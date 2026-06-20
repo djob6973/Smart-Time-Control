@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { toast } from "sonner";
 import type { Area, Employee, Absence, Shift } from "./types";
-import { detectCode, parseAbsNote } from "./calc";
+import { detectCode, parseAbsNote, isHoliday } from "./calc";
 import { seedAreas, seedEmployees, seedAbsences, seedShifts } from "./mock";
 import { toISO, startOfWeek, addDays } from "./date";
 import * as db from "./db";
@@ -223,6 +223,13 @@ export const useWFM = create<WFMState>()((set, get) => ({
           newShifts.push({ id: `${e.id}-${date}`, employeeId: e.id, date, start: 0, end: 0, breakMinutes: 0, code: "ABS", note: absNote });
           continue;
         }
+        // Determinar si el día es festivo y si aplica horario especial
+        const isHolidayDate = isHoliday(date);
+        const holidaySched = area.holidaySchedule;
+        const useHolidayHours = isHolidayDate && holidaySched?.active;
+        const areaStart = useHolidayHours ? holidaySched.start : area.startHour;
+        const areaEnd   = useHolidayHours ? holidaySched.end   : area.endHour;
+
         if (!avail || !area.workingDays.includes(dow) || (dow === 0 && !area.allowSunday)) {
           prevShiftEnd = null;
           newShifts.push({ id: `${e.id}-${date}`, employeeId: e.id, date, start: 0, end: 0, breakMinutes: 0, code: "OFF" });
@@ -240,10 +247,10 @@ export const useWFM = create<WFMState>()((set, get) => ({
         const minStart = prevShiftEnd !== null
           ? Math.max(0, prevShiftEnd + area.minRestHours - 24)
           : 0;
-        const start = Math.max(area.startHour, avail.start, minStart);
+        const start = Math.max(areaStart, avail.start, minStart);
 
         // Si el descanso mínimo empuja el inicio más allá de lo disponible, OFF este día
-        if (start >= area.endHour || start >= avail.end) {
+        if (start >= areaEnd || start >= avail.end) {
           prevShiftEnd = null;
           newShifts.push({ id: `${e.id}-${date}`, employeeId: e.id, date, start: 0, end: 0, breakMinutes: 0, code: "OFF" });
           continue;
@@ -251,7 +258,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
 
         // allowOvertime: si no se permiten extras, el tope diario es 8h estándar
         const effectiveMaxDay = area.allowOvertime ? area.maxHoursDay : Math.min(area.maxHoursDay, 8);
-        let end = Math.min(start + effectiveMaxDay + 1, avail.end, area.endHour);
+        let end = Math.min(start + effectiveMaxDay + 1, avail.end, areaEnd);
 
         // maxHoursWeek: recortar el turno si el empleado ya consumió su cuota semanal
         const projectedHours = Math.max(0, end - start - 1);

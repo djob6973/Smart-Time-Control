@@ -237,6 +237,7 @@ function AreaModal({
     minRestHours: 12,
     coverageRequirements: [],
     enableCoverageMode: false,
+    holidaySchedule: { active: false, start: 8, end: 18 },
   });
 
   const [newReq, setNewReq] = useState({ startHour: 8, endHour: 16, minWorkers: 2, preferredWorkers: 3 });
@@ -425,6 +426,50 @@ function AreaModal({
                 en lugar de asignar un horario único a todos.
               </p>
             </div>
+          </div>
+
+          {/* Horario para días festivos */}
+          <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-3">
+            <ToggleField
+              label="Horario especial para festivos"
+              value={form.holidaySchedule?.active ?? false}
+              onChange={v => set("holidaySchedule", { ...(form.holidaySchedule ?? { start: 8, end: 18 }), active: v })}
+              tooltip={
+                <span>
+                  Cuando está activo, los días festivos (según el calendario colombiano) usarán
+                  este horario en lugar del horario habitual del día de la semana. Aplica tanto
+                  para la generación automática de turnos como para la validación manual.
+                </span>
+              }
+            />
+            {form.holidaySchedule?.active && (
+              <div className="grid grid-cols-2 gap-3 pl-11">
+                <Field label="Hora inicio festivo">
+                  <input
+                    type="number"
+                    className="fi"
+                    min={0}
+                    max={23}
+                    value={form.holidaySchedule.start}
+                    onChange={e => set("holidaySchedule", { ...form.holidaySchedule, start: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Hora fin festivo">
+                  <input
+                    type="number"
+                    className="fi"
+                    min={1}
+                    max={24}
+                    value={form.holidaySchedule.end}
+                    onChange={e => set("holidaySchedule", { ...form.holidaySchedule, end: Number(e.target.value) })}
+                  />
+                </Field>
+                <p className="col-span-2 text-xs text-muted-foreground -mt-1">
+                  Ejemplo: {padH(form.holidaySchedule.start)}:00 – {padH(form.holidaySchedule.end)}:00 en festivos,
+                  en lugar de {padH(form.startHour)}:00 – {padH(form.endHour)}:00 habitual.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Coverage requirements — solo visible cuando el modo cobertura está activo */}
