@@ -216,19 +216,9 @@ const _fetchShiftHistory = createServerFn({ method: "GET" })
     );
   });
 
-let _absenceColsReady = false;
-async function ensureAbsenceCols(): Promise<void> {
-  if (_absenceColsReady) return;
-  await execute(`ALTER TABLE public.absences ADD COLUMN IF NOT EXISTS decision_note TEXT`);
-  await execute(`ALTER TABLE public.absences ADD COLUMN IF NOT EXISTS decided_by    TEXT`);
-  await execute(`ALTER TABLE public.absences ADD COLUMN IF NOT EXISTS decided_at    TIMESTAMPTZ`);
-  _absenceColsReady = true;
-}
-
 const _upsertAbsence = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as Absence)
   .handler(async ({ data: a }) => {
-    await ensureAbsenceCols();
     await execute(
       `INSERT INTO public.absences
          (id, employee_id, type, start_date, end_date, start_hour, end_hour, reason, status,

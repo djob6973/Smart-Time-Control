@@ -642,6 +642,53 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     setSelfBusy(false);
   }
 
+  // ── No linked employee ────────────────────────────────────
+  if (!autoEmployeeId) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-10">
+        <div className="max-w-sm w-full">
+          <div className="rounded-card border border-border bg-card p-8 text-center shadow-card space-y-4">
+            <div
+              className="size-14 rounded-full flex items-center justify-center mx-auto"
+              style={{ background: "color-mix(in srgb,var(--color-primary) 10%,transparent)" }}
+            >
+              <Users className="size-7" style={{ color: "var(--color-primary)" }} />
+            </div>
+            <div>
+              <h2 className="font-semibold text-lg">Sin empleado vinculado</h2>
+              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                Tu cuenta de usuario no está vinculada a ningún registro de empleado.
+              </p>
+            </div>
+            <div className="rounded-xl bg-secondary/50 border border-border p-4 text-left space-y-2">
+              <p className="text-xs font-semibold">Cómo vincularla:</p>
+              <ol className="text-xs text-muted-foreground space-y-1.5">
+                {[
+                  "Un administrador debe ir a Configuración → Usuarios",
+                  "Editar tu usuario y seleccionar tu número de identificación",
+                  "Guardar cambios y recargar la página",
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span
+                      className="size-4 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5"
+                      style={{
+                        background: "color-mix(in srgb,var(--color-primary) 20%,transparent)",
+                        color: "var(--color-primary)",
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Self mode ─────────────────────────────────────────────
   if (isSelfMode && selfEmp && selfEst) {
     return (
@@ -1345,6 +1392,52 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     a.download = `mi_jornada_${desde}_${hasta}.csv`;
     a.click();
+  }
+
+  if (!autoEmployeeId) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-10">
+        <div className="max-w-sm w-full">
+          <div className="rounded-card border border-border bg-card p-8 text-center shadow-card space-y-4">
+            <div
+              className="size-14 rounded-full flex items-center justify-center mx-auto"
+              style={{ background: "color-mix(in srgb,var(--color-primary) 10%,transparent)" }}
+            >
+              <Users className="size-7" style={{ color: "var(--color-primary)" }} />
+            </div>
+            <div>
+              <h2 className="font-semibold text-lg">Sin empleado vinculado</h2>
+              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                Tu cuenta de usuario no está vinculada a ningún registro de empleado.
+              </p>
+            </div>
+            <div className="rounded-xl bg-secondary/50 border border-border p-4 text-left space-y-2">
+              <p className="text-xs font-semibold">Cómo vincularla:</p>
+              <ol className="text-xs text-muted-foreground space-y-1.5">
+                {[
+                  "Un administrador debe ir a Configuración → Usuarios",
+                  "Editar tu usuario y seleccionar tu número de identificación",
+                  "Guardar cambios y recargar la página",
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span
+                      className="size-4 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5"
+                      style={{
+                        background: "color-mix(in srgb,var(--color-primary) 20%,transparent)",
+                        color: "var(--color-primary)",
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (isSelfMode) {
