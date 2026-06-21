@@ -500,12 +500,14 @@ function AbsencesPage() {
     setDetailStep(step);
   }
 
-  const visibleAbsences = useMemo(() =>
-    ownArea
+  const visibleAbsences = useMemo(() => {
+    if (!canApprove) {
+      return absences.filter(a => a.employeeId === profile?.employeeId);
+    }
+    return ownArea
       ? absences.filter(a => employees.find(e => e.id === a.employeeId)?.areaId === ownArea)
-      : absences,
-    [absences, employees, ownArea],
-  );
+      : absences;
+  }, [absences, employees, ownArea, canApprove, profile?.employeeId]);
 
   const filtered = useMemo(() =>
     visibleAbsences.filter(a => {
@@ -595,7 +597,9 @@ function AbsencesPage() {
   const detailAbsence = detailId ? absences.find(a => a.id === detailId) : null;
   const detailEmp     = detailAbsence ? employees.find(e => e.id === detailAbsence.employeeId) : null;
 
-  const visibleEmployees = ownArea ? employees.filter(e => e.areaId === ownArea) : employees;
+  const visibleEmployees = canApprove
+    ? (ownArea ? employees.filter(e => e.areaId === ownArea) : employees)
+    : employees.filter(e => e.id === profile?.employeeId);
 
   if (!profile?.employeeId && !canApprove) {
     return (
