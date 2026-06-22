@@ -125,8 +125,8 @@ export function Sidebar() {
       >
         {/* Logo / marca */}
         <div className="px-5 py-5 flex items-center gap-3 border-b border-sidebar-border shrink-0">
-          <div className="size-10 shrink-0 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
-            S
+          <div className="size-10 shrink-0">
+            <img src="/logo.svg" alt="" className="size-10 object-contain" />
           </div>
           <div className="leading-tight min-w-0">
             <div className="text-sm font-semibold tracking-tight truncate font-display">
