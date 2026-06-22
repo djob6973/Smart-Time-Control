@@ -186,6 +186,19 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function shortDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("es", { day: "numeric", month: "short" });
+}
+
+const ROLE_BADGE_STYLE: Record<string, React.CSSProperties> = {
+  admin:      { background: "color-mix(in srgb,#ED5650 14%,transparent)", color: "#ED5650" },
+  supervisor: { background: "color-mix(in srgb,#9333ea 14%,transparent)", color: "#9333ea" },
+  lider:      { background: "color-mix(in srgb,#2563eb 14%,transparent)", color: "#2563eb" },
+  gestor:     { background: "color-mix(in srgb,#d97706 14%,transparent)", color: "#d97706" },
+  consulta:   { background: "var(--color-secondary)",                      color: "var(--color-muted-foreground)" },
+};
+
 const ROLE_SEL_STYLE: React.CSSProperties = {
   appearance: "none",
   WebkitAppearance: "none",
@@ -436,6 +449,13 @@ function SettingsPage() {
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Edit user modal state
+  const [editTarget, setEditTarget]   = useState<AppUser | null>(null);
+  const [editRoleId, setEditRoleId]   = useState("");
+  const [editAreaId, setEditAreaId]   = useState("");
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [editSaving, setEditSaving]   = useState(false);
+
   async function handleDeleteUser() {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -447,6 +467,19 @@ function SettingsPage() {
       alert(`Error: ${e.message}`);
     } finally {
       setDeleteLoading(false);
+    }
+  }
+
+  async function handleEditUser() {
+    if (!editTarget) return;
+    setEditSaving(true);
+    try {
+      if (editRoleId !== (editTarget.roleId ?? "")) await handleRoleChange(editTarget.id, editRoleId);
+      if (editAreaId !== (editTarget.areaId ?? "")) await handleAreaChange(editTarget.id, editAreaId);
+      if (editIsActive !== editTarget.isActive) await handleStatusToggle(editTarget.id, editIsActive);
+      setEditTarget(null);
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -658,106 +691,96 @@ function SettingsPage() {
             <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-secondary/60">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Usuario</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Correo</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Rol</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Área</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Estado</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Último acceso</th>
-                      <th className="px-4 py-3" />
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Usuario</th>
+                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Rol</th>
+                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Área</th>
+                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Evaluaciones</th>
+                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Ingreso</th>
+                      <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {usersLoading && (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-muted-foreground">Cargando usuarios…</td>
+                        <td colSpan={6} className="py-12 text-center text-muted-foreground">Cargando usuarios…</td>
                       </tr>
                     )}
                     {!usersLoading && filteredUsers.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                        <td colSpan={6} className="py-12 text-center text-muted-foreground">
                           {userSearch ? "Sin resultados para la búsqueda" : "Sin usuarios registrados"}
                         </td>
                       </tr>
                     )}
-                    {!usersLoading && filteredUsers.map(u => (
-                      <tr key={u.id} className="border-t border-border hover:bg-secondary/30 transition-colors">
-                        {/* Avatar + name */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="size-8 rounded-full bg-primary/10 text-primary text-[11px] font-semibold flex items-center justify-center shrink-0">
-                              {initials(u.fullName || u.email)}
+                    {!usersLoading && filteredUsers.map(u => {
+                      const roleMeta = u.roleId ? ROLE_MAP[u.roleId] : null;
+                      const badgeStyle = u.roleId ? (ROLE_BADGE_STYLE[u.roleId] ?? { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }) : null;
+                      return (
+                        <tr key={u.id} className="border-t border-border hover:bg-secondary/20 transition-colors">
+                          {/* Avatar + name + email */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="size-8 rounded-full bg-primary/10 text-primary text-[11px] font-semibold flex items-center justify-center shrink-0 select-none">
+                                {initials(u.fullName || u.email)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm truncate">{u.fullName || "—"}</p>
+                                <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                              </div>
                             </div>
-                            <span className="font-medium">{u.fullName || "—"}</span>
-                          </div>
-                        </td>
-                        {/* Email */}
-                        <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                        {/* Role dropdown */}
-                        <td className="px-4 py-3">
-                          <select
-                            value={u.roleId ?? ""}
-                            onChange={e => handleRoleChange(u.id, e.target.value)}
-                            style={ROLE_SEL_STYLE}
-                          >
-                            <option value="">Sin rol asignado</option>
-                            {Object.entries(ROLE_MAP).map(([id, r]) => (
-                              <option key={id} value={id}>{r.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        {/* Area dropdown */}
-                        <td className="px-4 py-3">
-                          <select
-                            value={u.areaId ?? ""}
-                            onChange={e => handleAreaChange(u.id, e.target.value)}
-                            style={ROLE_SEL_STYLE}
-                          >
-                            <option value="">Todas las áreas</option>
-                            {areas.map(a => (
-                              <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        {/* Status pill — clickable toggle */}
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleStatusToggle(u.id, !u.isActive)}
-                            title={u.isActive ? "Clic para desactivar" : "Clic para activar"}
-                            className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-medium tracking-[0.02em] transition-opacity hover:opacity-70 cursor-pointer"
-                            style={u.isActive
-                              ? { background: "color-mix(in srgb, #1F8A5B 14%, transparent)", color: "#1F8A5B" }
-                              : { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
-                          >
-                            <span className={`size-1.5 rounded-full ${u.isActive ? "bg-[#1F8A5B]" : "bg-muted-foreground/40"}`} />
-                            {u.isActive ? "Activo" : "Inactivo"}
-                          </button>
-                        </td>
-                        {/* Last access */}
-                        <td className="px-4 py-3 text-muted-foreground text-xs">{relativeTime(u.lastSignIn)}</td>
-                        {/* Actions */}
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => { setResetTarget(u); setNewPass(""); setPassError(null); }}
-                              className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-pill border border-border bg-card hover:bg-secondary transition-colors whitespace-nowrap"
-                            >
-                              <Key className="size-3.5" /> Restablecer clave
-                            </button>
-                            {u.id !== user?.id && (
-                              <button
-                                onClick={() => setDeleteTarget(u)}
-                                className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-pill border border-destructive/30 text-destructive bg-card hover:bg-destructive/10 transition-colors whitespace-nowrap"
+                          </td>
+                          {/* Role badge */}
+                          <td className="px-5 py-3.5">
+                            {roleMeta && badgeStyle ? (
+                              <span
+                                className="inline-flex items-center rounded-pill px-2.5 py-1 text-[11px] font-semibold tracking-[0.05em] uppercase"
+                                style={badgeStyle}
                               >
-                                <Trash2 className="size-3.5" /> Eliminar
-                              </button>
+                                {roleMeta.name}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          {/* Area */}
+                          <td className="px-5 py-3.5 text-sm text-foreground">{u.areaName ?? "—"}</td>
+                          {/* Evaluaciones — placeholder */}
+                          <td className="px-5 py-3.5 text-sm text-foreground">—</td>
+                          {/* Ingreso (createdAt) */}
+                          <td className="px-5 py-3.5 text-sm text-muted-foreground">{shortDate(u.createdAt)}</td>
+                          {/* Actions — icon only */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center justify-end gap-0.5">
+                              <button
+                                onClick={() => { setEditTarget(u); setEditRoleId(u.roleId ?? ""); setEditAreaId(u.areaId ?? ""); setEditIsActive(u.isActive); }}
+                                title="Editar usuario"
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                              >
+                                <PencilLine className="size-4" />
+                              </button>
+                              <button
+                                onClick={() => { setResetTarget(u); setNewPass(""); setPassError(null); }}
+                                title="Restablecer contraseña"
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                              >
+                                <Key className="size-4" />
+                              </button>
+                              {u.id !== user?.id && (
+                                <button
+                                  onClick={() => setDeleteTarget(u)}
+                                  title="Eliminar usuario"
+                                  className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                >
+                                  <Trash2 className="size-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1383,6 +1406,83 @@ function SettingsPage() {
                 className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
                 {passLoading ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit user modal ─────────────────────────────────────────────── */}
+      {editTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setEditTarget(null)}
+        >
+          <div
+            className="bg-card rounded-card shadow-card max-w-sm w-full p-5 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <PencilLine className="size-5 text-primary" />
+              <div>
+                <h3 className="font-semibold">Editar usuario</h3>
+                <p className="text-xs text-muted-foreground">{editTarget.fullName || editTarget.email}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rol</label>
+                <select
+                  value={editRoleId}
+                  onChange={e => setEditRoleId(e.target.value)}
+                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">Sin rol asignado</option>
+                  {Object.entries(ROLE_MAP).map(([id, r]) => (
+                    <option key={id} value={id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área</label>
+                <select
+                  value={editAreaId}
+                  onChange={e => setEditAreaId(e.target.value)}
+                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">Sin área asignada</option>
+                  {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Estado</span>
+                <button
+                  onClick={() => setEditIsActive(v => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-medium tracking-[0.02em] transition-opacity hover:opacity-70"
+                  style={editIsActive
+                    ? { background: "color-mix(in srgb, #1F8A5B 14%, transparent)", color: "#1F8A5B" }
+                    : { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
+                >
+                  <span className={`size-1.5 rounded-full ${editIsActive ? "bg-[#1F8A5B]" : "bg-muted-foreground/40"}`} />
+                  {editIsActive ? "Activo" : "Inactivo"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setEditTarget(null)}
+                className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEditUser}
+                disabled={editSaving}
+                className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {editSaving ? "Guardando…" : "Guardar"}
               </button>
             </div>
           </div>
