@@ -288,3 +288,68 @@ export async function handleAuthRoute(req: Request): Promise<Response | null> {
     return json({ error: "Error interno del servidor" }, 500);
   }
 }
+
+// ── Settings routes (/api/settings/*) ────────────────────────────────────────
+
+export async function handleSettingsRoute(req: Request): Promise<Response | null> {
+  const url = new URL(req.url);
+  if (!url.pathname.startsWith("/api/settings/")) return null;
+
+  const token = parseCookie(req.headers.get("cookie") ?? "", COOKIE_NAME);
+  if (!token) return json({ error: "No autenticado" }, 401);
+
+  const session = await queryOne<{ user_id: string }>(
+    `SELECT user_id FROM public.sessions WHERE token = $1 AND expires_at > NOW()`,
+    [token],
+  );
+  if (!session) return json({ error: "Sesión inválida" }, 401);
+
+  const roleRow = await queryOne<{ nombre: string }>(
+    `SELECT r.nombre FROM public.user_roles ur
+     JOIN public.roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1 LIMIT 1`,
+    [session.user_id],
+  );
+  if (!roleRow || roleRow.nombre !== "admin") return json({ error: "Acceso denegado" }, 403);
+
+  try {
+    if (url.pathname === "/api/settings/logo") {
+      if (req.method === "GET") {
+        const row = await queryOne<{ logo_data: string | null }>(
+          `SELECT logo_data FROM public.organizations WHERE id = $1`,
+          [DEFAULT_ORG_ID],
+        );
+        return json({ logoDataUrl: row?.logo_data ?? null });
+      }
+
+      if (req.method === "POST") {
+        const body = await parseBody(req);
+        const logoDataUrl = body.logoDataUrl as string | undefined;
+        if (!logoDataUrl || !logoDataUrl.startsWith("data:image/")) {
+          return json({ error: "Archivo de imagen inválido" }, 400);
+        }
+        if (logoDataUrl.length > 700_000) {
+          return json({ error: "La imagen es demasiado grande (máx 500 KB)" }, 400);
+        }
+        await execute(
+          `UPDATE public.organizations SET logo_data = $1, actualizado_en = NOW() WHERE id = $2`,
+          [logoDataUrl, DEFAULT_ORG_ID],
+        );
+        return json({ logoDataUrl });
+      }
+
+      if (req.method === "DELETE") {
+        await execute(
+          `UPDATE public.organizations SET logo_data = NULL, actualizado_en = NOW() WHERE id = $1`,
+          [DEFAULT_ORG_ID],
+        );
+        return json({ ok: true });
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error("[settings-handler]", err);
+    return json({ error: "Error interno del servidor" }, 500);
+  }
+}

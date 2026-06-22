@@ -39,7 +39,7 @@ const NAV: NavItem[] = [
 
 export function Sidebar() {
   const path    = useRouterState({ select: (s) => s.location.pathname });
-  const { profile, role, roleLoading, signOut, hasPermission, updatePassword } = useAuth();
+  const { profile, role, roleLoading, signOut, hasPermission, updatePassword, organization } = useAuth();
   const { sidebarOpen, closeSidebar } = useAppContext();
 
   const [passOpen,     setPassOpen]     = useState(false);
@@ -126,7 +126,11 @@ export function Sidebar() {
         {/* Logo / marca */}
         <div className="px-5 py-5 flex items-center gap-3 border-b border-sidebar-border shrink-0">
           <div className="size-10 shrink-0">
-            <img src="/logo.svg" alt="" className="size-10 object-contain" />
+            <img
+              src={organization?.logo ?? "/logo.svg"}
+              alt=""
+              className="size-10 object-contain"
+            />
           </div>
           <div className="leading-tight min-w-0">
             <div className="text-sm font-semibold tracking-tight truncate font-display">

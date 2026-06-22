@@ -31,6 +31,7 @@ export interface Organization {
   plan: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config?: Record<string, any>;
+  logo?: string | null;
 }
 
 export interface AuthContextValue {
@@ -121,11 +122,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { role: r, rolePerms: rp, limits: lm, organizations: orgs } =
           await fetchUserData(userId);
+        const mappedOrgs = (orgs as (Organization & { logo_data?: string | null })[]).map(
+          ({ logo_data, ...o }) => ({ ...o, logo: logo_data ?? null }),
+        );
         setRole(r);
         setRolePerms(rp);
         setLimits(lm);
-        setOrganizations(orgs as Organization[]);
-        setOrganization(resolveOrg(orgs as Organization[]));
+        setOrganizations(mappedOrgs);
+        setOrganization(resolveOrg(mappedOrgs));
         fetchProfile(userId).then(setProfile).catch(() => {});
       } catch {
         // user stays in isPending state

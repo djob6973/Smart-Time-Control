@@ -13,8 +13,9 @@ import {
   RefreshCw, Shield, Trash2, Check, X,
   CalendarDays, UserCog, FileX, BarChart3, Settings2,
   Clock, LayoutDashboard, Building2, CalendarCheck,
-  Search, Key, Users, Plus, UserPlus, PencilLine,
+  Search, Key, Users, Plus, UserPlus, PencilLine, Palette,
 } from "lucide-react";
+import { LogoUpload } from "@/components/wfm/LogoUpload";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -262,7 +263,7 @@ function SettingsPage() {
   const { role: authRole, user, organization, organizations, switchOrg } = useAuth();
   const isAdmin = authRole === "admin";
 
-  const [tab, setTab] = useState<"users" | "roles" | "org">("users");
+  const [tab, setTab] = useState<"users" | "roles" | "org" | "marca">("users");
 
   // Users tab state
   const [users, setUsers]               = useState<AppUser[]>([]);
@@ -584,6 +585,7 @@ function SettingsPage() {
     { key: "users" as const, label: "Usuarios",         Icon: Users },
     { key: "roles" as const, label: "Roles y permisos", Icon: Shield },
     { key: "org"   as const, label: "Organización",     Icon: Building2 },
+    { key: "marca" as const, label: "Marca",             Icon: Palette },
   ];
 
   return (
@@ -1211,6 +1213,28 @@ function SettingsPage() {
               </div>
             </div>
 
+          </div>
+        )}
+
+        {/* ── Marca ─────────────────────────────────────────────────────── */}
+        {tab === "marca" && (
+          <div className="flex flex-col gap-4 max-w-lg">
+            <div className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <Palette className="size-4 text-muted-foreground" />
+                <div>
+                  <h2 className="font-semibold text-sm">Identidad visual</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    El logo aparecerá en el menú lateral del sistema
+                  </p>
+                </div>
+              </div>
+              {isAdmin ? (
+                <LogoUpload />
+              ) : (
+                <p className="text-sm text-muted-foreground">Solo los administradores pueden modificar el logo.</p>
+              )}
+            </div>
           </div>
         )}
 

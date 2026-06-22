@@ -386,5 +386,7 @@ export async function runMigration(): Promise<void> {
       FOR EACH ROW EXECUTE FUNCTION public.update_timestamp()
   `);
 
+  await execute(`ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS logo_data TEXT`);
+
   done = true; // solo se marca como completada si todo tuvo éxito
 }

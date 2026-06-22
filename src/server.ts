@@ -3,7 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { runMigration } from "./lib/migrate";
-import { handleAuthRoute } from "./lib/auth-handlers";
+import { handleAuthRoute, handleSettingsRoute } from "./lib/auth-handlers";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -50,6 +50,11 @@ export default {
       if (url.pathname.startsWith("/api/auth/")) {
         const authResponse = await handleAuthRoute(request);
         if (authResponse) return authResponse;
+      }
+
+      if (url.pathname.startsWith("/api/settings/")) {
+        const settingsResponse = await handleSettingsRoute(request);
+        if (settingsResponse) return settingsResponse;
       }
 
       const handler = await getServerEntry();

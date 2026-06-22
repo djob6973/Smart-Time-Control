@@ -34,6 +34,7 @@ export interface OrgRow {
   plan: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: Record<string, any>;
+  logo_data?: string | null;
 }
 
 export interface UserDataResult {
@@ -59,7 +60,7 @@ export const getUserRolesAndOrgs = createServerFn({ method: "GET" })
         [data.userId],
       ),
       query<OrgRow>(
-        `SELECT o.id, o.nombre, o.slug, o.activo, o.plan, o.config
+        `SELECT o.id, o.nombre, o.slug, o.activo, o.plan, o.config, o.logo_data
          FROM public.user_organizations uo
          JOIN public.organizations o ON o.id = uo.organization_id
          WHERE uo.user_id = $1 AND uo.activo = true`,
