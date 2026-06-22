@@ -295,6 +295,34 @@ export async function handleSettingsRoute(req: Request): Promise<Response | null
   const url = new URL(req.url);
   if (!url.pathname.startsWith("/api/settings/")) return null;
 
+  // Public: no auth required — serves logo as binary for use as favicon/img src
+  if (url.pathname === "/api/settings/favicon" && req.method === "GET") {
+    try {
+      const row = await queryOne<{ logo_data: string | null }>(
+        `SELECT logo_data FROM public.organizations WHERE id = $1`,
+        [DEFAULT_ORG_ID],
+      );
+      if (row?.logo_data) {
+        const match = row.logo_data.match(/^data:([^;]+);base64,(.+)$/s);
+        if (match) {
+          const mime = match[1];
+          const buf  = Buffer.from(match[2], "base64");
+          return new Response(buf, {
+            status: 200,
+            headers: {
+              "Content-Type": mime,
+              "Cache-Control": "public, max-age=300, stale-while-revalidate=60",
+            },
+          });
+        }
+      }
+    } catch (err) {
+      console.error("[settings/favicon]", err);
+    }
+    // Fallback to static file
+    return new Response(null, { status: 302, headers: { Location: "/favicon.svg" } });
+  }
+
   const token = parseCookie(req.headers.get("cookie") ?? "", COOKIE_NAME);
   if (!token) return json({ error: "No autenticado" }, 401);
 
