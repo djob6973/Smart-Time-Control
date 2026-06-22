@@ -13,7 +13,7 @@ import {
   RefreshCw, Shield, Trash2, Check, X,
   CalendarDays, UserCog, FileX, BarChart3, Settings2,
   Clock, LayoutDashboard, Building2, CalendarCheck,
-  Search, Key, Users, Plus, UserPlus, PencilLine, Palette,
+  Search, Key, Users, Plus, UserPlus, PencilLine, Palette, ChevronDown,
 } from "lucide-react";
 import { LogoUpload } from "@/components/wfm/LogoUpload";
 
@@ -450,11 +450,13 @@ function SettingsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Edit user modal state
-  const [editTarget, setEditTarget]   = useState<AppUser | null>(null);
-  const [editRoleId, setEditRoleId]   = useState("");
-  const [editAreaId, setEditAreaId]   = useState("");
-  const [editIsActive, setEditIsActive] = useState(true);
-  const [editSaving, setEditSaving]   = useState(false);
+  const [editTarget, setEditTarget]             = useState<AppUser | null>(null);
+  const [editFullName, setEditFullName]         = useState("");
+  const [editRoleId, setEditRoleId]             = useState("");
+  const [editAreaId, setEditAreaId]             = useState("");
+  const [editIsActive, setEditIsActive]         = useState(true);
+  const [editSaving, setEditSaving]             = useState(false);
+  const [editRoleDropOpen, setEditRoleDropOpen] = useState(false);
 
   async function handleDeleteUser() {
     if (!deleteTarget) return;
@@ -474,10 +476,22 @@ function SettingsPage() {
     if (!editTarget) return;
     setEditSaving(true);
     try {
-      if (editRoleId !== (editTarget.roleId ?? "")) await handleRoleChange(editTarget.id, editRoleId);
-      if (editAreaId !== (editTarget.areaId ?? "")) await handleAreaChange(editTarget.id, editAreaId);
-      if (editIsActive !== editTarget.isActive) await handleStatusToggle(editTarget.id, editIsActive);
+      const patch: Record<string, any> = {};
+      if (editFullName.trim() && editFullName.trim() !== editTarget.fullName) patch.fullName = editFullName.trim();
+      if (editRoleId !== (editTarget.roleId ?? "")) patch.roleId = editRoleId;
+      if (editAreaId !== (editTarget.areaId ?? "")) patch.areaId = editAreaId || null;
+      if (editIsActive !== editTarget.isActive) patch.isActive = editIsActive;
+      if (Object.keys(patch).length > 0) {
+        await adminUpdateUser({ data: { id: editTarget.id, ...patch } });
+        const areaName = "areaId" in patch
+          ? (patch.areaId ? (areas.find(a => a.id === patch.areaId)?.name ?? null) : null)
+          : editTarget.areaName;
+        setUsers(prev => prev.map(u => u.id === editTarget.id ? { ...u, ...patch, areaName } : u));
+      }
       setEditTarget(null);
+      setEditRoleDropOpen(false);
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
     } finally {
       setEditSaving(false);
     }
@@ -754,7 +768,7 @@ function SettingsPage() {
                           <td className="px-5 py-3.5">
                             <div className="flex items-center justify-end gap-0.5">
                               <button
-                                onClick={() => { setEditTarget(u); setEditRoleId(u.roleId ?? ""); setEditAreaId(u.areaId ?? ""); setEditIsActive(u.isActive); }}
+                                onClick={() => { setEditTarget(u); setEditFullName(u.fullName || ""); setEditRoleId(u.roleId ?? ""); setEditAreaId(u.areaId ?? ""); setEditIsActive(u.isActive); setEditRoleDropOpen(false); }}
                                 title="Editar usuario"
                                 className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                               >
@@ -1415,72 +1429,139 @@ function SettingsPage() {
       {/* ── Edit user modal ─────────────────────────────────────────────── */}
       {editTarget && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-          onClick={() => setEditTarget(null)}
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => { setEditTarget(null); setEditRoleDropOpen(false); }}
         >
           <div
-            className="bg-card rounded-card shadow-card max-w-sm w-full p-5 space-y-4"
+            className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-md p-6 space-y-5"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3">
-              <PencilLine className="size-5 text-primary" />
-              <div>
-                <h3 className="font-semibold">Editar usuario</h3>
-                <p className="text-xs text-muted-foreground">{editTarget.fullName || editTarget.email}</p>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-base">Editar Usuario</h3>
+              <button
+                onClick={() => { setEditTarget(null); setEditRoleDropOpen(false); }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Nombre completo */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nombre completo</label>
+              <input
+                type="text"
+                value={editFullName}
+                onChange={e => setEditFullName(e.target.value)}
+                className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            {/* Rol — custom dropdown */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rol</label>
+              <div className="relative">
+                {editRoleDropOpen && (
+                  <div className="fixed inset-0 z-[60]" onClick={() => setEditRoleDropOpen(false)} />
+                )}
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); setEditRoleDropOpen(v => !v); }}
+                  className="relative z-[70] w-full flex items-center justify-between rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {editRoleId && ROLE_MAP[editRoleId] ? (
+                    <span
+                      className="inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
+                      style={ROLE_BADGE_STYLE[editRoleId] ?? { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
+                    >
+                      {ROLE_MAP[editRoleId].name}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Sin rol asignado</span>
+                  )}
+                  <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-150 ${editRoleDropOpen ? "rotate-180" : ""}`} />
+                </button>
+                {editRoleDropOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 z-[70] rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => { setEditRoleId(""); setEditRoleDropOpen(false); }}
+                      className="w-full flex items-center px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-secondary transition-colors"
+                    >
+                      Sin rol asignado
+                      {!editRoleId && <Check className="size-3.5 ml-auto text-primary" />}
+                    </button>
+                    {Object.entries(ROLE_MAP).map(([id, r]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => { setEditRoleId(id); setEditRoleDropOpen(false); }}
+                        className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-secondary transition-colors border-t border-border/40"
+                      >
+                        <span
+                          className="inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-semibold tracking-[0.05em] uppercase"
+                          style={ROLE_BADGE_STYLE[id] ?? { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
+                        >
+                          {r.name}
+                        </span>
+                        {editRoleId === id && <Check className="size-3.5 ml-auto text-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Rol</label>
-                <select
-                  value={editRoleId}
-                  onChange={e => setEditRoleId(e.target.value)}
-                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="">Sin rol asignado</option>
-                  {Object.entries(ROLE_MAP).map(([id, r]) => (
-                    <option key={id} value={id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área</label>
+            {/* Área */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Área</label>
+              <div className="relative">
                 <select
                   value={editAreaId}
                   onChange={e => setEditAreaId(e.target.value)}
-                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full appearance-none rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Sin área asignada</option>
                   {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Estado</span>
-                <button
-                  onClick={() => setEditIsActive(v => !v)}
-                  className="inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-[11px] font-medium tracking-[0.02em] transition-opacity hover:opacity-70"
-                  style={editIsActive
-                    ? { background: "color-mix(in srgb, #1F8A5B 14%, transparent)", color: "#1F8A5B" }
-                    : { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
-                >
-                  <span className={`size-1.5 rounded-full ${editIsActive ? "bg-[#1F8A5B]" : "bg-muted-foreground/40"}`} />
-                  {editIsActive ? "Activo" : "Inactivo"}
-                </button>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-1">
+            {/* Estado */}
+            <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/20 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Estado de la cuenta</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {editIsActive ? "El usuario puede iniciar sesión" : "Acceso bloqueado"}
+                </p>
+              </div>
               <button
-                onClick={() => setEditTarget(null)}
-                className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
+                type="button"
+                onClick={() => setEditIsActive(v => !v)}
+                className="inline-flex items-center gap-1.5 rounded-pill px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.03em] transition-all hover:opacity-80"
+                style={editIsActive
+                  ? { background: "color-mix(in srgb, #1F8A5B 14%, transparent)", color: "#1F8A5B" }
+                  : { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
+              >
+                <span className={`size-1.5 rounded-full ${editIsActive ? "bg-[#1F8A5B]" : "bg-muted-foreground/40"}`} />
+                {editIsActive ? "Activo" : "Inactivo"}
+              </button>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => { setEditTarget(null); setEditRoleDropOpen(false); }}
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl border border-border hover:bg-secondary transition-colors font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleEditUser}
                 disabled={editSaving}
-                className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                className="flex-1 text-sm px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity font-medium"
               >
                 {editSaving ? "Guardando…" : "Guardar"}
               </button>
