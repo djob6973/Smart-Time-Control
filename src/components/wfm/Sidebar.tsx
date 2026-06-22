@@ -119,12 +119,12 @@ export function Sidebar() {
           "transition-transform duration-300 ease-in-out",
           // Desktop: in-flow, sticky, floating card
           "lg:relative lg:inset-y-auto lg:left-auto lg:z-auto lg:w-60 lg:shrink-0 lg:translate-x-0",
-          "lg:rounded-card lg:shadow-card lg:my-4 lg:ml-4 lg:h-[calc(100vh-2rem)] lg:sticky lg:top-4",
+          "lg:rounded-card lg:shadow-card lg:my-4 lg:ml-4 lg:h-[calc(100vh-2rem)] lg:sticky lg:top-4 lg:pt-5 lg:px-3 lg:pb-4",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Logo / marca */}
-        <div className="px-5 py-5 flex items-center gap-3 border-b border-sidebar-border shrink-0">
+        <div className="px-5 py-5 lg:px-0 lg:pt-0 lg:pb-4 flex items-center gap-3 border-b border-sidebar-border shrink-0">
           <div className="size-10 shrink-0">
             <img
               src={organization?.logo ?? "/logo.svg"}
@@ -141,7 +141,7 @@ export function Sidebar() {
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 p-3 lg:px-0 space-y-0.5 overflow-y-auto">
           {visibleNav.map((it) => {
             const active = it.to === "/" ? path === "/" : path.startsWith(it.to);
             const Icon = it.icon;
@@ -164,7 +164,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer: usuario + acciones */}
-        <div className="p-3 border-t border-sidebar-border shrink-0">
+        <div className="p-3 lg:px-0 lg:pb-0 border-t border-sidebar-border shrink-0">
           <div className="flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-sidebar-accent/60 transition-colors">
             <div className="size-8 shrink-0 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
               {initials}
