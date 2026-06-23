@@ -1,9 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, CalendarDays, Users, Building2,
-  CalendarOff, FileText, Settings, LogOut, Clock, CalendarCheck, KeyRound, Eye, EyeOff, X, Sun, Moon,
+  CalendarOff, FileText, Settings, LogOut, Clock, CalendarCheck, KeyRound, Eye, EyeOff, X, Sun, Moon, ChevronRight,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useAppContext } from "@/lib/app-context";
@@ -24,6 +24,7 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   resource?: Resource;
   onlyLinkedEmployee?: boolean;
+  section?: string;
 };
 
 const NAV: NavItem[] = [
@@ -35,7 +36,7 @@ const NAV: NavItem[] = [
   { to: "/areas",      label: "Áreas",              icon: Building2,       resource: "areas" },
   { to: "/absences",   label: "Ausencias",          icon: CalendarOff,     resource: "absences" },
   { to: "/reports",    label: "Reportes",           icon: FileText,        resource: "reports" },
-  { to: "/settings",   label: "Configuración",      icon: Settings,        resource: "settings" },
+  { to: "/settings",   label: "Configuración",      icon: Settings,        resource: "settings", section: "Administración" },
 ];
 
 export function Sidebar() {
@@ -144,61 +145,71 @@ export function Sidebar() {
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 px-3 py-0 lg:px-0 space-y-0.5 overflow-y-auto">
-          {visibleNav.map((it) => {
+        <nav className="flex-1 px-3 py-0 lg:px-0 overflow-y-auto flex flex-col gap-0.5">
+          {visibleNav.map((it, index) => {
             const active = it.to === "/" ? path === "/" : path.startsWith(it.to);
             const Icon = it.icon;
+            const showSection = it.section && (index === 0 || visibleNav[index - 1].section !== it.section);
             return (
-              <Link
-                key={it.to}
-                to={it.to}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-white"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              <Fragment key={it.to}>
+                {showSection && (
+                  <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {it.section}
+                  </p>
                 )}
-              >
-                <Icon className="size-5 shrink-0" />
-                {it.label}
-              </Link>
+                <Link
+                  to={it.to}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary text-white"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <Icon className="size-5 shrink-0" />
+                  {it.label}
+                </Link>
+              </Fragment>
             );
           })}
         </nav>
 
-        {/* Footer: usuario + acciones */}
-        <div className="px-2 pt-3 mt-3 border-t border-sidebar-border shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="size-9 shrink-0 rounded-full bg-foreground dark:bg-primary flex items-center justify-center text-xs font-bold text-background dark:text-white">
+        {/* Footer: acciones + usuario */}
+        <div className="shrink-0 border-t border-sidebar-border pt-3 mt-3">
+          {/* Fila de acciones */}
+          <div className="flex items-center justify-around px-2 pb-3">
+            <button
+              onClick={toggleTheme}
+              title={isDark ? "Modo claro" : "Modo oscuro"}
+              className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+            >
+              {isDark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+            </button>
+            <button
+              onClick={() => { resetPassModal(); setPassOpen(true); }}
+              title="Cambiar contraseña"
+              className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+            >
+              <KeyRound className="size-[18px]" />
+            </button>
+            <button
+              onClick={signOut}
+              title="Cerrar sesión"
+              className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+            >
+              <LogOut className="size-[18px]" />
+            </button>
+          </div>
+          {/* Fila de usuario */}
+          <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent/60 transition-colors cursor-default">
+            <div className="size-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-sm font-bold text-white">
               {initials}
             </div>
             <div className="flex-1 min-w-0 leading-tight">
               <div className="text-sm font-medium truncate">{profile?.nombre || profile?.email}</div>
               <div className="text-[11px] text-muted-foreground capitalize">{roleLabel}</div>
             </div>
-            <div className="flex items-center gap-0.5 ml-auto">
-              <button
-                onClick={toggleTheme}
-                title={isDark ? "Modo claro" : "Modo oscuro"}
-                className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-              >
-                {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-              </button>
-              <button
-                onClick={() => { resetPassModal(); setPassOpen(true); }}
-                title="Cambiar contraseña"
-                className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-              >
-                <KeyRound className="size-4" />
-              </button>
-              <button
-                onClick={signOut}
-                title="Cerrar sesión"
-                className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-              >
-                <LogOut className="size-4" />
-              </button>
-            </div>
+            <ChevronRight className="size-4 text-muted-foreground shrink-0" />
           </div>
         </div>
       </aside>
