@@ -105,8 +105,8 @@ async function handleRegister(req: Request): Promise<Response> {
   // Only assign admin if no admin user exists yet in the system.
   // This prevents any new registration from getting admin when one already exists.
   const existingAdmin = await queryOne(
-    `SELECT up.id FROM public.user_profiles up
-     JOIN public.roles r ON r.id::text = up.role_id::text
+    `SELECT ur.user_id FROM public.user_roles ur
+     JOIN public.roles r ON r.id = ur.role_id
      WHERE r.nombre = 'admin'
      LIMIT 1`,
   );
