@@ -137,7 +137,7 @@ export function Sidebar() {
             />
           </div>
           <div className="leading-tight min-w-0">
-            <div className="text-base font-semibold tracking-tight truncate font-display">
+            <div className="text-[15px] font-semibold tracking-tight truncate font-display">
               Smart Time Control
             </div>
             <div className="text-[11px] text-muted-foreground">Smarter scheduling</div>
@@ -206,7 +206,7 @@ export function Sidebar() {
               {initials}
             </div>
             <div className="flex-1 min-w-0 leading-tight">
-              <div className="text-sm font-medium">{profile?.nombre || profile?.email}</div>
+              <div className="text-xs font-medium">{profile?.nombre || profile?.email}</div>
               <div className="text-[11px] text-muted-foreground capitalize">{roleLabel}</div>
             </div>
             <ChevronRight className="size-4 text-muted-foreground shrink-0" />
