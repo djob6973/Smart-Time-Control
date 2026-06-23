@@ -153,9 +153,9 @@ export function Sidebar() {
                 key={it.to}
                 to={it.to}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px]",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   active
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-white"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 )}
               >
@@ -167,36 +167,36 @@ export function Sidebar() {
         </nav>
 
         {/* Footer: usuario + acciones */}
-        <div className="p-3 lg:px-0 lg:pb-0 border-t border-sidebar-border shrink-0">
-          <div className="flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-sidebar-accent/60 transition-colors">
-            <div className="size-8 shrink-0 rounded-full bg-primary/15 dark:bg-primary flex items-center justify-center text-xs font-bold text-primary dark:text-primary-foreground">
+        <div className="px-2 pt-3 mt-3 border-t border-sidebar-border shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="size-9 shrink-0 rounded-full bg-foreground dark:bg-primary flex items-center justify-center text-xs font-bold text-background dark:text-white">
               {initials}
             </div>
             <div className="flex-1 min-w-0 leading-tight">
-              <div className="text-xs font-semibold truncate">{profile?.nombre || profile?.email}</div>
-              <div className="text-[10px] text-muted-foreground capitalize">{roleLabel}</div>
+              <div className="text-sm font-medium truncate">{profile?.nombre || profile?.email}</div>
+              <div className="text-[11px] text-muted-foreground capitalize">{roleLabel}</div>
             </div>
-            <div className="flex items-center shrink-0">
+            <div className="flex items-center gap-0.5 ml-auto">
               <button
                 onClick={toggleTheme}
                 title={isDark ? "Modo claro" : "Modo oscuro"}
-                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
+                className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
               >
-                {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
               <button
                 onClick={() => { resetPassModal(); setPassOpen(true); }}
                 title="Cambiar contraseña"
-                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
+                className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
               >
-                <KeyRound className="size-3.5" />
+                <KeyRound className="size-4" />
               </button>
               <button
                 onClick={signOut}
                 title="Cerrar sesión"
-                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
+                className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
               >
-                <LogOut className="size-3.5" />
+                <LogOut className="size-4" />
               </button>
             </div>
           </div>
