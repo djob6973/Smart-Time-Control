@@ -710,7 +710,6 @@ function SettingsPage() {
                       <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Usuario</th>
                       <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Rol</th>
                       <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Área</th>
-                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Evaluaciones</th>
                       <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Ingreso</th>
                       <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Acciones</th>
                     </tr>
@@ -718,7 +717,7 @@ function SettingsPage() {
                   <tbody>
                     {usersLoading && (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center text-muted-foreground">Cargando usuarios…</td>
+                        <td colSpan={5} className="py-12 text-center text-muted-foreground">Cargando usuarios…</td>
                       </tr>
                     )}
                     {!usersLoading && filteredUsers.length === 0 && (
@@ -760,8 +759,6 @@ function SettingsPage() {
                           </td>
                           {/* Area */}
                           <td className="px-5 py-3.5 text-sm text-foreground">{u.areaName ?? "—"}</td>
-                          {/* Evaluaciones — placeholder */}
-                          <td className="px-5 py-3.5 text-sm text-foreground">—</td>
                           {/* Ingreso (createdAt) */}
                           <td className="px-5 py-3.5 text-sm text-muted-foreground">{shortDate(u.createdAt)}</td>
                           {/* Actions — icon only */}
