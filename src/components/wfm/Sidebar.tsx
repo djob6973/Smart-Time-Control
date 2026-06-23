@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, CalendarDays, Users, Building2,
-  CalendarOff, FileText, Settings, LogOut, Clock, CalendarCheck, KeyRound, Eye, EyeOff, X, Sun, Moon,
+  CalendarOff, FileText, Settings, LogOut, Clock, CalendarCheck, Eye, EyeOff, X, Sun, Moon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -166,39 +166,42 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Footer: usuario + acciones */}
-        <div className="p-3 lg:px-0 lg:pb-0 border-t border-sidebar-border shrink-0">
-          <div className="flex items-center gap-2 px-2 py-2 rounded-xl hover:bg-sidebar-accent/60 transition-colors">
-            <div className="size-8 shrink-0 rounded-full bg-primary/15 dark:bg-primary flex items-center justify-center text-xs font-bold text-primary dark:text-primary-foreground">
+        {/* Toggle tema — al estilo nav-item, justo antes del separador */}
+        <div className="px-3 pb-1 lg:px-0">
+          <button
+            onClick={toggleTheme}
+            title={isDark ? "Modo claro" : "Modo oscuro"}
+            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          >
+            {isDark ? <Sun className="size-5 shrink-0" /> : <Moon className="size-5 shrink-0" />}
+            {isDark ? "Modo claro" : "Modo oscuro"}
+          </button>
+        </div>
+
+        {/* Footer usuario — igual al prototipo */}
+        <div className="px-3 lg:px-0 pb-0 border-t border-sidebar-border shrink-0">
+          <div className="flex items-center gap-3 px-2 pt-3">
+            {/* Avatar 36px · charcoal light / coral dark */}
+            <div className="size-9 shrink-0 rounded-full bg-[#333333] dark:bg-primary text-white flex items-center justify-center text-[11px] font-bold">
               {initials}
             </div>
-            <div className="flex-1 min-w-0 leading-tight">
-              <div className="text-xs font-semibold truncate">{profile?.nombre || profile?.email}</div>
-              <div className="text-[10px] text-muted-foreground capitalize">{roleLabel}</div>
-            </div>
-            <div className="flex items-center shrink-0">
-              <button
-                onClick={toggleTheme}
-                title={isDark ? "Modo claro" : "Modo oscuro"}
-                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-              </button>
-              <button
-                onClick={() => { resetPassModal(); setPassOpen(true); }}
-                title="Cambiar contraseña"
-                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <KeyRound className="size-3.5" />
-              </button>
-              <button
-                onClick={signOut}
-                title="Cerrar sesión"
-                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <LogOut className="size-3.5" />
-              </button>
-            </div>
+            {/* Nombre + rol — clic abre cambio de contraseña */}
+            <button
+              onClick={() => { resetPassModal(); setPassOpen(true); }}
+              title="Cambiar contraseña"
+              className="flex-1 min-w-0 text-left leading-tight"
+            >
+              <div className="text-sm font-medium truncate text-sidebar-foreground">{profile?.nombre || profile?.email}</div>
+              <div className="text-[11px] text-muted-foreground capitalize">{roleLabel}</div>
+            </button>
+            {/* Logout — único icon-btn, margin-left auto */}
+            <button
+              onClick={signOut}
+              title="Cerrar sesión"
+              className="ml-auto size-8 shrink-0 rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors flex items-center justify-center"
+            >
+              <LogOut className="size-[18px]" />
+            </button>
           </div>
         </div>
       </aside>
