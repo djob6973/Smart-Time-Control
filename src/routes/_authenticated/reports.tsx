@@ -650,7 +650,7 @@ function ReportsPage() {
                   {H1.map((h, i) => (
                     <th
                       key={h}
-                      className={`px-3 py-2.5 text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground bg-secondary/70 whitespace-nowrap first:rounded-tl-lg last:rounded-tr-lg ${
+                      className={`px-3 py-2.5 text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground bg-secondary whitespace-nowrap first:rounded-tl-lg last:rounded-tr-lg ${
                         i >= 2 ? "text-right" : "text-left"
                       }`}
                     >
@@ -663,7 +663,7 @@ function ReportsPage() {
                 {workerRows.map(r => {
                   const tot = r.STD + r.HED + r.HEN + r.RN + r.RDF;
                   return (
-                    <tr key={r.empId} className="border-t border-border hover:bg-secondary/30">
+                    <tr key={r.empId} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-secondary grid place-items-center text-[11px] font-bold flex-none select-none">
@@ -713,7 +713,7 @@ function ReportsPage() {
                   {H2.map((h, i) => (
                     <th
                       key={h}
-                      className={`px-3 py-2.5 text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground bg-secondary/70 text-left whitespace-nowrap ${
+                      className={`px-3 py-2.5 text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground bg-secondary text-left whitespace-nowrap ${
                         i === 0 ? "rounded-tl-lg" : ""
                       } ${i === H2.length - 1 ? "rounded-tr-lg" : ""}`}
                     >
@@ -730,7 +730,7 @@ function ReportsPage() {
                   const aprStyle   = APROBACION_STYLES[aprobacion] ?? APROBACION_STYLES.Pendiente;
 
                   return (
-                    <tr key={r.rowId} className="border-t border-border hover:bg-secondary/20">
+                    <tr key={r.rowId} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{r.fecha}</td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">

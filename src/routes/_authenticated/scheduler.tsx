@@ -554,7 +554,7 @@ function Scheduler() {
                   const area = areas.find(a => a.id === e.areaId);
                   const overload = area && total.total > area.maxHoursWeek;
                   return (
-                    <tr key={e.id} className={cn("border-t border-border", idx % 2 === 1 && "bg-secondary/20")}>
+                    <tr key={e.id} className={cn("border-t border-border/60", idx % 2 === 1 && "bg-secondary/20")}>
                       <td className="px-4 py-2 sticky left-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
                         <div className="flex items-center gap-3">
                           <div className="size-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground">
@@ -954,12 +954,12 @@ function ShiftCell({ shift, area, onClick, onSwapClick, swapState, isHolidayDay 
       <button
         onClick={onClick}
         className={cn(
-          "w-full h-[60px] rounded-lg border border-dashed text-xs text-muted-foreground transition",
+          "w-full h-[56px] rounded-lg border border-dashed text-xs text-muted-foreground transition",
           swapState === "target"
             ? "border-primary/40 bg-primary/5 text-primary"
             : isHolidayDay && shift?.code !== "OFF"
             ? "border-amber-300/60 bg-amber-50/40 hover:bg-amber-50/80 hover:border-amber-400/60 dark:bg-amber-900/10 dark:border-amber-700/40"
-            : "border-border/60 hover:bg-secondary/50 hover:border-primary/40"
+            : "border-border/60 hover:bg-secondary hover:border-primary"
         )}
       >
         {swapState === "target" ? (
@@ -994,7 +994,7 @@ function ShiftCell({ shift, area, onClick, onSwapClick, swapState, isHolidayDay 
           onMouseEnter={onEnter}
           onMouseLeave={() => setTipPos(null)}
           className={cn(
-            "w-full h-[60px] rounded-lg text-left px-2.5 py-1.5 transition hover:brightness-95",
+            "w-full h-[56px] rounded-lg text-left px-2.5 py-1.5 transition hover:ring-1 hover:ring-primary/50 hover:shadow-sm",
             cc[0],
             swapState === "source" ? "ring-2 ring-primary ring-offset-1" :
             swapState === "target" ? "ring-2 ring-primary/30 ring-offset-1" : ""
@@ -1026,7 +1026,7 @@ function ShiftCell({ shift, area, onClick, onSwapClick, swapState, isHolidayDay 
           onMouseEnter={onEnter}
           onMouseLeave={() => setTipPos(null)}
           className={cn(
-            "w-full h-[60px] rounded-lg text-left px-2.5 py-1.5 transition hover:brightness-95",
+            "w-full h-[56px] rounded-lg text-left px-2.5 py-1.5 transition hover:ring-1 hover:ring-primary/50 hover:shadow-sm",
             cc[0],
             swapState === "source" ? "ring-2 ring-primary ring-offset-1" :
             swapState === "target" ? "ring-2 ring-border ring-offset-1" : ""

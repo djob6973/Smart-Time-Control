@@ -86,7 +86,7 @@ function KpiCard({
     <div className={`rounded-card p-5 flex flex-col gap-3 ${
       alert
         ? "bg-foreground text-background dark:bg-primary/10 dark:text-foreground dark:border dark:border-primary/25"
-        : "bg-card border border-border shadow-card"
+        : "bg-card shadow-card"
     }`}>
       <div className="flex items-start justify-between gap-2">
         <span className={`text-[13px] font-medium leading-snug ${alert ? "text-background/70 dark:text-muted-foreground" : "text-muted-foreground"}`}>
@@ -742,7 +742,7 @@ function AbsencesPage() {
         <div className="rounded-card bg-card shadow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-secondary/60 text-left">
+              <thead className="bg-secondary text-left">
                 <tr>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Trabajador</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Tipo</th>
@@ -760,7 +760,7 @@ function AbsencesPage() {
                   const days   = countDays(a);
 
                   return (
-                    <tr key={a.id} className="border-t border-border hover:bg-secondary/30 transition-colors">
+                    <tr key={a.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                       {/* Trabajador */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">

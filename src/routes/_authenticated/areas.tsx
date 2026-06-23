@@ -104,7 +104,7 @@ function AreasPage() {
                   <Building2 style={{ width: 22, height: 22 }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base truncate">{area.name}</h3>
+                  <h3 className="font-display font-medium text-lg truncate">{area.name}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {area.startHour}:00 – {area.endHour}:00
                   </p>
@@ -120,25 +120,25 @@ function AreasPage() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-3 py-1">
-                <div className="text-center">
-                  <div className="text-2xl font-bold tabular-nums leading-none">{active}</div>
-                  <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Activos{inactive > 0 && <span className="text-muted-foreground/60"> /{areaEmps.length}</span>}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-secondary rounded-xl p-3 text-center">
+                  <div className="font-display text-[2rem] font-medium tabular-nums leading-none">{active}</div>
+                  <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Activos{inactive > 0 && <span className="opacity-60"> /{areaEmps.length}</span>}
                   </div>
                 </div>
-                <div className="text-center border-x border-border">
-                  <div className="text-2xl font-bold tabular-nums leading-none">{hasCovReq ? minCov : "—"}</div>
-                  <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Mín. cobertura</div>
+                <div className="bg-secondary rounded-xl p-3 text-center">
+                  <div className="font-display text-[2rem] font-medium tabular-nums leading-none">{hasCovReq ? minCov : "—"}</div>
+                  <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Mín. cobertura</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold tabular-nums leading-none">
+                <div className="bg-secondary rounded-xl p-3 text-center">
+                  <div className="font-display text-[2rem] font-medium tabular-nums leading-none">
                     {pct !== null
-                      ? <>{pct}<span className="text-base font-normal text-muted-foreground">%</span></>
-                      : <span className="text-base font-normal text-muted-foreground">—</span>
+                      ? <>{pct}<span className="text-lg font-normal text-muted-foreground">%</span></>
+                      : <span className="text-lg font-normal text-muted-foreground">—</span>
                     }
                   </div>
-                  <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Cobertura</div>
+                  <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Cobertura</div>
                 </div>
               </div>
 
@@ -156,7 +156,7 @@ function AreasPage() {
                     </span>
                   )}
                 </div>
-                <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{ width: pct !== null ? `${pct}%` : "0%", backgroundColor: cc?.bar ?? "transparent" }}
@@ -164,7 +164,6 @@ function AreasPage() {
                 </div>
               </div>
 
-              <hr className="border-border" />
 
               {/* Footer */}
               <div className="flex items-center justify-between">

@@ -705,12 +705,12 @@ function SettingsPage() {
             <div className="rounded-card bg-card shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Usuario</th>
-                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Rol</th>
-                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Área</th>
-                      <th className="px-5 py-3 text-left text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Ingreso</th>
+                  <thead className="bg-secondary text-left">
+                    <tr>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Usuario</th>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Rol</th>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Área</th>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Ingreso</th>
                       <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Acciones</th>
                     </tr>
                   </thead>
@@ -731,7 +731,7 @@ function SettingsPage() {
                       const roleMeta = u.roleId ? ROLE_MAP[u.roleId] : null;
                       const badgeStyle = u.roleId ? (ROLE_BADGE_STYLE[u.roleId] ?? { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }) : null;
                       return (
-                        <tr key={u.id} className="border-t border-border hover:bg-secondary/20 transition-colors">
+                        <tr key={u.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                           {/* Avatar + name + email */}
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
@@ -1230,7 +1230,7 @@ function SettingsPage() {
             )}
 
             {/* Row 4: Maintenance */}
-            <div className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-3">
+            <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-3">
               <div>
                 <h2 className="font-semibold text-sm">Datos y mantenimiento</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Solo administradores</p>

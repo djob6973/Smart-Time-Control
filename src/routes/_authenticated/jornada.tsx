@@ -208,7 +208,7 @@ function JornadaPage() {
     <>
       <Topbar title="Control de Jornada" subtitle={`Fecha activa: ${fechaActiva}`} />
 
-      <div className="border-b border-border bg-card px-6">
+      <div className="border-b border-border/60 px-4 md:px-6">
         <nav className="flex gap-1 overflow-x-auto">
           {visibleTabs.map((t) => {
             const Icon = t.icon;
@@ -382,7 +382,7 @@ function TabDashboard() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-left">
+            <thead className="bg-secondary text-left">
               <tr>
                 {["Empleado","Área","Horario programado","Estado","Último mov.","Hora","Break","Almuerzo","En jornada"].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
@@ -391,7 +391,7 @@ function TabDashboard() {
             </thead>
             <tbody>
               {estados.map(({ emp, est, shift }) => (
-                <tr key={emp.id} className="border-t border-border hover:bg-secondary/30">
+                <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="size-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
@@ -461,26 +461,26 @@ function TabDashboard() {
       </div>
 
       {/* Punctuality summary */}
-      <div className="rounded-card border border-border bg-card shadow-card p-5">
-        <h3 className="font-semibold text-sm mb-4">Puntualidad del día</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-          <div>
-            <div className="text-3xl font-bold tabular-nums">{conEntrada.length}</div>
-            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Con registro</div>
+      <div className="rounded-card bg-card p-5 shadow-card">
+        <h3 className="font-display font-medium text-[1.125rem] mb-4">Puntualidad del día</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-secondary rounded-xl p-3 text-center">
+            <div className="font-display text-[2rem] font-medium tabular-nums leading-none">{conEntrada.length}</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Con registro</div>
           </div>
-          <div className="border-l border-border">
-            <div className="text-3xl font-bold tabular-nums text-[#1F8A5B]">{conEntrada.length - tardiosConEntrada}</div>
-            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">A tiempo</div>
+          <div className="bg-secondary rounded-xl p-3 text-center">
+            <div className="font-display text-[2rem] font-medium tabular-nums leading-none text-[#1F8A5B]">{conEntrada.length - tardiosConEntrada}</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">A tiempo</div>
           </div>
-          <div className="border-l border-border">
-            <div className="text-3xl font-bold tabular-nums text-primary">{tardiosConEntrada}</div>
-            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Tardíos</div>
+          <div className="bg-secondary rounded-xl p-3 text-center">
+            <div className="font-display text-[2rem] font-medium tabular-nums leading-none text-primary">{tardiosConEntrada}</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Tardíos</div>
           </div>
-          <div className="border-l border-border">
-            <div className="text-3xl font-bold tabular-nums">
+          <div className="bg-secondary rounded-xl p-3 text-center">
+            <div className="font-display text-[2rem] font-medium tabular-nums leading-none">
               {pctPuntual}<span className="text-lg font-normal text-muted-foreground">%</span>
             </div>
-            <div className="mt-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Puntualidad</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Puntualidad</div>
           </div>
         </div>
         <div className="mt-4 h-2 rounded-full bg-secondary overflow-hidden">
@@ -873,7 +873,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           return (
             <div
               key={emp.id}
-              className="rounded-card border border-border bg-card shadow-card p-4 flex flex-col gap-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              className="rounded-card bg-card shadow-card p-4 flex flex-col gap-3 transition-all hover:-translate-y-0.5 hover:shadow-md"
             >
               {/* Header */}
               <div className="flex items-start gap-3">
@@ -1122,7 +1122,7 @@ function TabHistorial() {
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-left">
+            <thead className="bg-secondary text-left">
               <tr>
                 {["Empleado","Área","Movimiento","Hora","Estado","Observaciones","Modificación",""].map((h, i) => (
                   <th key={i} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
@@ -1137,7 +1137,7 @@ function TabHistorial() {
                   .filter((m) => m.registroId === r.id)
                   .sort((a, b) => new Date(b.fechaModificacion).getTime() - new Date(a.fechaModificacion).getTime())[0];
                 return (
-                  <tr key={r.id} className="border-t border-border hover:bg-secondary/30">
+                  <tr key={r.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                     <td className="px-4 py-3 font-medium">{emp?.fullName ?? r.employeeId}</td>
                     <td className="px-4 py-3 text-muted-foreground">{area?.name ?? "—"}</td>
                     <td className="px-4 py-3">{TIPO_MOVIMIENTO_LABELS[r.tipoMovimiento]}</td>
@@ -1487,7 +1487,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
               {selfDays.map((d) => {
                 const completo = !!d.entrada && !!d.salida;
                 return (
-                  <tr key={d.fecha} className="border-t border-border hover:bg-secondary/30">
+                  <tr key={d.fecha} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                     <td className="px-4 py-3 font-medium">{fmtFecha(d.fecha)}</td>
                     <td className="px-4 py-3 tabular-nums">{fmtTime(d.entrada?.horaExacta)}</td>
                     <td className="px-4 py-3 tabular-nums">{fmtTime(d.salida?.horaExacta)}</td>
@@ -1590,7 +1590,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-left">
+            <thead className="bg-secondary text-left">
               <tr>
                 {["Empleado","Área","Días","Tiempo jornada","Break","Almuerzo","Efectivo"].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
@@ -1599,7 +1599,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
             </thead>
             <tbody>
               {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreakMin, totalAlmuerzoMin, totalEfectivoMin }) => (
-                <tr key={emp.id} className="border-t border-border hover:bg-secondary/30">
+                <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
@@ -1631,7 +1631,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-left">
+            <thead className="bg-secondary text-left">
               <tr>
                 {["Empleado","Área","Con registro","A tiempo","Tardíos","Puntualidad","Retraso prom."].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
@@ -1642,7 +1642,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
               {stats.map(({ emp, punct }) => {
                 const pctColor = punct.pct >= 90 ? "text-[#1F8A5B]" : punct.pct >= 75 ? "text-[#9a6b00]" : "text-primary";
                 return (
-                  <tr key={emp.id} className="border-t border-border hover:bg-secondary/30">
+                  <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
@@ -1839,7 +1839,7 @@ function TabConfiguracion() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-left">
+            <thead className="bg-secondary text-left">
               <tr>
                 {["Tipo","Área","Máx. simultáneos","Cargo","Horario",""].map((h, i) => (
                   <th key={i} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
@@ -1848,7 +1848,7 @@ function TabConfiguracion() {
             </thead>
             <tbody>
               {visibleCupos.map((c) => (
-                <tr key={c.id} className="border-t border-border hover:bg-secondary/30">
+                <tr key={c.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3 capitalize font-medium">{c.tipo}</td>
                   <td className="px-4 py-3">{areas.find((a) => a.id === c.areaId)?.name ?? "Global"}</td>
                   <td className="px-4 py-3">{c.maxSimultaneos} personas</td>

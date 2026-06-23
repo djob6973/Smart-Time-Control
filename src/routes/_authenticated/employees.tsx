@@ -137,7 +137,7 @@ function EmployeesPage() {
         <div className="rounded-card bg-card shadow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-secondary/60 text-left">
+              <thead className="bg-secondary text-left">
                 <tr>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Trabajador</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Documento</th>
@@ -154,7 +154,7 @@ function EmployeesPage() {
                   const initials = e.fullName.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase();
                   const areaName = areas.find(a => a.id === e.areaId)?.name ?? "—";
                   return (
-                    <tr key={e.id} className="border-t border-border hover:bg-secondary/30">
+                    <tr key={e.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="size-8 shrink-0 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
