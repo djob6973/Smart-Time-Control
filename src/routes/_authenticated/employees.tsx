@@ -84,7 +84,7 @@ function EmployeesPage() {
         }
       />
 
-      <div className="px-4 lg:px-0 py-4 md:py-6 space-y-4">
+      <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 w-full sm:w-72 focus-within:border-primary/40 focus-within:shadow-soft transition-shadow">

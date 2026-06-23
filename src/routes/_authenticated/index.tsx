@@ -366,7 +366,7 @@ function Dashboard() {
     <>
       <Topbar title="Dashboard" subtitle="Lo que necesitas atender hoy" />
 
-      <div className="px-4 lg:px-0 py-5 space-y-5">
+      <div className="px-4 md:px-6 py-5 max-w-[1280px] mx-auto space-y-5">
 
         {/* ── Toolbar ──────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-3">

@@ -369,7 +369,7 @@ function Scheduler() {
         }
       />
 
-      <div className="px-4 lg:px-0 py-4 md:py-6 space-y-4">
+      <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Selector de vista */}
           <div className="flex items-center rounded-pill border border-border bg-card p-1 gap-0.5 text-sm">

@@ -474,7 +474,7 @@ function ReportsPage() {
   return (
     <>
       <Topbar title="Reportes y analítica" subtitle="Horas, novedades y tendencias" />
-      <div className="px-4 lg:px-0 py-4 md:py-6 space-y-4">
+      <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
 
         {/* ---- Toolbar ---- */}
         <div className="flex flex-wrap items-center gap-3">
