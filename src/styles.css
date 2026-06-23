@@ -132,13 +132,17 @@
   --border:       oklch(1 0 0 / 12%);
   --input:        oklch(1 0 0 / 15%);
   --ring:         oklch(0.7 0.18 23.5);
-  --sidebar:          oklch(0.244 0 0);        /* #202020 */
+  --sidebar:          oklch(0.258 0 0);        /* #232323 — igual que card */
   --sidebar-foreground: oklch(0.96 0 0);
   --sidebar-primary: oklch(0.7 0.18 23.5);
   --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.29 0 0);          /* #2B2B2B hover */
   --sidebar-accent-foreground: oklch(0.96 0 0);
   --sidebar-border: oklch(0.343 0 0);         /* #383838 */
+  /* Sombras más prominentes en dark mode */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.45);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 14px 32px -8px rgb(0 0 0 / 0.55);
 }
 
 @layer base {

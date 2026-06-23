@@ -87,7 +87,7 @@ export function Topbar({ title, subtitle, right }: {
 
         {/* Avatar */}
         <div
-          className="size-10 shrink-0 rounded-full bg-foreground text-background flex items-center justify-center text-sm font-bold"
+          className="size-10 shrink-0 rounded-full bg-foreground dark:bg-primary text-background dark:text-primary-foreground flex items-center justify-center text-sm font-bold"
           title={profile?.email}
         >
           {initials}
