@@ -516,7 +516,7 @@ function Scheduler() {
           <EquityPanel data={equityData} />
         )}
 
-        <div className={cn("rounded-card border border-border bg-card overflow-hidden shadow-card", view === "month" && "hidden")}>
+        <div className={cn("rounded-card bg-card overflow-hidden shadow-card", view === "month" && "hidden")}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -1113,7 +1113,7 @@ function MonthlyView({ summary }: {
   );
 
   return (
-    <div className="rounded-card border border-border bg-card overflow-hidden shadow-card">
+    <div className="rounded-card bg-card overflow-hidden shadow-card">
       {summary.length === 0 ? (
         <div className="p-12 text-center text-muted-foreground text-sm">
           No hay turnos registrados para este mes. Genera una programación para ver el resumen.
@@ -2351,7 +2351,7 @@ function EquityPanel({ data }: {
   }
 
   return (
-    <div className="rounded-card border border-border bg-card overflow-hidden shadow-card">
+    <div className="rounded-card bg-card overflow-hidden shadow-card">
       <div className="px-4 py-3 border-b border-border bg-secondary/40 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <History className="size-4 text-muted-foreground" />

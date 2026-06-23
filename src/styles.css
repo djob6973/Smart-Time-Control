@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Manrope:wght@400..700&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -47,7 +47,7 @@
   --color-info:                    var(--info);
 
   /* Tipografía — Inter (cuerpo) + Space Grotesk (títulos/KPI) + JetBrains Mono (labels/badges) */
-  --font-sans:    "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk", sans-serif;
   --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 

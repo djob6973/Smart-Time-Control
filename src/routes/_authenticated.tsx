@@ -63,10 +63,9 @@ function AuthenticatedLayout() {
   return (
     <AppLoader>
       <AppProvider>
-        <div className="flex min-h-screen bg-background">
+        <div className="flex min-h-screen bg-background lg:p-4 lg:items-start lg:gap-4">
           <Sidebar />
-          {/* Main content — da espacio derecho al sidebar flotante */}
-          <main className="flex-1 min-w-0 flex flex-col overflow-hidden lg:ml-0">
+          <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
             <Outlet />
           </main>
         </div>

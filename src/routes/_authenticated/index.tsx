@@ -441,8 +441,8 @@ function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
           {/* Chart card */}
-          <div className="lg:col-span-2 rounded-card border border-border bg-card shadow-card flex flex-col">
-            <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4 border-b border-border">
+          <div className="lg:col-span-2 rounded-card bg-card shadow-card flex flex-col">
+            <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4 border-b border-border/60">
               <div>
                 <h3 className="font-semibold text-sm">Horas programadas</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -626,8 +626,8 @@ function Kpi({ icon: Icon, label, value, hint, delta, deltaUp, alert }: {
 }) {
   return (
     <div
-      className={`rounded-card p-5 shadow-card flex flex-col gap-3 ${
-        alert ? "border-transparent bg-foreground dark:bg-[#232323]" : "bg-card border border-border"
+      className={`rounded-card p-5 shadow-card flex flex-col gap-3 transition-transform hover:-translate-y-0.5 ${
+        alert ? "border-transparent bg-foreground dark:bg-[#232323]" : "bg-card"
       }`}
     >
       <div className="flex items-start justify-between gap-2">

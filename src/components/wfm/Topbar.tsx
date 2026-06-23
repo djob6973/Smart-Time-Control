@@ -41,8 +41,8 @@ export function Topbar({ title, subtitle, right }: {
     : profile?.email?.slice(0, 2).toUpperCase() ?? "??";
 
   return (
-    <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-sm border-b border-border/60">
-      <div className="flex items-center gap-3 px-4 md:px-6 py-3">
+    <header className="sticky top-0 z-20 lg:static bg-background/90 lg:bg-transparent backdrop-blur-sm lg:backdrop-blur-none border-b border-border/60 lg:border-b-0">
+      <div className="flex items-center gap-3 px-4 md:px-6 py-3 lg:py-5 lg:pb-4">
         {/* Hamburger — solo mobile */}
         <button
           onClick={toggleSidebar}
@@ -54,7 +54,7 @@ export function Topbar({ title, subtitle, right }: {
 
         {/* Título */}
         <div className="min-w-0 flex-1">
-          <h1 className="text-base md:text-lg font-semibold tracking-tight truncate font-display">
+          <h1 className="text-base md:text-lg lg:text-[1.625rem] font-semibold lg:font-medium tracking-tight lg:tracking-[-0.01em] truncate font-display lg:leading-tight">
             {title}
           </h1>
           {subtitle && (
@@ -66,8 +66,8 @@ export function Topbar({ title, subtitle, right }: {
         {right && <div className="hidden md:flex items-center gap-2">{right}</div>}
 
         {/* Search — oculto en mobile */}
-        <div className="hidden md:flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-1.5 w-56 lg:w-64 transition-shadow focus-within:shadow-soft focus-within:border-primary/40">
-          <Search className="size-3.5 shrink-0 text-muted-foreground" />
+        <div className="hidden md:flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 w-56 lg:w-64 transition-shadow focus-within:shadow-soft focus-within:border-primary/40">
+          <Search className="size-4 shrink-0 text-muted-foreground" />
           <input
             placeholder="Buscar…"
             className="bg-transparent text-sm outline-none flex-1 min-w-0 placeholder:text-muted-foreground"
@@ -78,16 +78,16 @@ export function Topbar({ title, subtitle, right }: {
         <button
           onClick={toggle}
           title="Cambiar tema"
-          className="shrink-0 size-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="shrink-0 size-10 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
-          {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          {isDark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
         </button>
 
         <NotificationCenter />
 
         {/* Avatar */}
         <div
-          className="size-9 shrink-0 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-bold"
+          className="size-10 shrink-0 rounded-full bg-foreground text-background flex items-center justify-center text-sm font-bold"
           title={profile?.email}
         >
           {initials}

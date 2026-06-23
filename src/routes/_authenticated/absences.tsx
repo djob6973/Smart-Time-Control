@@ -607,7 +607,7 @@ function AbsencesPage() {
         <Topbar title="Ausencias" subtitle="Solicitudes y aprobaciones" />
         <div className="flex-1 flex items-center justify-center p-10">
           <div className="max-w-sm w-full">
-            <div className="rounded-card border border-border bg-card p-8 text-center shadow-card space-y-4">
+            <div className="rounded-card bg-card p-8 text-center shadow-card space-y-4">
               <div
                 className="size-14 rounded-full flex items-center justify-center mx-auto"
                 style={{ background: "color-mix(in srgb,var(--color-primary) 10%,transparent)" }}
@@ -739,7 +739,7 @@ function AbsencesPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+        <div className="rounded-card bg-card shadow-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-secondary/60 text-left">

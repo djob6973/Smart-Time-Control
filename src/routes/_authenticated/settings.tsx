@@ -702,7 +702,7 @@ function SettingsPage() {
               </div>
             )}
 
-            <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+            <div className="rounded-card bg-card shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -817,7 +817,7 @@ function SettingsPage() {
             )}
 
             {/* Permission matrix */}
-            <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+            <div className="rounded-card bg-card shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
                 <div>
                   <h2 className="font-semibold text-sm">Matriz de permisos por módulo</h2>
@@ -905,7 +905,7 @@ function SettingsPage() {
             </div>
 
             {/* Limits matrix */}
-            <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+            <div className="rounded-card bg-card shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-border">
                 <h2 className="font-semibold text-sm">Límites granulares</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Clic para activar o desactivar capacidades por rol</p>
@@ -956,7 +956,7 @@ function SettingsPage() {
             </div>
 
             {/* Menu preview */}
-            <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+            <div className="rounded-card bg-card shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-border">
                 <h2 className="font-semibold text-sm">Vista previa del menú por rol</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">Lo que ve cada rol en la barra lateral</p>
@@ -1006,7 +1006,7 @@ function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Active org */}
-              <div className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-4">
+              <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4">
                 <div>
                   <h2 className="font-semibold text-sm">Organización activa</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">Contexto multi-tenant</p>
@@ -1051,7 +1051,7 @@ function SettingsPage() {
               </div>
 
               {/* Edit org */}
-              <div className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-4">
+              <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4">
                 <div className="flex items-center gap-2">
                   <PencilLine className="size-4 text-muted-foreground" />
                   <div>
@@ -1104,7 +1104,7 @@ function SettingsPage() {
             </div>
 
             {/* Row 2: Members */}
-            <div className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-4">
+            <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="size-4 text-muted-foreground" />
@@ -1181,7 +1181,7 @@ function SettingsPage() {
 
             {/* Row 3: Create new org */}
             {isAdmin && (
-              <div className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-4">
+              <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4">
                 <div className="flex items-center gap-2">
                   <Plus className="size-4 text-muted-foreground" />
                   <div>
@@ -1253,7 +1253,7 @@ function SettingsPage() {
         {/* ── Marca ─────────────────────────────────────────────────────── */}
         {tab === "marca" && (
           <div className="flex flex-col gap-4 max-w-lg">
-            <div className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-4">
+            <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <Palette className="size-4 text-muted-foreground" />
                 <div>

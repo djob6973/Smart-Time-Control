@@ -96,7 +96,7 @@ function AreasPage() {
           return (
             <div
               key={area.id}
-              className="rounded-card border border-border bg-card shadow-card p-5 flex flex-col gap-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
             >
               {/* Header */}
               <div className="flex items-start gap-3">

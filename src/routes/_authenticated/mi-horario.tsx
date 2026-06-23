@@ -196,7 +196,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
       </div>
 
       {/* Estado actual */}
-      <div className="rounded-card border border-border bg-card p-5 shadow-card">
+      <div className="rounded-card bg-card p-5 shadow-card">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
           Estado actual
         </p>
@@ -237,7 +237,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
       </div>
 
       {/* Registros del día */}
-      <div className="rounded-card border border-border bg-card p-5 shadow-card">
+      <div className="rounded-card bg-card p-5 shadow-card">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             Registros del día
@@ -340,7 +340,7 @@ function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: st
           { label: "Turnos",          value: `${turnos}`,    sub: "días laborales" },
           { label: "Descansos",       value: `${descansos}`, sub: "días OFF" },
         ].map(({ label, value, sub }) => (
-          <div key={label} className="rounded-card border border-border bg-card p-4 shadow-card text-center">
+          <div key={label} className="rounded-card bg-card p-4 shadow-card text-center">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
             <p className="text-2xl font-bold tabular-nums mt-1">{value}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
@@ -490,7 +490,7 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
           { label: "Horas estimadas", value: `${horasEst}h`,     sub: "turno neto" },
           { label: "Descansos",       value: String(descansos),  sub: "días OFF" },
         ].map(({ label, value, sub }) => (
-          <div key={label} className="rounded-card border border-border bg-card p-4 shadow-card text-center">
+          <div key={label} className="rounded-card bg-card p-4 shadow-card text-center">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
             <p className="text-2xl font-bold tabular-nums mt-1">{value}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>
@@ -499,7 +499,7 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
       </div>
 
       {/* Calendar */}
-      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
         {/* Day-of-week header */}
         <div className="grid grid-cols-7 border-b border-border bg-secondary/40">
           {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (

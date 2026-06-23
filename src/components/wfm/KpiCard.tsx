@@ -18,8 +18,8 @@ export function KpiCard({ label, value, unit, foot, delta, icon: Icon, alert, cl
   return (
     <Card
       className={cn(
-        "flex flex-col gap-3 p-5 rounded-card shadow-card",
-        alert && "bg-foreground text-background border-transparent dark:bg-[#232323] dark:text-foreground",
+        "flex flex-col gap-3 p-5 rounded-card shadow-card border-0 transition-transform hover:-translate-y-0.5",
+        alert && "bg-foreground text-background dark:bg-[#232323] dark:text-foreground",
         className,
       )}
     >

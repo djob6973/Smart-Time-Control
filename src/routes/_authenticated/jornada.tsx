@@ -356,7 +356,7 @@ function TabDashboard() {
       {(breakCupo.max > 0 || almCupo.max > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {breakCupo.max > 0 && (
-            <div className="rounded-card border border-border bg-card p-5 shadow-card">
+            <div className="rounded-card bg-card p-5 shadow-card">
               <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
                 <Coffee className="size-4 text-primary" /> Cupos de Break
               </h3>
@@ -364,7 +364,7 @@ function TabDashboard() {
             </div>
           )}
           {almCupo.max > 0 && (
-            <div className="rounded-card border border-border bg-card p-5 shadow-card">
+            <div className="rounded-card bg-card p-5 shadow-card">
               <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
                 <UtensilsCrossed className="size-4 text-primary" /> Cupos de Almuerzo
               </h3>
@@ -375,7 +375,7 @@ function TabDashboard() {
       )}
 
       {/* Real-time status table */}
-      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h3 className="font-semibold text-sm">Estado en tiempo real</h3>
           <span className="text-xs text-muted-foreground">{activeEmployees.length} empleados activos</span>
@@ -647,7 +647,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     return (
       <div className="flex-1 flex items-center justify-center p-10">
         <div className="max-w-sm w-full">
-          <div className="rounded-card border border-border bg-card p-8 text-center shadow-card space-y-4">
+          <div className="rounded-card bg-card p-8 text-center shadow-card space-y-4">
             <div
               className="size-14 rounded-full flex items-center justify-center mx-auto"
               style={{ background: "color-mix(in srgb,var(--color-primary) 10%,transparent)" }}
@@ -714,7 +714,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           </div>
         )}
 
-        <div className="rounded-card border border-border bg-card p-5 shadow-card">
+        <div className="rounded-card bg-card p-5 shadow-card">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
@@ -745,7 +745,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           </div>
         </div>
 
-        <div className="rounded-card border border-border bg-card p-5 shadow-card space-y-4">
+        <div className="rounded-card bg-card p-5 shadow-card space-y-4">
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Registrar movimiento</h4>
           {!selfCanRegister ? (
             <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
@@ -786,7 +786,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           )}
         </div>
 
-        <div className="rounded-card border border-border bg-card p-5 shadow-card">
+        <div className="rounded-card bg-card p-5 shadow-card">
           <h4 className="font-medium text-sm mb-4">Actividad de hoy</h4>
           {selfRegs.length === 0 ? (
             <p className="text-sm text-muted-foreground italic">Sin registros aún.</p>
@@ -1119,7 +1119,7 @@ function TabHistorial() {
         </button>
       </div>
 
-      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary/60 text-left">
@@ -1398,7 +1398,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     return (
       <div className="flex-1 flex items-center justify-center p-10">
         <div className="max-w-sm w-full">
-          <div className="rounded-card border border-border bg-card p-8 text-center shadow-card space-y-4">
+          <div className="rounded-card bg-card p-8 text-center shadow-card space-y-4">
             <div
               className="size-14 rounded-full flex items-center justify-center mx-auto"
               style={{ background: "color-mix(in srgb,var(--color-primary) 10%,transparent)" }}
@@ -1471,7 +1471,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           <KPI icon={CheckCircle2}  label="Promedio diario"   value={fmtMins(avgEfectivo)} hint="tiempo efectivo / día" />
         </div>
 
-        <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+        <div className="rounded-card bg-card shadow-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border bg-secondary/40">
             <h3 className="font-semibold text-sm">Detalle por día</h3>
           </div>
@@ -1584,7 +1584,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       </div>
 
       {/* Tiempos por trabajador */}
-      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border bg-secondary/40">
           <h3 className="font-semibold text-sm">Tiempos por trabajador</h3>
         </div>
@@ -1625,7 +1625,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       </div>
 
       {/* Resumen puntualidad */}
-      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border bg-secondary/40">
           <h3 className="font-semibold text-sm">Resumen de puntualidad</h3>
         </div>
@@ -1734,7 +1734,7 @@ function TabConfiguracion() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* General config */}
-      <div className="rounded-card border border-border bg-card p-5 shadow-card">
+      <div className="rounded-card bg-card p-5 shadow-card">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h3 className="font-semibold">Configuración general</h3>
@@ -1824,7 +1824,7 @@ function TabConfiguracion() {
       </div>
 
       {/* Cupos */}
-      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-sm">Control de cupos simultáneos</h3>
