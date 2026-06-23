@@ -175,7 +175,7 @@ export function Sidebar() {
         </nav>
 
         {/* Footer: acciones + usuario */}
-        <div className="shrink-0 border-t border-sidebar-border pt-3 mt-3">
+        <div className="shrink-0 pt-3 mt-3">
           {/* Fila de acciones */}
           <div className="flex items-center justify-around px-2 pb-3">
             <button
