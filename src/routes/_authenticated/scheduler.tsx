@@ -521,7 +521,7 @@ function Scheduler() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground w-64 sticky top-0 left-0 z-20" style={{ backgroundColor: 'var(--color-card)' }}>Trabajador</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground w-44 sticky top-0 left-0 z-20" style={{ backgroundColor: 'var(--color-card)' }}>Trabajador</th>
                   {days.map((d, i) => {
                     const isToday = isoDays[i] === toISO(new Date());
                     const holiday = isHoliday(isoDays[i]);
@@ -555,15 +555,10 @@ function Scheduler() {
                   const overload = area && total.total > area.maxHoursWeek;
                   return (
                     <tr key={e.id} className={cn("border-t border-border/60", idx % 2 === 1 && "bg-secondary/20")}>
-                      <td className="px-4 py-2 sticky left-0 z-10" style={{ backgroundColor: 'var(--color-card)' }}>
-                        <div className="flex items-center gap-3">
-                          <div className="size-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground">
-                            {e.fullName.split(" ").map(n => n[0]).slice(0,2).join("")}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-medium truncate">{e.fullName}</div>
-                            <div className="text-[11px] text-muted-foreground truncate">{area?.name} · {e.position}</div>
-                          </div>
+                      <td className="px-4 py-2 sticky left-0 z-10 w-44" style={{ backgroundColor: 'var(--color-card)' }}>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{e.fullName}</div>
+                          <div className="text-[11px] text-muted-foreground truncate">{e.position}</div>
                         </div>
                       </td>
                       {isoDays.map(date => {
