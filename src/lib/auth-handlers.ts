@@ -131,13 +131,13 @@ async function handleRegister(req: Request): Promise<Response> {
        VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING`,
       [userId, adminRoleRow.id, DEFAULT_ORG_ID],
     ).catch((e) => console.error("[register] user_roles insert failed:", e.message));
-
-    await execute(
-      `INSERT INTO public.user_organizations (user_id, organization_id, activo)
-       VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
-      [userId, DEFAULT_ORG_ID],
-    ).catch((e) => console.error("[register] user_organizations insert failed:", e.message));
   }
+
+  await execute(
+    `INSERT INTO public.user_organizations (user_id, organization_id, activo)
+     VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
+    [userId, DEFAULT_ORG_ID],
+  ).catch((e) => console.error("[register] user_organizations insert failed:", e.message));
 
   const token = await createSession(userId);
   return json(

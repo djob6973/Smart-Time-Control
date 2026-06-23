@@ -68,6 +68,17 @@ export const getUserRolesAndOrgs = createServerFn({ method: "GET" })
       ),
     ]);
 
+    // Backfill: if user has no org membership yet (pre-fix registrations), use the default org
+    let resolvedOrgRows = orgRows;
+    if (orgRows.length === 0) {
+      const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
+      const defaultOrg = await queryOne<OrgRow>(
+        `SELECT id, nombre, slug, activo, plan, config, logo_data FROM public.organizations WHERE id = $1`,
+        [DEFAULT_ORG_ID],
+      );
+      if (defaultOrg) resolvedOrgRows = [defaultOrg];
+    }
+
     const roleData = roleRows[0] ?? null;
     const role = (roleData?.nombre as RoleName) ?? null;
     const rawPerms = roleData?.permisos ?? null;
@@ -83,7 +94,7 @@ export const getUserRolesAndOrgs = createServerFn({ method: "GET" })
         ) as Record<string, string[]>)
       : null;
 
-    return { role, rolePerms, limits, organizations: orgRows };
+    return { role, rolePerms, limits, organizations: resolvedOrgRows };
   });
 
 export const getUserProfile = createServerFn({ method: "GET" })
