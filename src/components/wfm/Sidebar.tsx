@@ -206,7 +206,7 @@ export function Sidebar() {
               {initials}
             </div>
             <div className="flex-1 min-w-0 leading-tight">
-              <div className="text-sm font-medium truncate">{profile?.nombre || profile?.email}</div>
+              <div className="text-sm font-medium">{profile?.nombre || profile?.email}</div>
               <div className="text-[11px] text-muted-foreground capitalize">{roleLabel}</div>
             </div>
             <ChevronRight className="size-4 text-muted-foreground shrink-0" />
