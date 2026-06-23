@@ -137,7 +137,7 @@ export function Sidebar() {
             />
           </div>
           <div className="leading-tight min-w-0">
-            <div className="text-sm font-semibold tracking-tight truncate font-display">
+            <div className="text-base font-semibold tracking-tight truncate font-display">
               Smart Time Control
             </div>
             <div className="text-[11px] text-muted-foreground">Smarter scheduling</div>
