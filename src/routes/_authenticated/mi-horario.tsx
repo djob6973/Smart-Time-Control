@@ -331,7 +331,7 @@ function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: st
   const descansos = weekShifts.filter(s => s?.code === "OFF").length;
 
   return (
-    <div className="p-4 md:p-6 space-y-5">
+    <div className="px-4 lg:px-0 py-4 md:py-6 space-y-5">
 
       {/* KPI strip */}
       <div className="grid grid-cols-3 gap-3">
@@ -481,7 +481,7 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
   const descansos = monthShifts.filter(s => s?.code === "OFF").length;
 
   return (
-    <div className="p-4 md:p-6 space-y-5">
+    <div className="px-4 lg:px-0 py-4 md:py-6 space-y-5">
 
       {/* KPI strip */}
       <div className="grid grid-cols-3 gap-3">

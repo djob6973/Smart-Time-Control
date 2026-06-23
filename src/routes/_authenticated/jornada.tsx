@@ -325,7 +325,7 @@ function TabDashboard() {
     : 0;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="px-4 lg:px-0 py-4 md:py-6 space-y-6">
       {/* Date + refresh */}
       <div className="flex items-center gap-3">
         <input
@@ -810,7 +810,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   // ── Admin mode: card grid ──────────────────────────────────
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="px-4 lg:px-0 py-4 md:py-6 space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 w-full sm:w-72 focus-within:border-primary/40 transition-shadow">
@@ -1083,7 +1083,7 @@ function TabHistorial() {
   }, [registros, fechaActiva, empFilter, areaFilter, tipoFilter, employees]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="px-4 lg:px-0 py-4 md:py-6 space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <input
           type="date"
@@ -1443,7 +1443,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   if (isSelfMode) {
     const avgEfectivo = selfTotals.diasCompletos > 0 ? Math.round(selfTotals.efectivoMin / selfTotals.diasCompletos) : 0;
     return (
-      <div className="p-4 md:p-6 space-y-5">
+      <div className="px-4 lg:px-0 py-4 md:py-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Mi Reporte de Jornada</h2>
@@ -1557,7 +1557,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="px-4 lg:px-0 py-4 md:py-6 space-y-6">
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">
@@ -1732,7 +1732,7 @@ function TabConfiguracion() {
     : "Global (sin área)";
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="px-4 lg:px-0 py-4 md:py-6 space-y-6">
       {/* General config */}
       <div className="rounded-card bg-card p-5 shadow-card">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">

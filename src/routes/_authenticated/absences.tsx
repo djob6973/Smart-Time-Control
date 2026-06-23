@@ -668,7 +668,7 @@ function AbsencesPage() {
         }
       />
 
-      <div className="p-4 md:p-6 space-y-5">
+      <div className="px-4 lg:px-0 py-4 md:py-6 space-y-5">
         {/* KPI cards */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard

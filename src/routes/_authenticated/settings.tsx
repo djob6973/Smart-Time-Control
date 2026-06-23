@@ -658,7 +658,7 @@ function SettingsPage() {
         </div>
       </div>
 
-      <div className="p-4 md:p-6">
+      <div className="px-4 lg:px-0 py-4 md:py-6">
 
         {/* ── Usuarios ──────────────────────────────────────────────────── */}
         {tab === "users" && (
