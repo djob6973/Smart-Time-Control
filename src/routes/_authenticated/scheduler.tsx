@@ -556,9 +556,14 @@ function Scheduler() {
                   return (
                     <tr key={e.id} className={cn("border-t border-border/60", idx % 2 === 1 && "bg-secondary/20")}>
                       <td className="px-4 py-2 sticky left-0 z-10 w-44" style={{ backgroundColor: 'var(--color-card)' }}>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">{e.fullName}</div>
-                          <div className="text-[11px] text-muted-foreground truncate">{e.position}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="size-8 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold text-foreground shrink-0">
+                            {e.fullName.split(" ").map(n => n[0]).slice(0,2).join("")}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{e.fullName}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">{e.position}</div>
+                          </div>
                         </div>
                       </td>
                       {isoDays.map(date => {
