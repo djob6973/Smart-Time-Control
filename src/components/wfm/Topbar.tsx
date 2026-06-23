@@ -1,31 +1,7 @@
-import { Menu, Search, Sun, Moon } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useAppContext } from "@/lib/app-context";
 import { NotificationCenter } from "./NotificationCenter";
-import { useEffect, useState } from "react";
-
-function useTheme() {
-  const [isDark, setIsDark] = useState(() =>
-    typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-  );
-
-  function toggle() {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try { localStorage.setItem("stc-theme", next ? "dark" : "light"); } catch {}
-  }
-
-  useEffect(() => {
-    const saved = localStorage.getItem("stc-theme");
-    if (saved === "dark") {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  return { isDark, toggle };
-}
 
 export function Topbar({ title, subtitle, right }: {
   title: string;
@@ -34,7 +10,6 @@ export function Topbar({ title, subtitle, right }: {
 }) {
   const { profile } = useAuth();
   const { toggleSidebar } = useAppContext();
-  const { isDark, toggle } = useTheme();
 
   const initials = profile?.nombre
     ? profile.nombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()
@@ -73,15 +48,6 @@ export function Topbar({ title, subtitle, right }: {
             className="bg-transparent text-sm outline-none flex-1 min-w-0 placeholder:text-muted-foreground"
           />
         </div>
-
-        {/* Toggle tema */}
-        <button
-          onClick={toggle}
-          title="Cambiar tema"
-          className="shrink-0 size-10 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-        >
-          {isDark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
-        </button>
 
         <NotificationCenter />
 

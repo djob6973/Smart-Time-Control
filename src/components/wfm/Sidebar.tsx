@@ -1,12 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, CalendarDays, Users, Building2,
-  CalendarOff, FileText, Settings, LogOut, Clock, CalendarCheck, KeyRound, Eye, EyeOff, X,
+  CalendarOff, FileText, Settings, LogOut, Clock, CalendarCheck, KeyRound, Eye, EyeOff, X, Sun, Moon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useAppContext } from "@/lib/app-context";
+import { useTheme } from "@/lib/theme";
 import type { Resource } from "@/lib/permissions";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -84,6 +85,8 @@ export function Sidebar() {
   useEffect(() => {
     closeSidebar();
   }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   const isLinkedEmployee = !!profile?.employeeId;
 
@@ -174,6 +177,13 @@ export function Sidebar() {
               <div className="text-[10px] text-muted-foreground capitalize">{roleLabel}</div>
             </div>
             <div className="flex items-center shrink-0">
+              <button
+                onClick={toggleTheme}
+                title={isDark ? "Modo claro" : "Modo oscuro"}
+                className="p-1.5 rounded-lg hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+              </button>
               <button
                 onClick={() => { resetPassModal(); setPassOpen(true); }}
                 title="Cambiar contraseña"
