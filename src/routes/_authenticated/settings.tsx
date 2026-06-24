@@ -194,11 +194,11 @@ function shortDate(iso: string | null): string {
 }
 
 const ROLE_BADGE_STYLE: Record<string, React.CSSProperties> = {
-  admin:      { background: "color-mix(in srgb,#ED5650 14%,transparent)", color: "#ED5650" },
-  supervisor: { background: "color-mix(in srgb,#9333ea 14%,transparent)", color: "#9333ea" },
-  lider:      { background: "color-mix(in srgb,#2563eb 14%,transparent)", color: "#2563eb" },
-  gestor:     { background: "color-mix(in srgb,#d97706 14%,transparent)", color: "#d97706" },
-  consulta:   { background: "var(--color-secondary)",                      color: "var(--color-muted-foreground)" },
+  admin:      { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" },
+  supervisor: { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" },
+  lider:      { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" },
+  gestor:     { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" },
+  consulta:   { background: "var(--color-secondary)", color: "var(--color-muted-foreground)" },
 };
 
 const ROLE_SEL_STYLE: React.CSSProperties = {
