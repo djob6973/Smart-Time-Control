@@ -62,7 +62,7 @@ function HoursTooltip({ active, payload, label }: any) {
   return (
     <div
       className="rounded-card shadow-card p-3.5 text-sm min-w-[196px]"
-      style={{ background: "var(--color-foreground)", color: "#fff" }}
+      style={{ background: "#1f1f1f", color: "#fff" }}
     >
       <p
         className="text-[11px] font-semibold uppercase tracking-wider mb-2"
@@ -473,16 +473,16 @@ function Dashboard() {
 
             <div className="h-64 px-2 pt-3">
               <ResponsiveContainer>
-                <AreaChart data={lineData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                <AreaChart data={lineData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                   <defs>
                     <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.15} />
-                      <stop offset="100%" stopColor={PRIMARY} stopOpacity={0.02} />
+                      <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.2} />
+                      <stop offset="100%" stopColor={PRIMARY} stopOpacity={0.03} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 4" stroke="var(--color-border)" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#ADADAE" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#ADADAE" }} axisLine={false} tickLine={false} unit="h" width={40} />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} unit="h" width={38} />
                   <Tooltip
                     content={<HoursTooltip />}
                     cursor={{ stroke: PRIMARY, strokeWidth: 1, strokeDasharray: "4 3", opacity: 0.4 }}
