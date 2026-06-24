@@ -187,7 +187,7 @@ function DownloadMenu({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(p => !p)}
-        className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
+        className="inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 text-sm font-medium hover:bg-secondary transition-colors"
       >
         <Download className="size-3.5" />
         Descargar
@@ -479,12 +479,12 @@ function ReportsPage() {
         {/* ---- Toolbar ---- */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Segmented period control */}
-          <div className="flex items-center rounded-full border border-border bg-secondary/40 p-0.5 gap-0.5">
+          <div className="flex items-center rounded-pill border border-border bg-secondary/40 p-0.5 gap-0.5">
             {(["Semana", "Mes", "Trimestre"] as const).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-pill px-4 py-2 text-sm font-medium transition-colors ${
                   period === p
                     ? "bg-[#333333] text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
@@ -500,7 +500,7 @@ function ReportsPage() {
             <select
               value={selectedArea}
               onChange={e => setSelectedArea(e.target.value)}
-              className="rounded-full border border-border bg-card px-3.5 py-1.5 text-sm outline-none focus:border-primary cursor-pointer"
+              className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm outline-none focus:border-primary cursor-pointer"
             >
               <option value="all">Todas las áreas</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -512,7 +512,7 @@ function ReportsPage() {
             type="month"
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="rounded-full border border-border bg-card px-3.5 py-1.5 text-sm outline-none focus:border-primary"
+            className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm outline-none focus:border-primary"
           />
 
           {loadingApprovals && (

@@ -377,7 +377,7 @@ function Dashboard() {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-4 py-1.5 font-medium rounded-pill transition-colors ${
+                className={`px-4 py-2 font-medium rounded-pill transition-colors ${
                   period === p
                     ? "bg-card text-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground"

@@ -758,7 +758,7 @@ function AbsencesPage() {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-4 py-1.5 font-medium rounded-pill transition-colors ${
+                className={`px-4 py-2 font-medium rounded-pill transition-colors ${
                   period === p
                     ? "bg-card text-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground"
@@ -790,7 +790,7 @@ function AbsencesPage() {
 
           {/* Type filter */}
           <select
-            className="rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
+            className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value as "all" | AbsenceType)}
           >
@@ -803,7 +803,7 @@ function AbsencesPage() {
           {/* Area filter — solo visible para admin/gestor sin área propia */}
           {canApprove && !ownArea && (
             <select
-              className="rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
+              className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
               value={selectedArea}
               onChange={e => setSelectedArea(e.target.value)}
             >

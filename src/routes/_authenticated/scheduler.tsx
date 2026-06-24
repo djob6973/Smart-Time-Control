@@ -349,7 +349,7 @@ function Scheduler() {
             <select
               value={numWeeks}
               onChange={(e) => setNumWeeks(Number(e.target.value))}
-              className="hidden sm:block text-sm rounded-pill border border-border bg-card px-3.5 py-1.5"
+              className="hidden sm:block text-sm rounded-pill border border-border bg-card px-3.5 py-2"
             >
               <option value={1}>1 semana</option>
               <option value={2}>2 semanas</option>
@@ -359,7 +359,7 @@ function Scheduler() {
             {canGenerate && (
               <button
                 onClick={handleGenerate}
-                className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+                className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
               >
                 <Sparkles className="size-4" />
                 <span className="hidden sm:inline">Generar inteligente</span>
@@ -375,13 +375,13 @@ function Scheduler() {
           <div className="flex items-center rounded-pill border border-border bg-card p-1 gap-0.5 text-sm">
             <button
               onClick={() => setView("week")}
-              className={cn("px-3 py-1.5 rounded-full transition-all font-medium", view === "week" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              className={cn("px-3.5 py-2 rounded-pill transition-all font-medium", view === "week" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
             >
               Semana
             </button>
             <button
               onClick={() => setView("month")}
-              className={cn("px-3 py-1.5 rounded-full transition-all inline-flex items-center gap-1.5 font-medium", view === "month" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              className={cn("px-3.5 py-2 rounded-pill transition-all inline-flex items-center gap-1.5 font-medium", view === "month" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
             >
               <CalendarDays className="size-3.5" />Mes
             </button>
@@ -391,7 +391,7 @@ function Scheduler() {
           {view === "week" && (
             <div className="flex items-center rounded-pill border border-border bg-card overflow-hidden">
               <button onClick={() => shiftWeek(-1)} className="p-2 hover:bg-secondary"><ChevronLeft className="size-4" /></button>
-              <div className="px-3 py-1.5 text-sm font-medium border-x border-border">
+              <div className="px-3 py-2 text-sm font-medium border-x border-border">
                 Semana del {days[0].getDate()}/{days[0].getMonth()+1} – {days[6].getDate()}/{days[6].getMonth()+1}
               </div>
               <button onClick={() => shiftWeek(1)} className="p-2 hover:bg-secondary"><ChevronRight className="size-4" /></button>
@@ -402,7 +402,7 @@ function Scheduler() {
           {view === "month" && (
             <div className="flex items-center rounded-pill border border-border bg-card overflow-hidden">
               <button onClick={() => setMonthDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="p-2 hover:bg-secondary"><ChevronLeft className="size-4" /></button>
-              <div className="px-3 py-1.5 text-sm font-medium border-x border-border capitalize">
+              <div className="px-3 py-2 text-sm font-medium border-x border-border capitalize">
                 {MONTH_NAMES[monthDate.getMonth()]} {monthDate.getFullYear()}
               </div>
               <button onClick={() => setMonthDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="p-2 hover:bg-secondary"><ChevronRight className="size-4" /></button>
@@ -414,7 +414,7 @@ function Scheduler() {
               if (view === "week") setWeekISO(toISO(startOfWeek(new Date())));
               else { const n = new Date(); setMonthDate(new Date(n.getFullYear(), n.getMonth(), 1)); }
             }}
-            className="text-sm px-3 py-1.5 rounded-pill border border-border hover:bg-secondary"
+            className="text-sm px-3.5 py-2 rounded-pill border border-border hover:bg-secondary"
           >
             Hoy
           </button>
