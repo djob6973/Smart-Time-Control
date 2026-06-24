@@ -2431,12 +2431,12 @@ function EquityPanel({ data }: {
         <div className="flex items-center gap-3">
           <div className="flex-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Distribución</div>
           <div className="flex items-center gap-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
-            <span>Dom</span>
-            <span>Fest</span>
-            <span className="w-5 text-right">Tot</span>
+            <span className="whitespace-nowrap">Dom</span>
+            <span className="whitespace-nowrap">Fest</span>
+            <span className="w-5 text-right whitespace-nowrap">Tot</span>
           </div>
         </div>
-        <div className="w-28 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-right">Estado</div>
+        <div className="w-28 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-right whitespace-nowrap">Estado</div>
       </div>
 
       <div className="divide-y divide-border">
