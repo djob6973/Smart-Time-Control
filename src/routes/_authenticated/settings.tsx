@@ -1296,7 +1296,7 @@ function SettingsPage() {
                   value={createUserForm.fullName}
                   onChange={e => setCreateUserForm(f => ({ ...f, fullName: e.target.value }))}
                   placeholder="Nombre del usuario"
-                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-pill border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   autoFocus
                 />
               </div>
@@ -1307,7 +1307,7 @@ function SettingsPage() {
                   value={createUserForm.email}
                   onChange={e => setCreateUserForm(f => ({ ...f, email: e.target.value }))}
                   placeholder="usuario@empresa.com"
-                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-pill border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="space-y-1.5">
@@ -1317,7 +1317,7 @@ function SettingsPage() {
                   value={createUserForm.password}
                   onChange={e => setCreateUserForm(f => ({ ...f, password: e.target.value }))}
                   placeholder="Mínimo 8 caracteres"
-                  className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-pill border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1326,7 +1326,7 @@ function SettingsPage() {
                   <select
                     value={createUserForm.roleId}
                     onChange={e => setCreateUserForm(f => ({ ...f, roleId: e.target.value }))}
-                    className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-pill border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">Sin rol asignado</option>
                     {Object.entries(ROLE_MAP).map(([id, r]) => (
@@ -1339,7 +1339,7 @@ function SettingsPage() {
                   <select
                     value={createUserForm.areaId}
                     onChange={e => setCreateUserForm(f => ({ ...f, areaId: e.target.value }))}
-                    className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-pill border border-border bg-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">Todas las áreas</option>
                     {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -1395,7 +1395,7 @@ function SettingsPage() {
               value={newPass}
               onChange={e => setNewPass(e.target.value)}
               placeholder="Nueva contraseña (mín. 8 caracteres)"
-              className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-pill border border-border bg-secondary px-3 py-2 text-sm mb-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               autoFocus
             />
             {passError && (
@@ -1450,7 +1450,7 @@ function SettingsPage() {
                 type="text"
                 value={editFullName}
                 onChange={e => setEditFullName(e.target.value)}
-                className="w-full rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
@@ -1464,7 +1464,7 @@ function SettingsPage() {
                 <button
                   type="button"
                   onClick={e => { e.stopPropagation(); setEditRoleDropOpen(v => !v); }}
-                  className="relative z-[70] w-full flex items-center justify-between rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="relative z-[70] w-full flex items-center justify-between rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   {editRoleId && ROLE_MAP[editRoleId] ? (
                     <span
@@ -1516,7 +1516,7 @@ function SettingsPage() {
                 <select
                   value={editAreaId}
                   onChange={e => setEditAreaId(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-border bg-secondary/30 px-3.5 py-2.5 text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full appearance-none rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm pr-9 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">Sin área asignada</option>
                   {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -1526,7 +1526,7 @@ function SettingsPage() {
             </div>
 
             {/* Estado */}
-            <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/20 px-4 py-3">
+            <div className="flex items-center justify-between rounded-xl border border-border bg-secondary px-4 py-3">
               <div>
                 <p className="text-sm font-medium">Estado de la cuenta</p>
                 <p className="text-xs text-muted-foreground mt-0.5">

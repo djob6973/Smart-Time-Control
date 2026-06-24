@@ -182,4 +182,6 @@
 
 @layer base {
   button, a, [role="button"] { touch-action: manipulation; }
+  /* Native select elements need color-scheme hint so browser renders options in dark mode */
+  .dark select { color-scheme: dark; }
 }
