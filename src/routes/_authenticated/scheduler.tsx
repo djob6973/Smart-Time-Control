@@ -434,8 +434,6 @@ function Scheduler() {
                   "h-10 px-3.5 rounded-full border flex items-center gap-2 text-sm font-medium transition-colors shrink-0",
                   weekLockState === "full"
                     ? "bg-primary/15 text-primary border-primary/30"
-                    : weekLockState === "partial"
-                    ? "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30"
                     : "border-border bg-card text-foreground hover:bg-secondary"
                 )}
               >
