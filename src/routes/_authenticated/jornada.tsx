@@ -190,6 +190,7 @@ function JornadaPage() {
     if (t.id === "reportes") {
       return (
         hasPermission("jornada_reportes" as any, "view") ||
+        hasPermission("jornada_reporte_general" as any, "view") ||
         (isLinkedEmployee && hasPermission("mi_jornada_reportes" as any, "view"))
       );
     }
@@ -384,7 +385,7 @@ function TabDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {["Empleado","Área","Horario programado","Estado","Último mov.","Hora","Break","Almuerzo","En jornada"].map((h) => (
+                {["Empleado","Área","Horario prog.","Estado","Último mov.","Hora","Break","Almuerzo","En jornada"].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -1341,12 +1342,16 @@ function AgregarManualModal({ employees, areas, fecha, onClose, onSave }: any) {
 // ── TAB: Reportes ──────────────────────────────────────────
 
 function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
-  const isSelfMode = !!autoEmployeeId;
   const { employees, areas } = useWFM();
-  const { profile } = useAuth();
+  const { profile, hasPermission } = useAuth();
   const { registros, configuracion, loadRango } = useJornada();
   const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
   const ownArea = profile?.areaId ?? null;
+
+  const canSeeGeneral = hasPermission("jornada_reporte_general" as any, "view");
+  const canSeeSelf = !!autoEmployeeId && hasPermission("mi_jornada_reportes" as any, "view");
+
+  const [view, setView] = useState<"general" | "self">(() => canSeeGeneral ? "general" : "self");
 
   const [desde, setDesde] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
@@ -1394,7 +1399,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     a.click();
   }
 
-  if (!autoEmployeeId) {
+  if (!canSeeGeneral && !canSeeSelf) {
     return (
       <div className="flex-1 flex items-center justify-center p-10">
         <div className="max-w-sm w-full">
@@ -1440,10 +1445,18 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     );
   }
 
-  if (isSelfMode) {
+  const activeView = canSeeGeneral && canSeeSelf ? view : canSeeGeneral ? "general" : "self";
+
+  if (activeView === "self") {
     const avgEfectivo = selfTotals.diasCompletos > 0 ? Math.round(selfTotals.efectivoMin / selfTotals.diasCompletos) : 0;
     return (
       <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-5">
+        {canSeeGeneral && canSeeSelf && (
+          <div className="flex gap-1 p-1 rounded-full bg-secondary w-fit">
+            <button onClick={() => setView("general")} className="rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Reporte de jornada</button>
+            <button className="rounded-full px-4 py-1.5 text-sm font-medium bg-card shadow-sm">Mi Reporte</button>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Mi Reporte de Jornada</h2>
@@ -1521,7 +1534,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     );
   }
 
-  // Admin mode
+  // General report mode
   const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
   const empList = employees.filter((e) =>
     (!effectiveArea || e.areaId === effectiveArea) &&
@@ -1558,6 +1571,16 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-6">
+      {canSeeGeneral && canSeeSelf && (
+        <div className="flex gap-1 p-1 rounded-full bg-secondary w-fit">
+          <button className="rounded-full px-4 py-1.5 text-sm font-medium bg-card shadow-sm">Reporte de jornada</button>
+          <button onClick={() => setView("self")} className="rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Mi Reporte</button>
+        </div>
+      )}
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Reporte de jornada</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Tiempo y puntualidad por empleado</p>
+      </div>
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">

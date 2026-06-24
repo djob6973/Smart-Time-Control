@@ -26,7 +26,8 @@ interface RolePermissions {
   employees: PermLevel; areas: PermLevel; absences: PermLevel; reports: PermLevel;
   jornada: PermLevel; jornada_dashboard: PermLevel; jornada_registro: PermLevel;
   jornada_historial: PermLevel; jornada_reportes: PermLevel; jornada_configuracion: PermLevel;
-  mi_jornada_reportes: PermLevel; settings: PermLevel; settings_roles: PermLevel;
+  mi_jornada_reportes: PermLevel; jornada_reporte_general: PermLevel;
+  settings: PermLevel; settings_roles: PermLevel;
   settings_users: PermLevel; settings_data: PermLevel;
 }
 
@@ -53,8 +54,9 @@ const MAIN_MODULES: { key: keyof RolePermissions; label: string; indent?: boolea
   { key: "jornada_dashboard",     label: "Dashboard",      indent: true },
   { key: "jornada_registro",      label: "Registro",       indent: true },
   { key: "jornada_historial",     label: "Historial",      indent: true },
-  { key: "jornada_reportes",      label: "Reportes",       indent: true },
-  { key: "jornada_configuracion", label: "Configuración",  indent: true },
+  { key: "jornada_reportes",         label: "Reportes",          indent: true },
+  { key: "jornada_reporte_general",  label: "Reporte de jornada", indent: true },
+  { key: "jornada_configuracion",    label: "Configuración",      indent: true },
   { key: "employees",             label: "Trabajadores" },
   { key: "areas",                 label: "Áreas" },
   { key: "absences",             label: "Ausencias" },
@@ -91,7 +93,7 @@ const INITIAL_ROLES: Role[] = [
     description: "Acceso total al sistema sin restricciones.",
     permissions: {
       dashboard:"full", scheduler:"full", mi_horario:"view", employees:"full", areas:"full", absences:"full", reports:"full",
-      jornada:"full", jornada_dashboard:"full", jornada_registro:"full", jornada_historial:"full", jornada_reportes:"full", jornada_configuracion:"full", mi_jornada_reportes:"view",
+      jornada:"full", jornada_dashboard:"full", jornada_registro:"full", jornada_historial:"full", jornada_reportes:"full", jornada_configuracion:"full", mi_jornada_reportes:"view", jornada_reporte_general:"full",
       settings:"full", settings_roles:"full", settings_users:"full", settings_data:"full",
     },
     limits: { restrictToOwnArea:false, canApproveAbsences:true, canGenerateShifts:true, canExportReports:true, canManageRoles:true, canDeleteData:true },
@@ -102,7 +104,7 @@ const INITIAL_ROLES: Role[] = [
     description: "Gestiona programación y reportes de su área.",
     permissions: {
       dashboard:"view", scheduler:"edit", mi_horario:"view", employees:"view", areas:"view", absences:"edit", reports:"view",
-      jornada:"edit", jornada_dashboard:"view", jornada_registro:"edit", jornada_historial:"edit", jornada_reportes:"view", jornada_configuracion:"none", mi_jornada_reportes:"view",
+      jornada:"edit", jornada_dashboard:"view", jornada_registro:"edit", jornada_historial:"edit", jornada_reportes:"view", jornada_configuracion:"none", mi_jornada_reportes:"view", jornada_reporte_general:"view",
       settings:"none", settings_roles:"none", settings_users:"none", settings_data:"none",
     },
     limits: { restrictToOwnArea:true, canApproveAbsences:true, canGenerateShifts:true, canExportReports:true, canManageRoles:false, canDeleteData:false },
@@ -112,7 +114,7 @@ const INITIAL_ROLES: Role[] = [
     description: "Supervisa turnos y disponibilidad de su área asignada.",
     permissions: {
       dashboard:"view", scheduler:"view", mi_horario:"view", employees:"view", areas:"view", absences:"view", reports:"none",
-      jornada:"edit", jornada_dashboard:"view", jornada_registro:"edit", jornada_historial:"view", jornada_reportes:"view", jornada_configuracion:"none", mi_jornada_reportes:"view",
+      jornada:"edit", jornada_dashboard:"view", jornada_registro:"edit", jornada_historial:"view", jornada_reportes:"view", jornada_configuracion:"none", mi_jornada_reportes:"view", jornada_reporte_general:"view",
       settings:"none", settings_roles:"none", settings_users:"none", settings_data:"none",
     },
     limits: { restrictToOwnArea:true, canApproveAbsences:false, canGenerateShifts:false, canExportReports:false, canManageRoles:false, canDeleteData:false },
@@ -122,7 +124,7 @@ const INITIAL_ROLES: Role[] = [
     description: "Crea ausencias y edita datos de empleados.",
     permissions: {
       dashboard:"view", scheduler:"view", mi_horario:"view", employees:"edit", areas:"none", absences:"edit", reports:"view",
-      jornada:"edit", jornada_dashboard:"view", jornada_registro:"edit", jornada_historial:"view", jornada_reportes:"none", jornada_configuracion:"none", mi_jornada_reportes:"view",
+      jornada:"edit", jornada_dashboard:"view", jornada_registro:"edit", jornada_historial:"view", jornada_reportes:"none", jornada_configuracion:"none", mi_jornada_reportes:"view", jornada_reporte_general:"none",
       settings:"none", settings_roles:"none", settings_users:"none", settings_data:"none",
     },
     limits: { restrictToOwnArea:false, canApproveAbsences:false, canGenerateShifts:false, canExportReports:false, canManageRoles:false, canDeleteData:false },
@@ -132,7 +134,7 @@ const INITIAL_ROLES: Role[] = [
     description: "Solo puede visualizar información del sistema.",
     permissions: {
       dashboard:"view", scheduler:"view", mi_horario:"view", employees:"view", areas:"view", absences:"view", reports:"view",
-      jornada:"view", jornada_dashboard:"view", jornada_registro:"none", jornada_historial:"view", jornada_reportes:"none", jornada_configuracion:"none", mi_jornada_reportes:"view",
+      jornada:"view", jornada_dashboard:"view", jornada_registro:"none", jornada_historial:"view", jornada_reportes:"none", jornada_configuracion:"none", mi_jornada_reportes:"view", jornada_reporte_general:"none",
       settings:"none", settings_roles:"none", settings_users:"none", settings_data:"none",
     },
     limits: { restrictToOwnArea:false, canApproveAbsences:false, canGenerateShifts:false, canExportReports:false, canManageRoles:false, canDeleteData:false },
@@ -144,7 +146,7 @@ const ALL_PERMS_NONE: RolePermissions = {
   employees: "none", areas: "none", absences: "none", reports: "none",
   jornada: "none", jornada_dashboard: "none", jornada_registro: "none",
   jornada_historial: "none", jornada_reportes: "none", jornada_configuracion: "none",
-  mi_jornada_reportes: "none",
+  mi_jornada_reportes: "none", jornada_reporte_general: "none",
   settings: "none", settings_roles: "none", settings_users: "none", settings_data: "none",
 };
 const ALL_LIMITS_FALSE: AccessLimits = {
@@ -251,7 +253,7 @@ function pickPermsFromDB(p: Record<string, any>): Partial<RolePermissions> {
   const keys: (keyof RolePermissions)[] = [
     "dashboard","scheduler","mi_horario","employees","areas","absences","reports",
     "jornada","jornada_dashboard","jornada_registro","jornada_historial",
-    "jornada_reportes","jornada_configuracion","mi_jornada_reportes",
+    "jornada_reportes","jornada_configuracion","mi_jornada_reportes","jornada_reporte_general",
     "settings","settings_roles","settings_users","settings_data",
   ];
   const out: any = {};
