@@ -2,11 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { parseAbsNote } from "@/lib/wfm/calc";
+import { startOfWeek, toISO } from "@/lib/wfm/date";
 import { useAuth } from "@/lib/auth";
-import { useState, useMemo, type ElementType } from "react";
+import { useState, useMemo, useEffect, type ElementType } from "react";
 import { dispatchAbsenceEvent } from "@/lib/notifications/dispatch";
-import { Plus, CalendarX2, Clock, CheckCircle2, Calendar, PencilLine, Trash2 } from "lucide-react";
+import { Plus, CalendarX2, Clock, CheckCircle2, Calendar, PencilLine, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import type { AbsenceStatus, AbsenceType, Absence } from "@/lib/wfm/types";
+
+type Period = "dia" | "semana" | "mes";
 
 export const Route = createFileRoute("/_authenticated/absences")({
   head: () => ({ meta: [{ title: "Ausencias · STC" }] }),
@@ -487,6 +490,8 @@ function AbsencesPage() {
   const canApprove = hasLimit("canApproveAbsences");
   const ownArea    = profile?.areaId ?? null;
 
+  const [period,         setPeriod]         = useState<Period>("mes");
+  const [dateOffset,     setDateOffset]     = useState(0);
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>("todas");
   const [typeFilter,     setTypeFilter]     = useState<"all" | AbsenceType>("all");
   const [selectedArea,   setSelectedArea]   = useState<string>(ownArea ?? "all");
@@ -495,6 +500,47 @@ function AbsencesPage() {
   const [createOpen,     setCreateOpen]     = useState(false);
   const [editAbsence,    setEditAbsence]    = useState<Absence | null>(null);
   const [deleteAbsence,  setDeleteAbsence]  = useState<Absence | null>(null);
+
+  useEffect(() => { setDateOffset(0); }, [period]);
+
+  const dateRange = useMemo((): [string, string] => {
+    const now = new Date();
+    if (period === "dia") {
+      const d = new Date(now);
+      d.setDate(d.getDate() + dateOffset);
+      const iso = toISO(d);
+      return [iso, iso];
+    }
+    if (period === "semana") {
+      const ws = startOfWeek(now);
+      ws.setDate(ws.getDate() + dateOffset * 7);
+      const end = new Date(ws);
+      end.setDate(end.getDate() + 6);
+      return [toISO(ws), toISO(end)];
+    }
+    const d = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
+    const last = new Date(now.getFullYear(), now.getMonth() + dateOffset + 1, 0);
+    return [toISO(d), toISO(last)];
+  }, [period, dateOffset]);
+
+  const dateLabelText = useMemo(() => {
+    const now = new Date();
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    if (period === "dia") {
+      const d = new Date(now);
+      d.setDate(d.getDate() + dateOffset);
+      return cap(d.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" }));
+    }
+    if (period === "semana") {
+      const ws = startOfWeek(now);
+      ws.setDate(ws.getDate() + dateOffset * 7);
+      const end = new Date(ws);
+      end.setDate(end.getDate() + 6);
+      return `Semana del ${ws.getDate()}/${ws.getMonth() + 1} – ${end.getDate()}/${end.getMonth() + 1}`;
+    }
+    const d = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
+    return cap(d.toLocaleDateString("es-CO", { month: "long", year: "numeric" }));
+  }, [period, dateOffset]);
 
   function openDetail(id: string, step: DetailStep = "view") {
     setDetailId(id);
@@ -511,28 +557,33 @@ function AbsencesPage() {
       : absences;
   }, [absences, employees, ownArea, selectedArea, canApprove, profile?.employeeId]);
 
+  const periodAbsences = useMemo(() =>
+    visibleAbsences.filter(a => a.startDate <= dateRange[1] && a.endDate >= dateRange[0]),
+    [visibleAbsences, dateRange],
+  );
+
   const filtered = useMemo(() =>
-    visibleAbsences.filter(a => {
+    periodAbsences.filter(a => {
       const s: AbsenceStatus = a.status ?? "pendiente";
       const statusOk = statusFilter === "todas" || s === statusFilter;
       const typeOk   = typeFilter === "all" || a.type === typeFilter;
       return statusOk && typeOk;
     }),
-    [visibleAbsences, statusFilter, typeFilter],
+    [periodAbsences, statusFilter, typeFilter],
   );
 
   /* KPIs */
-  const pendingCount  = visibleAbsences.filter(a => (a.status ?? "pendiente") === "pendiente").length;
-  const approvedCount = visibleAbsences.filter(a => (a.status ?? "pendiente") === "aprobada").length;
-  const approvedDays  = visibleAbsences
+  const pendingCount  = periodAbsences.filter(a => (a.status ?? "pendiente") === "pendiente").length;
+  const approvedCount = periodAbsences.filter(a => (a.status ?? "pendiente") === "aprobada").length;
+  const approvedDays  = periodAbsences
     .filter(a => (a.status ?? "pendiente") === "aprobada")
     .reduce((s, a) => s + countDays(a), 0);
 
   const chipCounts: Record<StatusFilter, number> = {
-    todas:     visibleAbsences.length,
+    todas:     periodAbsences.length,
     pendiente: pendingCount,
     aprobada:  approvedCount,
-    rechazada: visibleAbsences.filter(a => (a.status ?? "pendiente") === "rechazada").length,
+    rechazada: periodAbsences.filter(a => (a.status ?? "pendiente") === "rechazada").length,
   };
 
   const CHIPS: { key: StatusFilter; label: string }[] = [
@@ -677,8 +728,8 @@ function AbsencesPage() {
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard
             label="Solicitudes"
-            value={visibleAbsences.length}
-            foot="Este mes"
+            value={periodAbsences.length}
+            foot={dateLabelText}
             icon={CalendarX2}
           />
           <KpiCard
@@ -705,6 +756,42 @@ function AbsencesPage() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
+          {/* Segmented — período */}
+          <div className="flex items-center bg-secondary border border-border rounded-pill p-1 gap-0.5 text-sm">
+            {(["dia", "semana", "mes"] as Period[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-4 py-1.5 font-medium rounded-pill transition-colors ${
+                  period === p
+                    ? "bg-card text-foreground shadow-soft"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {p === "dia" ? "Hoy" : p === "semana" ? "Semana" : "Mes"}
+              </button>
+            ))}
+          </div>
+
+          {/* Date stepper */}
+          <div className="flex items-center gap-0.5 rounded-pill border border-border bg-card px-1 py-1">
+            <button
+              onClick={() => setDateOffset(o => o - 1)}
+              className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span className="px-2.5 text-sm min-w-[172px] text-center tabular-nums select-none">
+              {dateLabelText}
+            </span>
+            <button
+              onClick={() => setDateOffset(o => o + 1)}
+              className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+
           {/* Chip tabs */}
           <div className="flex items-center gap-1 bg-secondary rounded-pill p-1">
             {CHIPS.map(({ key, label }) => (
