@@ -1536,7 +1536,7 @@ function Legend() {
   const items = ["STD","HED","HEN","RN","RDF","HEDF","ABS","OFF"];
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-      <span className="text-[11px] font-semibold text-muted-foreground mr-1">Códigos:</span>
+      <span className="text-[11px] font-semibold text-muted-foreground mr-1">TIPO DE TURNO</span>
       {items.map(code => {
         const c = codeColor(code);
         const tip = LEGEND_TOOLTIPS[code];
