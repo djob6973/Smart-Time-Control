@@ -2423,6 +2423,22 @@ function EquityPanel({ data }: {
         </div>
       </div>
 
+      {/* Encabezados de columna */}
+      <div className="grid items-center gap-4 px-4 py-2 border-b border-border bg-secondary/30"
+           style={{ gridTemplateColumns: "auto minmax(180px,280px) 1fr auto" }}>
+        <div className="size-8" />
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Trabajador</span>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Distribución</div>
+          <div className="flex items-center gap-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+            <span>Dom</span>
+            <span>Fest</span>
+            <span className="w-5 text-right">Tot</span>
+          </div>
+        </div>
+        <div className="w-28 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-right">Estado</div>
+      </div>
+
       <div className="divide-y divide-border">
         {sorted.map(({ employee, area, sundays, holidays, total }) => {
           const pct = max > 0 ? (total / max) * 100 : 0;
