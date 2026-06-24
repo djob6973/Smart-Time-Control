@@ -513,13 +513,21 @@ function Scheduler() {
           );
         })()}
 
-        {view === "week" && <Legend />}
-
         {view === "week" && showEquity && (
           <EquityPanel data={equityData} />
         )}
 
         <div className={cn("rounded-card bg-card overflow-hidden shadow-card", view === "month" && "hidden")}>
+          {/* Leyenda de tipos — dentro del card, fuera del scroll horizontal */}
+          {view === "week" && (
+            <div className="px-4 py-2.5 flex flex-wrap items-center gap-3 border-b border-border bg-secondary/50">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">
+                Tipos de novedad
+              </span>
+              <div className="w-px h-3.5 bg-border shrink-0" />
+              <Legend />
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -1511,15 +1519,15 @@ const LEGEND_TOOLTIPS: Record<string, { title: string; desc: string; when: strin
 function Legend() {
   const items = ["STD","HED","HEN","RN","RDF","HEDF","ABS","OFF"];
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
       {items.map(code => {
         const c = codeColor(code);
         const tip = LEGEND_TOOLTIPS[code];
         return (
           <div key={code} className="relative group">
             <div className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium",
-              "cursor-help select-none transition-all hover:shadow-md hover:scale-105",
+              "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium",
+              "cursor-help select-none transition-all hover:scale-105",
               c.bg, c.fg
             )}>
               <span className="font-bold">{code}</span>
