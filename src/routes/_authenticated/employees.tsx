@@ -141,7 +141,6 @@ function EmployeesPage() {
                 <tr>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Trabajador</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Documento</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Cargo</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Área</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Contrato</th>
                   <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Acceso</th>
@@ -160,11 +159,13 @@ function EmployeesPage() {
                           <div className="size-8 shrink-0 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
                             {initials}
                           </div>
-                          <span className="font-medium truncate max-w-[160px]">{e.fullName}</span>
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm truncate">{e.fullName}</div>
+                            {e.position && <div className="text-[11px] text-muted-foreground truncate">{e.position}</div>}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{e.documentId}</td>
-                      <td className="px-4 py-3">{e.position}</td>
                       <td className="px-4 py-3">{areaName}</td>
                       <td className="px-4 py-3">{CONTRACT_LABELS[e.contractType] ?? e.contractType}</td>
                       <td className="px-4 py-3">
