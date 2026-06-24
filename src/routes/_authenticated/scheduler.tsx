@@ -1834,12 +1834,18 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
       <div className="bg-card rounded-card shadow-card max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="p-5 border-b border-border flex items-start justify-between">
-          <div>
-            <h3 className="font-semibold">{employee.fullName}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{date} · {employee.position}{area ? ` · ${area.name}` : ""}</p>
+        <div className="p-5 border-b border-border flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-10 rounded-full bg-primary/15 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+              {employee.fullName.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-semibold truncate">{employee.fullName}</h3>
+              {employee.position && <p className="text-xs text-muted-foreground mt-0.5 truncate">{employee.position}</p>}
+              <p className="text-xs text-muted-foreground mt-0.5">{date}</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-secondary"><X className="size-4" /></button>
+          <button onClick={onClose} className="p-1 rounded hover:bg-secondary shrink-0"><X className="size-4" /></button>
         </div>
 
         {/* Code picker */}
