@@ -812,7 +812,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-3 overflow-x-auto">
         <div className="flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 w-full sm:w-72 focus-within:border-primary/40 transition-shadow">
           <Search className="size-4 text-muted-foreground shrink-0" />
           <input
@@ -1084,7 +1084,7 @@ function TabHistorial() {
 
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-3 overflow-x-auto">
         <input
           type="date"
           value={fechaActiva}
@@ -1559,7 +1559,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-6">
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-3 overflow-x-auto">
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Desde</span>
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />

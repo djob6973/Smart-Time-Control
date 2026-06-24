@@ -477,7 +477,7 @@ function ReportsPage() {
       <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
 
         {/* ---- Toolbar ---- */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-3 overflow-x-auto">
           {/* Segmented period control */}
           <div className="flex items-center rounded-pill border border-border bg-secondary/40 p-0.5 gap-0.5">
             {(["Semana", "Mes", "Trimestre"] as const).map(p => (

@@ -751,7 +751,7 @@ function AbsencesPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-3 overflow-x-auto">
           {/* Segmented — período */}
           <div className="flex items-center bg-secondary border border-border rounded-full p-[3px] gap-[3px] text-sm">
             {(["dia", "semana", "mes"] as Period[]).map(p => (
