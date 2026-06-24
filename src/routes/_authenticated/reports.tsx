@@ -666,7 +666,7 @@ function ReportsPage() {
                     <tr key={r.empId} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-secondary grid place-items-center text-[11px] font-bold flex-none select-none">
+                          <div className="w-8 h-8 rounded-full bg-primary/15 text-primary grid place-items-center text-[11px] font-bold flex-none select-none">
                             {ini(r.nombre)}
                           </div>
                           <span className="font-medium whitespace-nowrap">{r.nombre}</span>
@@ -734,7 +734,7 @@ function ReportsPage() {
                       <td className="px-3 py-2 font-mono whitespace-nowrap">{r.fecha}</td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-secondary grid place-items-center text-[10px] font-bold flex-none select-none">
+                          <div className="w-7 h-7 rounded-full bg-primary/15 text-primary grid place-items-center text-[10px] font-bold flex-none select-none">
                             {ini(r.nombre)}
                           </div>
                           <span className="font-medium whitespace-nowrap">{r.nombre}</span>

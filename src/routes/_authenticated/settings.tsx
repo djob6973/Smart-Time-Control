@@ -735,7 +735,7 @@ function SettingsPage() {
                           {/* Avatar + name + email */}
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
-                              <div className="size-8 rounded-full bg-primary/10 text-primary text-[11px] font-semibold flex items-center justify-center shrink-0 select-none">
+                              <div className="size-8 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center shrink-0 select-none">
                                 {initials(u.fullName || u.email)}
                               </div>
                               <div className="min-w-0">
@@ -1125,10 +1125,7 @@ function SettingsPage() {
                 <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
                   {orgMembers.map(m => (
                     <div key={m.userId} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/40 transition-colors">
-                      <div
-                        className="size-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold text-white"
-                        style={{ background: "var(--brand-coral, #ED5650)" }}
-                      >
+                      <div className="size-8 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 text-xs font-semibold">
                         {initials(m.fullName || m.email)}
                       </div>
                       <div className="flex-1 min-w-0">

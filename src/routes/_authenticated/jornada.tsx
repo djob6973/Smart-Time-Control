@@ -394,7 +394,7 @@ function TabDashboard() {
                 <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="size-8 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                      <div className="size-8 shrink-0 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
                         {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
                       <span className="font-medium whitespace-nowrap">{emp.fullName}</span>
@@ -497,7 +497,7 @@ function TabDashboard() {
             <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Empleados con retraso</div>
             {estados.filter((x) => x.est.esTarde && esEsperadoHoy(x)).map(({ emp, est }) => (
               <div key={emp.id} className="flex items-center gap-3 text-sm">
-                <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                <div className="size-7 rounded-full bg-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
                   {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
                 </div>
                 <span className="flex-1 truncate">{emp.fullName}</span>
@@ -717,7 +717,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
         <div className="rounded-card bg-card p-5 shadow-card">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+              <div className="size-12 rounded-full bg-primary/15 flex items-center justify-center text-sm font-bold text-primary">
                 {selfEmp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
               </div>
               <div>
@@ -877,7 +877,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
             >
               {/* Header */}
               <div className="flex items-start gap-3">
-                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                <div className="size-10 rounded-full bg-primary/15 flex items-center justify-center text-sm font-bold text-primary shrink-0">
                   {initials}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -1602,7 +1602,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
                 <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                      <div className="size-7 rounded-full bg-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
                         {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
                       <span className="font-medium">{emp.fullName}</span>
@@ -1645,7 +1645,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
                   <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                        <div className="size-7 rounded-full bg-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
                           {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
                         </div>
                         <span className="font-medium">{emp.fullName}</span>
