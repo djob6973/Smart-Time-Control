@@ -431,7 +431,7 @@ function Dashboard() {
         {/* ── 5 KPIs ───────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Kpi icon={Users}       label="Empleados activos" value={activeCount}          hint={areaLabel} />
-          <Kpi icon={CalendarOff} label="Ausencias"         value={approvedAbsences}     hint={`${pendingAbsences} pendientes`} />
+          <Kpi icon={CalendarOff} label="Ausencias"         value={approvedAbsences}     hint={`${pendingAbsences} pendientes`} valueAlert={pendingAbsences > 0} />
           <Kpi icon={Clock}       label="Horas programadas" value={fmtHours(sum.total)}  hint={dateLabelText} delta={horasDelta?.text} deltaUp={horasDelta?.up} />
           <Kpi icon={TrendingUp}  label="Horas extras"      value={fmtHours(overtime)}   hint="HED · HEN · HEDF · HENF" delta={extrasDelta?.text} deltaUp={extrasDelta ? !extrasDelta.up : undefined} alert />
           <Kpi icon={Timer}       label="Recargos"          value={fmtHours(surcharges)} hint="RN · RDF" />
@@ -615,7 +615,7 @@ function Dashboard() {
 
 // ── KPI Card ─────────────────────────────────────────────────────
 
-function Kpi({ icon: Icon, label, value, hint, delta, deltaUp, alert }: {
+function Kpi({ icon: Icon, label, value, hint, delta, deltaUp, alert, valueAlert }: {
   icon: any;
   label: string;
   value: any;
@@ -623,6 +623,7 @@ function Kpi({ icon: Icon, label, value, hint, delta, deltaUp, alert }: {
   delta?: string;
   deltaUp?: boolean;
   alert?: boolean;
+  valueAlert?: boolean;
 }) {
   return (
     <div
@@ -649,7 +650,7 @@ function Kpi({ icon: Icon, label, value, hint, delta, deltaUp, alert }: {
 
       <div
         className="font-display text-[2.25rem] leading-none tracking-tight tabular-nums"
-        style={alert ? { color: "#fff" } : undefined}
+        style={alert ? { color: "#fff" } : valueAlert ? { color: PRIMARY } : undefined}
       >
         {value}
       </div>
@@ -673,8 +674,8 @@ function Kpi({ icon: Icon, label, value, hint, delta, deltaUp, alert }: {
         )}
         {hint && (
           <p
-            className={`text-[11px] ${alert ? "" : "text-muted-foreground"}`}
-            style={alert ? { color: "rgba(255,255,255,0.65)" } : undefined}
+            className={`text-[11px] ${alert ? "" : valueAlert ? "" : "text-muted-foreground"}`}
+            style={alert ? { color: "rgba(255,255,255,0.65)" } : valueAlert ? { color: PRIMARY } : undefined}
           >
             {hint}
           </p>
