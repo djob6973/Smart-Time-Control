@@ -2386,8 +2386,43 @@ function EquityPanel({ data }: {
           <span className="text-sm font-semibold">Equidad Dom/Festivos</span>
           <span className="text-xs text-muted-foreground">(total acumulado)</span>
         </div>
-        <span className="text-xs text-muted-foreground">Media: {data.avg.toFixed(1)} turnos</span>
+        <span className="text-xs text-muted-foreground">Media del equipo: <strong className="text-foreground">{data.avg.toFixed(1)}</strong> turnos</span>
       </div>
+
+      {/* Explicación */}
+      <div className="px-4 py-3 border-b border-border bg-secondary/20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 size-5 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+            <span className="text-[9px] font-black text-primary">AB</span>
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold text-foreground">Barra de distribución</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">Longitud proporcional al trabajador con más turnos Dom/Fest asignados.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 size-5 rounded bg-secondary flex items-center justify-center shrink-0 text-[9px] font-bold text-muted-foreground">D/F</span>
+          <div>
+            <p className="text-[11px] font-semibold text-foreground">Dom · Fest · Total</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">Domingos y festivos trabajados desde el inicio del historial acumulado.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 size-5 rounded bg-red-100 border border-red-200 flex items-center justify-center shrink-0 text-[8px] font-bold text-red-700">+N</span>
+          <div>
+            <p className="text-[11px] font-semibold text-foreground">Alerta roja</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">El trabajador tiene 2 o más turnos por encima de la media del equipo.</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 size-5 rounded bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-[8px] font-bold text-amber-700">−N</span>
+          <div>
+            <p className="text-[11px] font-semibold text-foreground">Alerta amarilla</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">El trabajador tiene 2 o más turnos por debajo de la media del equipo.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="divide-y divide-border">
         {sorted.map(({ employee, area, sundays, holidays, total }) => {
           const pct = max > 0 ? (total / max) * 100 : 0;
