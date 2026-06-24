@@ -480,7 +480,7 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
 /*  Page                                                                */
 /* ------------------------------------------------------------------ */
 function AbsencesPage() {
-  const { absences, employees, shifts, upsertAbsence, removeAbsence, clearShift, setShift } = useWFM();
+  const { absences, employees, areas, shifts, upsertAbsence, removeAbsence, clearShift, setShift } = useWFM();
   const { hasPermission, hasLimit, profile } = useAuth();
 
   const canCreate  = hasPermission("absences", "edit");
@@ -489,6 +489,7 @@ function AbsencesPage() {
 
   const [statusFilter,   setStatusFilter]   = useState<StatusFilter>("todas");
   const [typeFilter,     setTypeFilter]     = useState<"all" | AbsenceType>("all");
+  const [selectedArea,   setSelectedArea]   = useState<string>(ownArea ?? "all");
   const [detailId,       setDetailId]       = useState<string | null>(null);
   const [detailStep,     setDetailStep]     = useState<DetailStep>("view");
   const [createOpen,     setCreateOpen]     = useState(false);
@@ -504,10 +505,11 @@ function AbsencesPage() {
     if (!canApprove) {
       return absences.filter(a => a.employeeId === profile?.employeeId);
     }
-    return ownArea
-      ? absences.filter(a => employees.find(e => e.id === a.employeeId)?.areaId === ownArea)
+    const areaId = ownArea ?? (selectedArea !== "all" ? selectedArea : null);
+    return areaId
+      ? absences.filter(a => employees.find(e => e.id === a.employeeId)?.areaId === areaId)
       : absences;
-  }, [absences, employees, ownArea, canApprove, profile?.employeeId]);
+  }, [absences, employees, ownArea, selectedArea, canApprove, profile?.employeeId]);
 
   const filtered = useMemo(() =>
     visibleAbsences.filter(a => {
@@ -598,7 +600,9 @@ function AbsencesPage() {
   const detailEmp     = detailAbsence ? employees.find(e => e.id === detailAbsence.employeeId) : null;
 
   const visibleEmployees = canApprove
-    ? (ownArea ? employees.filter(e => e.areaId === ownArea) : employees)
+    ? (ownArea
+        ? employees.filter(e => e.areaId === ownArea)
+        : (selectedArea !== "all" ? employees.filter(e => e.areaId === selectedArea) : employees))
     : employees.filter(e => e.id === profile?.employeeId);
 
   if (!profile?.employeeId && !canApprove) {
@@ -736,6 +740,20 @@ function AbsencesPage() {
               <option key={k} value={k}>{TYPE_META[k].label}</option>
             ))}
           </select>
+
+          {/* Area filter — solo visible para admin/gestor sin área propia */}
+          {canApprove && !ownArea && (
+            <select
+              className="rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
+              value={selectedArea}
+              onChange={e => setSelectedArea(e.target.value)}
+            >
+              <option value="all">Todas las áreas</option>
+              {areas.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Table */}
