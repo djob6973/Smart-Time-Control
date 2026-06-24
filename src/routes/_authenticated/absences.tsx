@@ -28,8 +28,6 @@ const TYPE_META: Record<AbsenceType, { label: string; color: string }> = {
   compensatorio: { label: "Compensatorio", color: "#6366f1" },
 };
 
-type StatusFilter = "todas" | AbsenceStatus;
-
 const STATUS_META: Record<AbsenceStatus, { label: string; bg: string; text: string }> = {
   pendiente: { label: "Pendiente", bg: "bg-[color-mix(in_srgb,#C98A00_15%,transparent)]", text: "text-[#9a6b00]" },
   aprobada:  { label: "Aprobada",  bg: "bg-[color-mix(in_srgb,#1F8A5B_14%,transparent)]", text: "text-[#1F8A5B]" },
@@ -80,17 +78,23 @@ function fmtDatetime(iso: string): string {
 /*  Sub-components                                                      */
 /* ------------------------------------------------------------------ */
 function KpiCard({
-  label, value, unit, foot, icon: Icon, alert,
+  label, value, unit, foot, icon: Icon, alert, active, onClick,
 }: {
   label: string; value: number; unit?: string; foot: string;
-  icon: ElementType; alert?: boolean;
+  icon: ElementType; alert?: boolean; active?: boolean; onClick?: () => void;
 }) {
   return (
-    <div className={`rounded-card p-5 flex flex-col gap-3 ${
-      alert
-        ? "bg-foreground text-background dark:bg-primary/10 dark:text-foreground dark:border dark:border-primary/25"
-        : "bg-card shadow-card"
-    }`}>
+    <div
+      onClick={onClick}
+      className={[
+        "rounded-card p-5 flex flex-col gap-3 transition-all",
+        onClick ? "cursor-pointer hover:-translate-y-0.5" : "",
+        active ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "",
+        alert
+          ? "bg-foreground text-background dark:bg-primary/10 dark:text-foreground dark:border dark:border-primary/25"
+          : "bg-card shadow-card",
+      ].join(" ")}
+    >
       <div className="flex items-start justify-between gap-2">
         <span className={`text-[13px] font-medium leading-snug ${alert ? "text-background/70 dark:text-muted-foreground" : "text-muted-foreground"}`}>
           {label}
@@ -492,7 +496,7 @@ function AbsencesPage() {
 
   const [period,         setPeriod]         = useState<Period>("mes");
   const [dateOffset,     setDateOffset]     = useState(0);
-  const [statusFilter,   setStatusFilter]   = useState<StatusFilter>("todas");
+  const [statusFilter,   setStatusFilter]   = useState<AbsenceStatus | null>(null);
   const [typeFilter,     setTypeFilter]     = useState<"all" | AbsenceType>("all");
   const [selectedArea,   setSelectedArea]   = useState<string>(ownArea ?? "all");
   const [detailId,       setDetailId]       = useState<string | null>(null);
@@ -565,7 +569,7 @@ function AbsencesPage() {
   const filtered = useMemo(() =>
     periodAbsences.filter(a => {
       const s: AbsenceStatus = a.status ?? "pendiente";
-      const statusOk = statusFilter === "todas" || s === statusFilter;
+      const statusOk = statusFilter === null || s === statusFilter;
       const typeOk   = typeFilter === "all" || a.type === typeFilter;
       return statusOk && typeOk;
     }),
@@ -578,20 +582,6 @@ function AbsencesPage() {
   const approvedDays  = periodAbsences
     .filter(a => (a.status ?? "pendiente") === "aprobada")
     .reduce((s, a) => s + countDays(a), 0);
-
-  const chipCounts: Record<StatusFilter, number> = {
-    todas:     periodAbsences.length,
-    pendiente: pendingCount,
-    aprobada:  approvedCount,
-    rechazada: periodAbsences.filter(a => (a.status ?? "pendiente") === "rechazada").length,
-  };
-
-  const CHIPS: { key: StatusFilter; label: string }[] = [
-    { key: "todas",     label: "Todas" },
-    { key: "pendiente", label: "Pendientes" },
-    { key: "aprobada",  label: "Aprobadas" },
-    { key: "rechazada", label: "Rechazadas" },
-  ];
 
   function handleDecide(id: string, status: AbsenceStatus, note?: string) {
     const a = absences.find(ab => ab.id === id);
@@ -724,13 +714,15 @@ function AbsencesPage() {
       />
 
       <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-5">
-        {/* KPI cards */}
+        {/* KPI cards — clickables como filtro de estado */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard
-            label="Solicitudes"
+            label="Todas"
             value={periodAbsences.length}
             foot={dateLabelText}
             icon={CalendarX2}
+            active={statusFilter === null}
+            onClick={() => setStatusFilter(null)}
           />
           <KpiCard
             label="Pendientes"
@@ -738,12 +730,16 @@ function AbsencesPage() {
             foot="Requieren revisión"
             icon={Clock}
             alert={pendingCount > 0}
+            active={statusFilter === "pendiente"}
+            onClick={() => setStatusFilter(f => f === "pendiente" ? null : "pendiente")}
           />
           <KpiCard
             label="Aprobadas"
             value={approvedCount}
-            foot="Este mes"
+            foot={dateLabelText}
             icon={CheckCircle2}
+            active={statusFilter === "aprobada"}
+            onClick={() => setStatusFilter(f => f === "aprobada" ? null : "aprobada")}
           />
           <KpiCard
             label="Días de ausencia"
@@ -790,30 +786,6 @@ function AbsencesPage() {
             >
               <ChevronRight className="size-4" />
             </button>
-          </div>
-
-          {/* Chip tabs */}
-          <div className="flex items-center gap-1 bg-secondary rounded-pill p-1">
-            {CHIPS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setStatusFilter(key)}
-                className={`inline-flex items-center gap-1.5 rounded-pill px-3 py-1 text-sm font-medium transition-colors ${
-                  statusFilter === key
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {label}
-                <span className={`text-[11px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full ${
-                  statusFilter === key
-                    ? "bg-primary/10 text-primary"
-                    : "bg-secondary text-muted-foreground"
-                }`}>
-                  {chipCounts[key]}
-                </span>
-              </button>
-            ))}
           </div>
 
           {/* Type filter */}
@@ -959,7 +931,7 @@ function AbsencesPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-center py-14 text-muted-foreground">
-                      No hay solicitudes en este estado.
+                      No hay ausencias para el período seleccionado.
                     </td>
                   </tr>
                 )}
