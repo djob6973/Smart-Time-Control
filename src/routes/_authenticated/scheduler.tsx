@@ -2375,7 +2375,7 @@ function EquityPanel({ data }: {
     const diff = total - avg;
     if (diff >= 2) return { label: `+${Math.round(diff)} sobre media`, cls: "bg-red-100 text-red-700 border-red-200" };
     if (diff <= -2) return { label: `${Math.round(diff)} bajo media`, cls: "bg-amber-50 text-amber-700 border-amber-200" };
-    return null;
+    return { label: "En equidad", cls: "bg-[color-mix(in_srgb,#1F8A5B_12%,transparent)] text-[#1F8A5B] border-[color-mix(in_srgb,#1F8A5B_25%,transparent)]" };
   }
 
   return (
@@ -2458,7 +2458,7 @@ function EquityPanel({ data }: {
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                   <div
-                    className={cn("h-full rounded-full transition-all", b ? (total - data.avg >= 2 ? "bg-red-400" : "bg-amber-300") : "bg-primary/60")}
+                    className={cn("h-full rounded-full transition-all", total - data.avg >= 2 ? "bg-red-400" : total - data.avg <= -2 ? "bg-amber-300" : "bg-primary/60")}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
