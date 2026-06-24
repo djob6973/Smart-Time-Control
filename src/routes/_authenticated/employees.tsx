@@ -75,7 +75,7 @@ function EmployeesPage() {
           canEdit ? (
             <button
               onClick={() => setEditing("new")}
-              className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+              className="h-10 inline-flex items-center gap-2 rounded-full bg-primary px-[18px] text-sm font-bold text-primary-foreground hover:opacity-90 shrink-0"
             >
               <Plus className="size-4" />
               <span className="hidden sm:inline">Nuevo trabajador</span>
@@ -86,49 +86,49 @@ function EmployeesPage() {
 
       <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 w-full sm:w-72 focus-within:border-primary/40 focus-within:shadow-soft transition-shadow">
-            <Search className="size-4 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-2">
+          <div className="relative flex items-center shrink-0">
+            <Search className="absolute left-3 size-[18px] text-muted-foreground pointer-events-none" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar por nombre o documento..."
-              className="bg-transparent text-sm outline-none flex-1"
+              className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm outline-none w-64 focus:border-primary/40 transition-colors"
             />
           </div>
 
           {ownArea ? (
-            <span className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 text-muted-foreground">
+            <span className="h-10 px-3.5 inline-flex items-center rounded-full border border-border bg-card text-sm text-muted-foreground shrink-0">
               {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
             </span>
           ) : (
             <select
               value={areaFilter}
               onChange={(e) => setAreaFilter(e.target.value)}
-              className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 outline-none"
+              className="h-10 pl-3.5 pr-8 rounded-full border border-border bg-card text-sm outline-none shrink-0"
             >
               <option value="all">Todas las áreas</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
 
-          <div className="flex items-center rounded-pill border border-border bg-card overflow-hidden text-sm">
-            {(["all", "active", "inactive"] as const).map((s, i) => (
+          <div className="h-10 flex items-center rounded-full bg-secondary border border-border p-[3px] gap-[3px] shrink-0">
+            {(["all", "active", "inactive"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
-                className={`px-3.5 py-2 transition-colors ${
+                className={`h-[34px] px-4 rounded-full text-sm transition-colors ${
                   statusFilter === s
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-secondary"
-                } ${i > 0 ? "border-l border-border" : ""}`}
+                    ? "bg-card shadow-sm text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 {s === "all" ? "Todos" : s === "active" ? "Activos" : "Inactivos"}
               </button>
             ))}
           </div>
 
-          <span className="text-sm text-muted-foreground ml-auto">
+          <span className="text-sm text-muted-foreground ml-auto shrink-0">
             {list.length} trabajador{list.length !== 1 ? "es" : ""}
           </span>
         </div>
