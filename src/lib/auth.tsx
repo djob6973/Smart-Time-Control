@@ -251,6 +251,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (role === "admin") return true;
       if (rolePerms) {
         const perm = rolePerms[resource];
+        // Key absent from DB (new resource not yet saved) → fall back to static defaults
+        if (perm === undefined) return hasPermission(role, resource, action);
         if (!perm) return false;
         const LEVELS = ["none", "view", "edit", "full"];
         const permStr   = perm as unknown as string;
