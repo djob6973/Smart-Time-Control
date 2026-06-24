@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   Clock, Users, Coffee, UtensilsCrossed, LogIn, LogOut,
-  LayoutDashboard, History, FileText, Settings,
+  LayoutDashboard, History, FileText, Settings, BarChart2,
   Plus, Edit3, Trash2, Search, AlertTriangle, CheckCircle2,
   Download, RefreshCw, CalendarDays, ChevronRight, X,
 } from "lucide-react";
@@ -30,14 +30,15 @@ export const Route = createFileRoute("/_authenticated/jornada")({
   component: JornadaPage,
 });
 
-type Tab = "dashboard" | "registro" | "historial" | "reportes" | "configuracion";
+type Tab = "dashboard" | "registro" | "historial" | "reportes" | "reporte_general" | "configuracion";
 
 const TABS: { id: Tab; label: string; icon: any }[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "registro",  label: "Registro",  icon: Clock },
-  { id: "historial", label: "Historial", icon: History },
-  { id: "reportes",  label: "Reportes",  icon: FileText },
-  { id: "configuracion", label: "Configuración", icon: Settings },
+  { id: "dashboard",       label: "Dashboard",          icon: LayoutDashboard },
+  { id: "registro",        label: "Registro",           icon: Clock },
+  { id: "historial",       label: "Historial",          icon: History },
+  { id: "reportes",        label: "Reportes",           icon: FileText },
+  { id: "reporte_general", label: "Reporte de jornada", icon: BarChart2 },
+  { id: "configuracion",   label: "Configuración",      icon: Settings },
 ];
 
 const TIPO_ICONS: Record<TipoMovimiento, any> = {
@@ -190,7 +191,6 @@ function JornadaPage() {
     if (t.id === "reportes") {
       return (
         hasPermission("jornada_reportes" as any, "view") ||
-        hasPermission("jornada_reporte_general" as any, "view") ||
         (isLinkedEmployee && hasPermission("mi_jornada_reportes" as any, "view"))
       );
     }
@@ -245,8 +245,9 @@ function JornadaPage() {
           {activeTab === "dashboard"     && <TabDashboard />}
           {activeTab === "registro"      && <TabRegistro autoEmployeeId={profile?.employeeId ?? null} />}
           {activeTab === "historial"     && <TabHistorial />}
-          {activeTab === "reportes"      && <TabReportes autoEmployeeId={profile?.employeeId ?? null} />}
-          {activeTab === "configuracion" && <TabConfiguracion />}
+          {activeTab === "reportes"        && <TabReportes autoEmployeeId={profile?.employeeId ?? null} />}
+          {activeTab === "reporte_general" && <TabReporteGeneral />}
+          {activeTab === "configuracion"   && <TabConfiguracion />}
         </div>
       )}
     </>
@@ -1342,29 +1343,17 @@ function AgregarManualModal({ employees, areas, fecha, onClose, onSave }: any) {
 // ── TAB: Reportes ──────────────────────────────────────────
 
 function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
-  const { employees, areas } = useWFM();
-  const { profile, hasPermission } = useAuth();
-  const { registros, configuracion, loadRango } = useJornada();
-  const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
-  const ownArea = profile?.areaId ?? null;
-
-  const canSeeGeneral = hasPermission("jornada_reporte_general" as any, "view");
-  const canSeeSelf = !!autoEmployeeId && hasPermission("mi_jornada_reportes" as any, "view");
-
-  const [view, setView] = useState<"general" | "self">(() => canSeeGeneral ? "general" : "self");
+  const { employees } = useWFM();
+  const { profile } = useAuth();
+  const { registros, loadRango } = useJornada();
 
   const [desde, setDesde] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
   });
   const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
 
-  // Cargar registros del rango seleccionado desde el servidor
-  useEffect(() => {
-    loadRango(desde, hasta);
-  }, [desde, hasta]);
-  const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
+  useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
 
-  // Self mode
   const selfEmployee = useMemo(
     () => (autoEmployeeId ? employees.find((e) => e.id === autoEmployeeId) ?? null : null),
     [autoEmployeeId, employees],
@@ -1399,7 +1388,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     a.click();
   }
 
-  if (!canSeeGeneral && !canSeeSelf) {
+  if (!autoEmployeeId) {
     return (
       <div className="flex-1 flex items-center justify-center p-10">
         <div className="max-w-sm w-full">
@@ -1445,94 +1434,103 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     );
   }
 
-  const activeView = canSeeGeneral && canSeeSelf ? view : canSeeGeneral ? "general" : "self";
-
-  if (activeView === "self") {
-    const avgEfectivo = selfTotals.diasCompletos > 0 ? Math.round(selfTotals.efectivoMin / selfTotals.diasCompletos) : 0;
-    return (
-      <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-5">
-        {canSeeGeneral && canSeeSelf && (
-          <div className="flex gap-1 p-1 rounded-full bg-secondary w-fit">
-            <button onClick={() => setView("general")} className="rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Reporte de jornada</button>
-            <button className="rounded-full px-4 py-1.5 text-sm font-medium bg-card shadow-sm">Mi Reporte</button>
-          </div>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">Mi Reporte de Jornada</h2>
-            {selfEmployee && <p className="text-sm text-muted-foreground mt-0.5">{selfEmployee.fullName}</p>}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Desde</span>
-              <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Hasta</span>
-              <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
-            </label>
-            <button onClick={exportSelfCSV} className="inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
-              <Download className="size-4" /> Exportar CSV
-            </button>
-          </div>
+  const avgEfectivo = selfTotals.diasCompletos > 0 ? Math.round(selfTotals.efectivoMin / selfTotals.diasCompletos) : 0;
+  return (
+    <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Mi Reporte de Jornada</h2>
+          {selfEmployee && <p className="text-sm text-muted-foreground mt-0.5">{selfEmployee.fullName}</p>}
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <KPI icon={CalendarDays}  label="Días trabajados" value={selfTotals.dias} />
-          <KPI icon={Clock}         label="Tiempo en jornada" value={fmtMins(selfTotals.jornadaMin)} />
-          <KPI icon={Coffee}        label="Tiempo efectivo"   value={fmtMins(selfTotals.efectivoMin)} />
-          <KPI icon={CheckCircle2}  label="Promedio diario"   value={fmtMins(avgEfectivo)} hint="tiempo efectivo / día" />
-        </div>
-
-        <div className="rounded-card bg-card shadow-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-border bg-secondary/40">
-            <h3 className="font-semibold text-sm">Detalle por día</h3>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/30 text-left">
-              <tr>
-                {["Fecha","Entrada","Salida","Break","Almuerzo","Jornada","Efectivo","Estado"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {selfDays.map((d) => {
-                const completo = !!d.entrada && !!d.salida;
-                return (
-                  <tr key={d.fecha} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
-                    <td className="px-4 py-3 font-medium">{fmtFecha(d.fecha)}</td>
-                    <td className="px-4 py-3 tabular-nums">{fmtTime(d.entrada?.horaExacta)}</td>
-                    <td className="px-4 py-3 tabular-nums">{fmtTime(d.salida?.horaExacta)}</td>
-                    <td className="px-4 py-3">{d.breakMin   > 0 ? fmtMins(d.breakMin)   : <span className="text-muted-foreground">—</span>}</td>
-                    <td className="px-4 py-3">{d.almuerzoMin > 0 ? fmtMins(d.almuerzoMin) : <span className="text-muted-foreground">—</span>}</td>
-                    <td className="px-4 py-3">{fmtMins(d.jornadaMin)}</td>
-                    <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(d.efectivoMin)}</td>
-                    <td className="px-4 py-3">
-                      {completo
-                        ? <span className="inline-flex items-center gap-1 rounded-pill bg-[color-mix(in_srgb,#1F8A5B_12%,transparent)] text-[#1F8A5B] px-2.5 py-0.5 text-[11px] font-medium"><CheckCircle2 className="size-3" />Completo</span>
-                        : <span className="inline-flex items-center gap-1 rounded-pill bg-[color-mix(in_srgb,#C98A00_12%,transparent)] text-[#9a6b00] px-2.5 py-0.5 text-[11px] font-medium"><AlertTriangle className="size-3" />Incompleto</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-              {selfDays.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Sin registros en el período</td></tr>
-              )}
-            </tbody>
-          </table>
-          {selfDays.length > 0 && (
-            <div className="px-4 py-3 bg-secondary/20 border-t border-border flex flex-wrap gap-6 text-xs text-muted-foreground">
-              <span>Total jornada: <strong className="text-foreground">{fmtMins(selfTotals.jornadaMin)}</strong></span>
-              <span>Total break: <strong className="text-foreground">{fmtMins(selfTotals.breakMin)}</strong></span>
-              <span>Total almuerzo: <strong className="text-foreground">{fmtMins(selfTotals.almuerzoMin)}</strong></span>
-              <span>Total efectivo: <strong className="text-[#1F8A5B]">{fmtMins(selfTotals.efectivoMin)}</strong></span>
-            </div>
-          )}
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Desde</span>
+            <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Hasta</span>
+            <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="rounded-pill border border-border bg-card px-3 py-2 text-sm" />
+          </label>
+          <button onClick={exportSelfCSV} className="inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+            <Download className="size-4" /> Exportar CSV
+          </button>
         </div>
       </div>
-    );
-  }
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KPI icon={CalendarDays}  label="Días trabajados"  value={selfTotals.dias} />
+        <KPI icon={Clock}         label="Tiempo en jornada" value={fmtMins(selfTotals.jornadaMin)} />
+        <KPI icon={Coffee}        label="Tiempo efectivo"   value={fmtMins(selfTotals.efectivoMin)} />
+        <KPI icon={CheckCircle2}  label="Promedio diario"   value={fmtMins(avgEfectivo)} hint="tiempo efectivo / día" />
+      </div>
+
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-secondary/40">
+          <h3 className="font-semibold text-sm">Detalle por día</h3>
+        </div>
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/30 text-left">
+            <tr>
+              {["Fecha","Entrada","Salida","Break","Almuerzo","Jornada","Efectivo","Estado"].map((h) => (
+                <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {selfDays.map((d) => {
+              const completo = !!d.entrada && !!d.salida;
+              return (
+                <tr key={d.fecha} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
+                  <td className="px-4 py-3 font-medium">{fmtFecha(d.fecha)}</td>
+                  <td className="px-4 py-3 tabular-nums">{fmtTime(d.entrada?.horaExacta)}</td>
+                  <td className="px-4 py-3 tabular-nums">{fmtTime(d.salida?.horaExacta)}</td>
+                  <td className="px-4 py-3">{d.breakMin   > 0 ? fmtMins(d.breakMin)   : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3">{d.almuerzoMin > 0 ? fmtMins(d.almuerzoMin) : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3">{fmtMins(d.jornadaMin)}</td>
+                  <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(d.efectivoMin)}</td>
+                  <td className="px-4 py-3">
+                    {completo
+                      ? <span className="inline-flex items-center gap-1 rounded-pill bg-[color-mix(in_srgb,#1F8A5B_12%,transparent)] text-[#1F8A5B] px-2.5 py-0.5 text-[11px] font-medium"><CheckCircle2 className="size-3" />Completo</span>
+                      : <span className="inline-flex items-center gap-1 rounded-pill bg-[color-mix(in_srgb,#C98A00_12%,transparent)] text-[#9a6b00] px-2.5 py-0.5 text-[11px] font-medium"><AlertTriangle className="size-3" />Incompleto</span>}
+                  </td>
+                </tr>
+              );
+            })}
+            {selfDays.length === 0 && (
+              <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Sin registros en el período</td></tr>
+            )}
+          </tbody>
+        </table>
+        {selfDays.length > 0 && (
+          <div className="px-4 py-3 bg-secondary/20 border-t border-border flex flex-wrap gap-6 text-xs text-muted-foreground">
+            <span>Total jornada: <strong className="text-foreground">{fmtMins(selfTotals.jornadaMin)}</strong></span>
+            <span>Total break: <strong className="text-foreground">{fmtMins(selfTotals.breakMin)}</strong></span>
+            <span>Total almuerzo: <strong className="text-foreground">{fmtMins(selfTotals.almuerzoMin)}</strong></span>
+            <span>Total efectivo: <strong className="text-[#1F8A5B]">{fmtMins(selfTotals.efectivoMin)}</strong></span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── TAB: Reporte de jornada ─────────────────────────────────
+
+function TabReporteGeneral() {
+  const { employees, areas } = useWFM();
+  const { profile } = useAuth();
+  const { registros, configuracion, loadRango } = useJornada();
+  const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
+  const ownArea = profile?.areaId ?? null;
+
+  const [desde, setDesde] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
+  });
+  const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
+
+  useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
+
+  const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
 
   // General report mode
   const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
@@ -1571,12 +1569,6 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-6">
-      {canSeeGeneral && canSeeSelf && (
-        <div className="flex gap-1 p-1 rounded-full bg-secondary w-fit">
-          <button className="rounded-full px-4 py-1.5 text-sm font-medium bg-card shadow-sm">Reporte de jornada</button>
-          <button onClick={() => setView("self")} className="rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Mi Reporte</button>
-        </div>
-      )}
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Reporte de jornada</h2>
         <p className="text-sm text-muted-foreground mt-0.5">Tiempo y puntualidad por empleado</p>
