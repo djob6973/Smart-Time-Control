@@ -753,12 +753,12 @@ function AbsencesPage() {
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Segmented — período */}
-          <div className="flex items-center bg-secondary border border-border rounded-pill p-1 gap-0.5 text-sm">
+          <div className="flex items-center bg-secondary border border-border rounded-full p-[3px] gap-[3px] text-sm">
             {(["dia", "semana", "mes"] as Period[]).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-4 py-2 font-medium rounded-pill transition-colors ${
+                className={`h-[34px] px-4 rounded-full font-medium inline-flex items-center transition-colors ${
                   period === p
                     ? "bg-card text-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground"
@@ -770,27 +770,27 @@ function AbsencesPage() {
           </div>
 
           {/* Date stepper */}
-          <div className="flex items-center gap-0.5 rounded-pill border border-border bg-card px-1 py-1">
+          <div className="flex items-center h-10 rounded-full border border-border bg-card overflow-hidden">
             <button
               onClick={() => setDateOffset(o => o - 1)}
-              className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              className="size-10 flex items-center justify-center hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className="size-[18px]" />
             </button>
-            <span className="px-2.5 text-sm min-w-[172px] text-center tabular-nums select-none">
+            <span className="px-3.5 text-sm border-x border-border h-full flex items-center min-w-[172px] text-center tabular-nums select-none justify-center">
               {dateLabelText}
             </span>
             <button
               onClick={() => setDateOffset(o => o + 1)}
-              className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              className="size-10 flex items-center justify-center hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-[18px]" />
             </button>
           </div>
 
           {/* Type filter */}
           <select
-            className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
+            className="h-10 rounded-full border border-border bg-card px-3.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value as "all" | AbsenceType)}
           >
@@ -803,7 +803,7 @@ function AbsencesPage() {
           {/* Area filter — solo visible para admin/gestor sin área propia */}
           {canApprove && !ownArea && (
             <select
-              className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
+              className="h-10 rounded-full border border-border bg-card px-3.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40 text-muted-foreground"
               value={selectedArea}
               onChange={e => setSelectedArea(e.target.value)}
             >

@@ -187,7 +187,7 @@ function DownloadMenu({
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(p => !p)}
-        className="inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3.5 py-2 text-sm font-medium hover:bg-secondary transition-colors"
+        className="h-10 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 text-sm font-medium hover:bg-secondary transition-colors"
       >
         <Download className="size-3.5" />
         Descargar
@@ -500,7 +500,7 @@ function ReportsPage() {
             <select
               value={selectedArea}
               onChange={e => setSelectedArea(e.target.value)}
-              className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm outline-none focus:border-primary cursor-pointer"
+              className="h-10 rounded-full border border-border bg-card px-3.5 text-sm outline-none focus:border-primary cursor-pointer"
             >
               <option value="all">Todas las áreas</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -512,7 +512,7 @@ function ReportsPage() {
             type="month"
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="rounded-pill border border-border bg-card px-3.5 py-2 text-sm outline-none focus:border-primary"
+            className="h-10 rounded-full border border-border bg-card px-3.5 text-sm outline-none focus:border-primary"
           />
 
           {loadingApprovals && (

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
 import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
-import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info, Filter } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info, Filter, MoreHorizontal } from "lucide-react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -46,6 +46,15 @@ function Scheduler() {
   const [historyModal, setHistoryModal] = useState<{ employeeId: string; date: string; employeeName: string } | null>(null);
   const [monthDate, setMonthDate] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [showEquity, setShowEquity] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function close(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false);
+    }
+    if (showMore) document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [showMore]);
 
   const ws = new Date(weekISO + "T00:00:00");
   const days = weekDays(ws);
@@ -344,159 +353,192 @@ function Scheduler() {
       <Topbar
         title="Programación de turnos"
         subtitle="Vista grilla semanal · Lunes a Domingo"
-        right={
-          <div className="flex items-center gap-2">
-            <select
-              value={numWeeks}
-              onChange={(e) => setNumWeeks(Number(e.target.value))}
-              className="hidden sm:block text-sm rounded-pill border border-border bg-card px-3.5 py-2"
-            >
-              <option value={1}>1 semana</option>
-              <option value={2}>2 semanas</option>
-              <option value={4}>4 semanas</option>
-              <option value={8}>8 semanas</option>
-            </select>
-            {canGenerate && (
-              <button
-                onClick={handleGenerate}
-                className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-              >
-                <Sparkles className="size-4" />
-                <span className="hidden sm:inline">Generar inteligente</span>
-              </button>
-            )}
-          </div>
-        }
       />
 
       <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Selector de vista */}
-          <div className="flex items-center rounded-pill border border-border bg-card p-1 gap-0.5 text-sm">
-            <button
-              onClick={() => setView("week")}
-              className={cn("px-3.5 py-2 rounded-pill transition-all font-medium", view === "week" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => setView("month")}
-              className={cn("px-3.5 py-2 rounded-pill transition-all inline-flex items-center gap-1.5 font-medium", view === "month" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-            >
-              <CalendarDays className="size-3.5" />Mes
-            </button>
-          </div>
+        {/* Toolbar ─ 2 filas */}
+        <div className="flex flex-col gap-2">
 
-          {/* Navegador de semana */}
-          {view === "week" && (
-            <div className="flex items-center rounded-pill border border-border bg-card overflow-hidden">
-              <button onClick={() => shiftWeek(-1)} className="p-2 hover:bg-secondary"><ChevronLeft className="size-4" /></button>
-              <div className="px-3 py-2 text-sm font-medium border-x border-border">
-                Semana del {days[0].getDate()}/{days[0].getMonth()+1} – {days[6].getDate()}/{days[6].getMonth()+1}
-              </div>
-              <button onClick={() => shiftWeek(1)} className="p-2 hover:bg-secondary"><ChevronRight className="size-4" /></button>
-            </div>
-          )}
-
-          {/* Navegador de mes */}
-          {view === "month" && (
-            <div className="flex items-center rounded-pill border border-border bg-card overflow-hidden">
-              <button onClick={() => setMonthDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="p-2 hover:bg-secondary"><ChevronLeft className="size-4" /></button>
-              <div className="px-3 py-2 text-sm font-medium border-x border-border capitalize">
-                {MONTH_NAMES[monthDate.getMonth()]} {monthDate.getFullYear()}
-              </div>
-              <button onClick={() => setMonthDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="p-2 hover:bg-secondary"><ChevronRight className="size-4" /></button>
-            </div>
-          )}
-
-          <button
-            onClick={() => {
-              if (view === "week") setWeekISO(toISO(startOfWeek(new Date())));
-              else { const n = new Date(); setMonthDate(new Date(n.getFullYear(), n.getMonth(), 1)); }
-            }}
-            className="text-sm px-3.5 py-2 rounded-pill border border-border hover:bg-secondary"
-          >
-            Hoy
-          </button>
-
-          {/* Separador */}
-          {view === "week" && (
-            <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
-          )}
-
-          {/* Acciones secundarias */}
-          {view === "week" && canEdit && (
-            <>
+          {/* Fila 1: Navegación */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Segmented Semana / Mes */}
+            <div className="flex items-center rounded-full bg-secondary border border-border p-[3px] gap-[3px] text-sm">
               <button
-                onClick={toggleWeekLock}
-                title={weekLockState === "full" ? "Desbloquear semana" : weekLockState === "partial" ? "Semana parcialmente bloqueada" : "Bloquear semana"}
-                className={cn(
-                  "h-9 px-3.5 rounded-pill border flex items-center gap-1.5 text-sm transition-colors",
-                  weekLockState === "full"
-                    ? "bg-primary/15 text-primary border-primary/30"
-                    : weekLockState === "partial"
-                    ? "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30"
-                    : "border-border bg-card text-foreground hover:bg-secondary"
-                )}
+                onClick={() => setView("week")}
+                className={cn("h-[34px] px-4 rounded-full transition-all font-medium inline-flex items-center gap-[7px]", view === "week" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >
-                {weekLockState === "full" ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-                {weekLockState === "full" ? "Desbloquear" : "Bloquear"}
+                Semana
               </button>
-
               <button
-                onClick={() => setShowClearConfirm(true)}
-                disabled={!canClearWeek || clearing}
-                title={!canClearWeek ? "No hay turnos desbloqueados para limpiar" : "Limpiar turnos no bloqueados de la semana"}
-                className={cn(
-                  "h-9 px-3.5 rounded-pill border border-border bg-card flex items-center gap-1.5 text-sm transition-colors",
-                  canClearWeek && !clearing
-                    ? "text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                    : "text-muted-foreground opacity-40 cursor-not-allowed"
-                )}
+                onClick={() => setView("month")}
+                className={cn("h-[34px] px-4 rounded-full transition-all font-medium inline-flex items-center gap-[7px]", view === "month" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               >
-                <Eraser className="size-4" />
-                Limpiar
+                <CalendarDays className="size-4" />Mes
               </button>
-            </>
-          )}
+            </div>
 
-          {view === "week" && (
+            {/* Navegador de semana */}
+            {view === "week" && (
+              <div className="flex items-center h-10 rounded-full border border-border bg-card overflow-hidden">
+                <button onClick={() => shiftWeek(-1)} className="size-10 flex items-center justify-center hover:bg-secondary transition-colors"><ChevronLeft className="size-[18px]" /></button>
+                <div className="px-3.5 text-sm font-medium border-x border-border h-full flex items-center whitespace-nowrap">
+                  Semana del {days[0].getDate()}/{days[0].getMonth()+1} – {days[6].getDate()}/{days[6].getMonth()+1}
+                </div>
+                <button onClick={() => shiftWeek(1)} className="size-10 flex items-center justify-center hover:bg-secondary transition-colors"><ChevronRight className="size-[18px]" /></button>
+              </div>
+            )}
+
+            {/* Navegador de mes */}
+            {view === "month" && (
+              <div className="flex items-center h-10 rounded-full border border-border bg-card overflow-hidden">
+                <button onClick={() => setMonthDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="size-10 flex items-center justify-center hover:bg-secondary transition-colors"><ChevronLeft className="size-[18px]" /></button>
+                <div className="px-3.5 text-sm font-medium border-x border-border h-full flex items-center whitespace-nowrap capitalize">
+                  {MONTH_NAMES[monthDate.getMonth()]} {monthDate.getFullYear()}
+                </div>
+                <button onClick={() => setMonthDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="size-10 flex items-center justify-center hover:bg-secondary transition-colors"><ChevronRight className="size-[18px]" /></button>
+              </div>
+            )}
+
+            {/* Hoy */}
             <button
-              onClick={() => setShowEquity(v => !v)}
-              title="Equidad de domingos y festivos"
-              className={cn(
-                "h-9 px-3.5 rounded-pill border flex items-center gap-1.5 text-sm transition-colors",
-                showEquity
-                  ? "bg-primary/15 text-primary border-primary/30"
-                  : "border-border bg-card text-foreground hover:bg-secondary"
-              )}
+              onClick={() => {
+                if (view === "week") setWeekISO(toISO(startOfWeek(new Date())));
+                else { const n = new Date(); setMonthDate(new Date(n.getFullYear(), n.getMonth(), 1)); }
+              }}
+              className="h-10 px-3.5 rounded-full border border-border bg-card flex items-center gap-2 text-sm font-medium hover:bg-secondary transition-colors"
             >
-              <History className="size-4" />
-              Equidad
+              Hoy
             </button>
-          )}
 
-          {/* Filtro de área */}
-          <div className="ml-auto relative">
-            {ownArea ? (
-              <span className="h-9 px-3.5 rounded-pill border border-border bg-card flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Filter className="size-4 shrink-0" />
-                {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
-              </span>
-            ) : (
-              <div className="relative flex items-center">
-                <Filter className="absolute left-3 size-4 text-muted-foreground pointer-events-none shrink-0" />
-                <select
-                  value={areaFilter}
-                  onChange={(e) => setAreaFilter(e.target.value)}
-                  className="h-9 pl-8 pr-3.5 rounded-pill border border-border bg-card text-sm"
-                >
-                  <option value="all">Todas las áreas</option>
-                  {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+            {/* Filtro de área en vista mes */}
+            {view === "month" && (
+              <div className="ml-auto">
+                {ownArea ? (
+                  <span className="h-10 px-3.5 rounded-full border border-border bg-card flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Filter className="size-4 shrink-0" />
+                    {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
+                  </span>
+                ) : (
+                  <div className="relative flex items-center">
+                    <Filter className="absolute left-3.5 size-4 text-muted-foreground pointer-events-none shrink-0" />
+                    <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm font-medium">
+                      <option value="all">Todas las áreas</option>
+                      {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {/* Fila 2: Acciones (vista semana) */}
+          {view === "week" && (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Filtro de área */}
+              {ownArea ? (
+                <span className="h-10 px-3.5 rounded-full border border-border bg-card flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Filter className="size-4 shrink-0" />
+                  {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
+                </span>
+              ) : (
+                <div className="relative flex items-center">
+                  <Filter className="absolute left-3.5 size-4 text-muted-foreground pointer-events-none shrink-0" />
+                  <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm font-medium">
+                    <option value="all">Todas las áreas</option>
+                    {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Bloquear / Limpiar */}
+              {canEdit && (
+                <>
+                  <button
+                    onClick={toggleWeekLock}
+                    title={weekLockState === "full" ? "Desbloquear semana" : weekLockState === "partial" ? "Semana parcialmente bloqueada" : "Bloquear semana"}
+                    className={cn(
+                      "h-10 px-3.5 rounded-full border flex items-center gap-2 text-sm font-medium transition-colors",
+                      weekLockState === "full"
+                        ? "bg-primary/15 text-primary border-primary/30"
+                        : weekLockState === "partial"
+                        ? "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30"
+                        : "border-border bg-card text-foreground hover:bg-secondary"
+                    )}
+                  >
+                    {weekLockState === "full" ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+                    {weekLockState === "full" ? "Desbloquear" : "Bloquear"}
+                  </button>
+
+                  <button
+                    onClick={() => setShowClearConfirm(true)}
+                    disabled={!canClearWeek || clearing}
+                    title={!canClearWeek ? "No hay turnos desbloqueados para limpiar" : "Limpiar turnos no bloqueados de la semana"}
+                    className={cn(
+                      "h-10 px-3.5 rounded-full border border-border bg-card flex items-center gap-2 text-sm font-medium transition-colors",
+                      canClearWeek && !clearing
+                        ? "text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                        : "text-muted-foreground opacity-40 cursor-not-allowed"
+                    )}
+                  >
+                    <Eraser className="size-4" />
+                    Limpiar
+                  </button>
+                </>
+              )}
+
+              {/* Overflow ⋯ */}
+              <div className="relative" ref={moreRef}>
+                <button
+                  onClick={() => setShowMore(v => !v)}
+                  className={cn(
+                    "size-10 rounded-full border flex items-center justify-center transition-colors",
+                    showMore ? "bg-primary/15 text-primary border-primary/30" : "border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  )}
+                >
+                  <MoreHorizontal className="size-[18px]" />
+                </button>
+                {showMore && (
+                  <div className="absolute left-0 top-[calc(100%+6px)] bg-card border border-border rounded-xl shadow-lg p-3 z-20 min-w-[200px]">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Opciones</p>
+                    <div className="mb-3">
+                      <label className="text-xs text-muted-foreground block mb-1">Semanas visibles</label>
+                      <select
+                        value={numWeeks}
+                        onChange={(e) => setNumWeeks(Number(e.target.value))}
+                        className="w-full text-sm rounded-lg border border-border bg-card px-3 py-1.5"
+                      >
+                        <option value={1}>1 semana</option>
+                        <option value={2}>2 semanas</option>
+                        <option value={4}>4 semanas</option>
+                        <option value={8}>8 semanas</option>
+                      </select>
+                    </div>
+                    <button
+                      onClick={() => { setShowEquity(v => !v); setShowMore(false); }}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+                        showEquity ? "bg-primary/15 text-primary" : "text-foreground hover:bg-secondary"
+                      )}
+                    >
+                      <History className="size-4" />
+                      Equidad festivos
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Generar inteligente */}
+              {canGenerate && (
+                <button
+                  onClick={handleGenerate}
+                  className="ml-auto h-10 px-[18px] rounded-full bg-primary flex items-center gap-2 text-sm font-bold text-primary-foreground hover:opacity-90"
+                >
+                  <Sparkles className="size-4" />
+                  <span className="hidden sm:inline">Generar inteligente</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {view === "month" && <MonthlyView summary={monthSummary} />}
