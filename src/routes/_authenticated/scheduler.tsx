@@ -517,17 +517,9 @@ function Scheduler() {
           <EquityPanel data={equityData} />
         )}
 
+        {view === "week" && <Legend />}
+
         <div className={cn("rounded-card bg-card overflow-hidden shadow-card", view === "month" && "hidden")}>
-          {/* Leyenda de tipos — dentro del card, fuera del scroll horizontal */}
-          {view === "week" && (
-            <div className="px-4 py-2.5 flex flex-wrap items-center gap-3 border-b border-border bg-secondary/50">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">
-                Tipos de novedad
-              </span>
-              <div className="w-px h-3.5 bg-border shrink-0" />
-              <Legend />
-            </div>
-          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
@@ -1519,21 +1511,21 @@ const LEGEND_TOOLTIPS: Record<string, { title: string; desc: string; when: strin
 function Legend() {
   const items = ["STD","HED","HEN","RN","RDF","HEDF","ABS","OFF"];
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
       {items.map(code => {
         const c = codeColor(code);
         const tip = LEGEND_TOOLTIPS[code];
         return (
           <div key={code} className="relative group">
-            <div className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium",
-              "cursor-help select-none transition-all hover:scale-105",
-              c.bg, c.fg
-            )}>
-              <span className="font-bold">{code}</span>
-              <span className="opacity-70">{c.label}</span>
+            <div className="inline-flex items-center gap-1.5 cursor-help select-none">
+              {/* Dot de color */}
+              <span className={cn("size-2 rounded-full shrink-0", c.bg)} />
+              {/* Código en bold + nombre en muted */}
+              <span className="text-[11px] font-bold text-foreground">{code}</span>
+              <span className="text-[11px] text-muted-foreground">{c.label}</span>
             </div>
 
+            {/* Tooltip enriquecido */}
             {tip && (
               <div className={cn(
                 "absolute left-0 top-[calc(100%+8px)] z-50 w-72 rounded-card border border-border bg-card shadow-card",
@@ -1541,7 +1533,6 @@ function Legend() {
                 "group-hover:visible group-hover:opacity-100 group-hover:translate-y-0",
                 "transition-all duration-200 ease-out pointer-events-none"
               )}>
-                {/* Header with color bar */}
                 <div className={cn("flex items-center gap-2.5 rounded-t-[20px] px-3 py-2.5 border-b border-border", c.bg)}>
                   <span className={cn("text-xs font-black tracking-widest", c.fg)}>{code}</span>
                   <span className={cn("text-xs font-semibold", c.fg)}>{tip.title}</span>
