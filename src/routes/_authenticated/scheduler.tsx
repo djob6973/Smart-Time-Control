@@ -360,7 +360,7 @@ function Scheduler() {
         <div className="flex flex-col gap-2">
 
           {/* Fila 1: Navegación */}
-          <div className="flex items-center gap-2 overflow-x-auto">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Segmented Semana / Mes */}
             <div className="flex items-center rounded-full bg-secondary border border-border p-[3px] gap-[3px] text-sm">
               <button
@@ -433,7 +433,7 @@ function Scheduler() {
 
           {/* Fila 2: Acciones (vista semana) */}
           {view === "week" && (
-            <div className="flex items-center gap-2 overflow-x-auto">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Filtro de área */}
               {ownArea ? (
                 <span className="h-10 px-3.5 rounded-full border border-border bg-card flex items-center gap-2 text-sm font-medium text-muted-foreground">

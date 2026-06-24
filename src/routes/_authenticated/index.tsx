@@ -369,7 +369,7 @@ function Dashboard() {
       <div className="px-4 md:px-6 py-5 max-w-[1280px] mx-auto space-y-5">
 
         {/* ── Toolbar ──────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-3">
 
           {/* Segmented — período */}
           <div className="flex items-center bg-secondary border border-border rounded-full p-[3px] gap-[3px] text-sm">
