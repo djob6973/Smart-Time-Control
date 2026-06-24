@@ -1187,9 +1187,8 @@ function MonthlyView({ summary }: {
                         </div>
                         <div className="min-w-0">
                           <div className="font-medium text-sm truncate">{employee.fullName}</div>
-                          <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
-                            <span>{area?.name}</span>
-                            <span className="text-muted-foreground/60">·</span>
+                          <div className="text-[11px] text-muted-foreground">{area?.name}</div>
+                          <div className="text-[11px] text-muted-foreground flex items-center gap-2">
                             <span>{daysWorked}d trabajados</span>
                             {absenceDays > 0 && (
                               <span className="inline-flex items-center gap-0.5 text-amber-600">
