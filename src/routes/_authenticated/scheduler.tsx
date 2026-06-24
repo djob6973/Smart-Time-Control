@@ -2393,32 +2393,38 @@ function EquityPanel({ data }: {
           const pct = max > 0 ? (total / max) * 100 : 0;
           const b = badge(total, data.avg);
           return (
-            <div key={employee.id} className="flex items-center gap-3 px-4 py-2.5">
-              <div className="size-7 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold shrink-0">
+            <div key={employee.id} className="grid items-center gap-4 px-4 py-2.5" style={{ gridTemplateColumns: "auto minmax(180px,280px) 1fr auto" }}>
+              {/* Avatar */}
+              <div className="size-8 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                 {employee.fullName.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
               </div>
-              <div className="min-w-0 w-44 shrink-0">
-                <p className="text-sm font-medium truncate">{employee.fullName}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{area?.name}</p>
+              {/* Nombre + área */}
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate" title={employee.fullName}>{employee.fullName}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{area?.name ?? "—"}</p>
               </div>
-              <div className="flex-1 flex items-center gap-3">
-                <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden min-w-20">
+              {/* Barra */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                   <div
                     className={cn("h-full rounded-full transition-all", b ? (total - data.avg >= 2 ? "bg-red-400" : "bg-amber-300") : "bg-primary/60")}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
                 <div className="flex items-center gap-3 text-xs tabular-nums shrink-0">
-                  <span className="text-muted-foreground" title="Domingos">Dom <strong className="text-foreground">{sundays}</strong></span>
-                  <span className="text-muted-foreground" title="Festivos">Fest <strong className="text-foreground">{holidays}</strong></span>
-                  <span className="font-bold w-6 text-right">{total}</span>
+                  <span className="text-muted-foreground">Dom <strong className="text-foreground">{sundays}</strong></span>
+                  <span className="text-muted-foreground">Fest <strong className="text-foreground">{holidays}</strong></span>
+                  <span className="font-bold w-5 text-right">{total}</span>
                 </div>
               </div>
-              {b && (
-                <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium shrink-0", b.cls)}>
-                  {b.label}
-                </span>
-              )}
+              {/* Badge */}
+              <div className="w-28 flex justify-end">
+                {b && (
+                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded border font-medium", b.cls)}>
+                    {b.label}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
