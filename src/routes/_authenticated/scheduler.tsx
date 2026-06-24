@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
 import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
-import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info, Filter } from "lucide-react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -424,22 +424,23 @@ function Scheduler() {
             <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
           )}
 
-          {/* Acciones secundarias — icon buttons */}
+          {/* Acciones secundarias */}
           {view === "week" && canEdit && (
             <>
               <button
                 onClick={toggleWeekLock}
                 title={weekLockState === "full" ? "Desbloquear semana" : weekLockState === "partial" ? "Semana parcialmente bloqueada" : "Bloquear semana"}
                 className={cn(
-                  "size-9 rounded-lg flex items-center justify-center transition-colors",
+                  "h-9 px-3.5 rounded-pill border flex items-center gap-1.5 text-sm transition-colors",
                   weekLockState === "full"
-                    ? "bg-primary/15 text-primary"
+                    ? "bg-primary/15 text-primary border-primary/30"
                     : weekLockState === "partial"
-                    ? "bg-amber-400/15 text-amber-600 dark:text-amber-400"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "bg-amber-400/15 text-amber-600 dark:text-amber-400 border-amber-400/30"
+                    : "border-border bg-card text-foreground hover:bg-secondary"
                 )}
               >
-                {weekLockState === "full" ? <Lock className="size-[18px]" /> : <Unlock className="size-[18px]" />}
+                {weekLockState === "full" ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+                {weekLockState === "full" ? "Desbloquear" : "Bloquear"}
               </button>
 
               <button
@@ -447,13 +448,14 @@ function Scheduler() {
                 disabled={!canClearWeek || clearing}
                 title={!canClearWeek ? "No hay turnos desbloqueados para limpiar" : "Limpiar turnos no bloqueados de la semana"}
                 className={cn(
-                  "size-9 rounded-lg flex items-center justify-center transition-colors",
+                  "h-9 px-3.5 rounded-pill border border-border bg-card flex items-center gap-1.5 text-sm transition-colors",
                   canClearWeek && !clearing
-                    ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    ? "text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
                     : "text-muted-foreground opacity-40 cursor-not-allowed"
                 )}
               >
-                <Eraser className="size-[18px]" />
+                <Eraser className="size-4" />
+                Limpiar
               </button>
             </>
           )}
@@ -463,27 +465,36 @@ function Scheduler() {
               onClick={() => setShowEquity(v => !v)}
               title="Equidad de domingos y festivos"
               className={cn(
-                "size-9 rounded-lg flex items-center justify-center transition-colors",
+                "h-9 px-3.5 rounded-pill border flex items-center gap-1.5 text-sm transition-colors",
                 showEquity
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  ? "bg-primary/15 text-primary border-primary/30"
+                  : "border-border bg-card text-foreground hover:bg-secondary"
               )}
             >
-              <History className="size-[18px]" />
+              <History className="size-4" />
+              Equidad
             </button>
           )}
 
           {/* Filtro de área */}
-          <div className="ml-auto">
+          <div className="ml-auto relative">
             {ownArea ? (
-              <span className="text-sm rounded-pill border border-border bg-card px-3.5 py-1.5 text-muted-foreground">
+              <span className="h-9 px-3.5 rounded-pill border border-border bg-card flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Filter className="size-4 shrink-0" />
                 {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
               </span>
             ) : (
-              <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3.5 py-1.5">
-                <option value="all">Todas las áreas</option>
-                {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
+              <div className="relative flex items-center">
+                <Filter className="absolute left-3 size-4 text-muted-foreground pointer-events-none shrink-0" />
+                <select
+                  value={areaFilter}
+                  onChange={(e) => setAreaFilter(e.target.value)}
+                  className="h-9 pl-8 pr-3.5 rounded-pill border border-border bg-card text-sm"
+                >
+                  <option value="all">Todas las áreas</option>
+                  {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
             )}
           </div>
         </div>
@@ -1512,6 +1523,7 @@ function Legend() {
   const items = ["STD","HED","HEN","RN","RDF","HEDF","ABS","OFF"];
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      <span className="text-[11px] font-semibold text-muted-foreground mr-1">Códigos:</span>
       {items.map(code => {
         const c = codeColor(code);
         const tip = LEGEND_TOOLTIPS[code];
