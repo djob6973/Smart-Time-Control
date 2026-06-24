@@ -79,7 +79,7 @@ function AreasPage() {
       />
 
       <div
-        className="p-4 md:p-6"
+        className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto"
         style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "1.25rem" }}
       >
         {visibleAreas.map(area => {
