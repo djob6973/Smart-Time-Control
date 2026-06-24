@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
 import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
-import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Filter, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info } from "lucide-react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -419,40 +419,41 @@ function Scheduler() {
             Hoy
           </button>
 
-          {/* Acciones solo disponibles en vista semana con permiso de edición */}
+          {/* Separador */}
+          {view === "week" && (
+            <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
+          )}
+
+          {/* Acciones secundarias — icon buttons */}
           {view === "week" && canEdit && (
             <>
               <button
                 onClick={toggleWeekLock}
-                title={weekLockState === "full" ? "Haz clic para desbloquear la semana (se podrá regenerar)" : "Haz clic para bloquear toda la semana (no se regenerará)"}
+                title={weekLockState === "full" ? "Desbloquear semana" : weekLockState === "partial" ? "Semana parcialmente bloqueada" : "Bloquear semana"}
                 className={cn(
-                  "inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-pill border transition",
+                  "size-9 rounded-lg flex items-center justify-center transition-colors",
                   weekLockState === "full"
-                    ? "border-primary bg-primary/10 text-primary font-medium hover:bg-primary/20"
+                    ? "bg-primary/15 text-primary"
                     : weekLockState === "partial"
-                    ? "border-amber-400 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                    : "border-border hover:bg-secondary"
+                    ? "bg-amber-400/15 text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
-                {weekLockState === "full"
-                  ? <><Lock className="size-4" /> Semana bloqueada</>
-                  : <><Unlock className="size-4" /> Bloquear semana</>
-                }
+                {weekLockState === "full" ? <Lock className="size-[18px]" /> : <Unlock className="size-[18px]" />}
               </button>
 
               <button
                 onClick={() => setShowClearConfirm(true)}
                 disabled={!canClearWeek || clearing}
-                title={!canClearWeek ? "No hay turnos desbloqueados para limpiar en esta semana" : "Elimina todos los turnos no bloqueados de la semana seleccionada"}
+                title={!canClearWeek ? "No hay turnos desbloqueados para limpiar" : "Limpiar turnos no bloqueados de la semana"}
                 className={cn(
-                  "inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-pill border transition",
+                  "size-9 rounded-lg flex items-center justify-center transition-colors",
                   canClearWeek && !clearing
-                    ? "border-destructive/50 text-destructive hover:bg-destructive/10"
-                    : "border-border text-muted-foreground opacity-50 cursor-not-allowed"
+                    ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    : "text-muted-foreground opacity-40 cursor-not-allowed"
                 )}
               >
-                <Eraser className="size-4" />
-                {clearing ? "Limpiando…" : "Limpiar semana"}
+                <Eraser className="size-[18px]" />
               </button>
             </>
           )}
@@ -460,18 +461,20 @@ function Scheduler() {
           {view === "week" && (
             <button
               onClick={() => setShowEquity(v => !v)}
-              title="Ver equidad de domingos y festivos por empleado"
+              title="Equidad de domingos y festivos"
               className={cn(
-                "inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-pill border transition",
-                showEquity ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:bg-secondary"
+                "size-9 rounded-lg flex items-center justify-center transition-colors",
+                showEquity
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
-              <History className="size-4" /> Equidad
+              <History className="size-[18px]" />
             </button>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
-            <Filter className="size-4 text-muted-foreground" />
+          {/* Filtro de área */}
+          <div className="ml-auto">
             {ownArea ? (
               <span className="text-sm rounded-pill border border-border bg-card px-3.5 py-1.5 text-muted-foreground">
                 {areas.find(a => a.id === ownArea)?.name ?? "Mi área"}
