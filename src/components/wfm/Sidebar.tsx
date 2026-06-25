@@ -123,7 +123,7 @@ export function Sidebar() {
           "transition-transform duration-300 ease-in-out",
           // Desktop: in-flow, sticky, floating card
           "lg:relative lg:inset-y-auto lg:left-auto lg:z-auto lg:w-[240px] lg:shrink-0 lg:translate-x-0",
-          "lg:rounded-card lg:shadow-card lg:h-[calc(100vh-2rem)] lg:sticky lg:top-4 lg:pt-5 lg:px-4 lg:pb-4",
+          "lg:rounded-card lg:shadow-card lg:border lg:border-border lg:h-[calc(100vh-2rem)] lg:sticky lg:top-4 lg:pt-5 lg:px-4 lg:pb-4",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
