@@ -853,9 +853,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
         <div className="rounded-card bg-card p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Actividad de hoy
-            </p>
+            <h4 className="font-medium text-sm">Actividad de hoy</h4>
             <span
               className="text-xs font-semibold px-2 py-0.5 rounded-pill"
               style={{ background: "var(--color-secondary)", color: "var(--color-foreground)" }}
