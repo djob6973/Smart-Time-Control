@@ -11,6 +11,7 @@ import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
 import { dispatchJornadaEvent } from "@/lib/notifications/dispatch";
+import { dispatchSlackJornada } from "@/lib/slack";
 import type {
   TipoMovimiento,
   JornadaCupo,
@@ -670,15 +671,13 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     setLastMsg({ ok: result.ok, text: result.ok ? "Movimiento registrado." : result.error ?? "Error." });
     if (result.ok) {
       await reloadRegistros(hoy);
-      dispatchJornadaEvent({
-        data: {
-          tipo,
-          employeeName: emp?.fullName ?? empId,
-          hora:         fmtHora(),
-          areaName:     areas.find((a) => a.id === areaId)?.name,
-          areaId:       areaId ?? null,
-        },
-      }).catch((e) => console.error("[notif:jornada]", e?.message ?? e));
+      const empName  = emp?.fullName ?? empId;
+      const empArea  = areas.find((a) => a.id === areaId)?.name;
+      const hora     = fmtHora();
+      dispatchJornadaEvent({ data: { tipo, employeeName: empName, hora, areaName: empArea, areaId: areaId ?? null } })
+        .catch((e) => console.error("[notif:jornada]", e?.message ?? e));
+      dispatchSlackJornada({ data: { tipo, employeeName: empName, hora, areaName: empArea } })
+        .catch((e) => console.error("[slack:jornada]", e?.message ?? e));
     }
     setBusy(false);
     setPendingAction(null);
@@ -697,15 +696,13 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     if (result.ok) {
       setObs("");
       await reloadRegistros(hoy);
-      dispatchJornadaEvent({
-        data: {
-          tipo,
-          employeeName: emp?.fullName ?? autoEmployeeId,
-          hora:         fmtHora(),
-          areaName:     areas.find((a) => a.id === areaId)?.name,
-          areaId:       areaId ?? null,
-        },
-      }).catch((e) => console.error("[notif:jornada]", e?.message ?? e));
+      const selfName = emp?.fullName ?? autoEmployeeId;
+      const selfArea = areas.find((a) => a.id === areaId)?.name;
+      const selfHora = fmtHora();
+      dispatchJornadaEvent({ data: { tipo, employeeName: selfName, hora: selfHora, areaName: selfArea, areaId: areaId ?? null } })
+        .catch((e) => console.error("[notif:jornada]", e?.message ?? e));
+      dispatchSlackJornada({ data: { tipo, employeeName: selfName, hora: selfHora, areaName: selfArea } })
+        .catch((e) => console.error("[slack:jornada]", e?.message ?? e));
     }
     setSelfBusy(false);
   }

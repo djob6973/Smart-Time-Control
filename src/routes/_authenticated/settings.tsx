@@ -14,7 +14,12 @@ import {
   CalendarDays, UserCog, FileX, BarChart3, Settings2,
   Clock, LayoutDashboard, Building2, CalendarCheck,
   Search, Key, Users, Plus, UserPlus, PencilLine, Palette, ChevronDown,
+  MessageSquare, Eye, EyeOff,
 } from "lucide-react";
+import {
+  getSlackConfig, saveSlackConfig, testSlackConnection,
+  type SlackConfig,
+} from "@/lib/slack";
 import { LogoUpload } from "@/components/wfm/LogoUpload";
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -278,7 +283,17 @@ function SettingsPage() {
   const { role: authRole, user, organization, organizations, switchOrg } = useAuth();
   const isAdmin = authRole === "admin";
 
-  const [tab, setTab] = useState<"users" | "roles" | "org" | "marca">("users");
+  const [tab, setTab] = useState<"users" | "roles" | "org" | "marca" | "slack">("users");
+
+  // Slack tab state
+  const [slackCfg, setSlackCfg]           = useState<SlackConfig>({ botToken: null, channelId: null, enabled: false, autoNotify: false });
+  const [slackLoading, setSlackLoading]   = useState(false);
+  const [slackSaving, setSlackSaving]     = useState(false);
+  const [slackSaveOk, setSlackSaveOk]     = useState(false);
+  const [slackError, setSlackError]       = useState<string | null>(null);
+  const [slackTesting, setSlackTesting]   = useState(false);
+  const [slackTestMsg, setSlackTestMsg]   = useState<{ ok: boolean; text: string } | null>(null);
+  const [showToken, setShowToken]         = useState(false);
 
   // Users tab state
   const [users, setUsers]               = useState<AppUser[]>([]);
@@ -343,6 +358,10 @@ function SettingsPage() {
     if (tab === "users" && isAdmin) fetchUsers();
     if (tab === "roles" && isAdmin) loadRoles();
     if (tab === "org" && organization?.id) loadOrgMembers();
+    if (tab === "slack" && isAdmin) {
+      setSlackLoading(true);
+      getSlackConfig().then(cfg => setSlackCfg(cfg)).catch(() => {}).finally(() => setSlackLoading(false));
+    }
   }, [tab, isAdmin, organization?.id]);
 
   useEffect(() => {
@@ -630,11 +649,41 @@ function SettingsPage() {
 
   const activeCount = users.filter(u => u.isActive).length;
 
+  async function handleSlackSave() {
+    setSlackSaving(true);
+    setSlackError(null);
+    setSlackSaveOk(false);
+    try {
+      await saveSlackConfig({ data: slackCfg });
+      setSlackSaveOk(true);
+      setTimeout(() => setSlackSaveOk(false), 3000);
+    } catch (e: any) {
+      setSlackError(e.message ?? "Error al guardar");
+    } finally {
+      setSlackSaving(false);
+    }
+  }
+
+  async function handleSlackTest() {
+    if (!slackCfg.botToken || !slackCfg.channelId) return;
+    setSlackTesting(true);
+    setSlackTestMsg(null);
+    try {
+      const res = await testSlackConnection({ data: { botToken: slackCfg.botToken, channelId: slackCfg.channelId } });
+      setSlackTestMsg(res.ok ? { ok: true, text: "Mensaje enviado correctamente a Slack." } : { ok: false, text: res.error ?? "Error desconocido" });
+    } catch (e: any) {
+      setSlackTestMsg({ ok: false, text: e.message ?? "Error al probar la conexión" });
+    } finally {
+      setSlackTesting(false);
+    }
+  }
+
   const TABS = [
     { key: "users" as const, label: "Usuarios",         Icon: Users },
     { key: "roles" as const, label: "Roles y permisos", Icon: Shield },
     { key: "org"   as const, label: "Organización",     Icon: Building2 },
     { key: "marca" as const, label: "Marca",             Icon: Palette },
+    { key: "slack" as const, label: "Slack",             Icon: MessageSquare },
   ];
 
   return (
@@ -1268,6 +1317,177 @@ function SettingsPage() {
                 <p className="text-sm text-muted-foreground">Solo los administradores pueden modificar el logo.</p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── Slack ─────────────────────────────────────────────────────── */}
+        {tab === "slack" && (
+          <div className="flex flex-col gap-4 max-w-lg">
+
+            {/* Header card */}
+            <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-xl bg-[#4A154B]/10 flex items-center justify-center shrink-0">
+                  <MessageSquare className="size-5 text-[#4A154B]" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-sm">Notificaciones a Slack</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Envía un mensaje al canal configurado cuando se registra un movimiento de jornada
+                  </p>
+                </div>
+              </div>
+
+              {slackLoading ? (
+                <p className="text-sm text-muted-foreground">Cargando configuración…</p>
+              ) : !isAdmin ? (
+                <p className="text-sm text-muted-foreground">Solo los administradores pueden modificar esta configuración.</p>
+              ) : (
+                <>
+                  {/* Bot token */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Bot User OAuth Token
+                    </label>
+                    {slackCfg.botToken ? (
+                      <div className="flex items-center gap-2 rounded-xl border border-[#1F8A5B]/40 bg-[#1F8A5B]/5 px-3.5 py-2.5">
+                        <span className="size-2 rounded-full bg-[#1F8A5B] shrink-0" />
+                        <span className="text-sm font-medium text-[#1F8A5B] flex-1">
+                          {showToken ? slackCfg.botToken : "xoxb-••••••••••••••••••••••••"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowToken(v => !v)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showToken ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSlackCfg(c => ({ ...c, botToken: null }))}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="password"
+                        placeholder="xoxb-…"
+                        value={slackCfg.botToken ?? ""}
+                        onChange={e => setSlackCfg(c => ({ ...c, botToken: e.target.value || null }))}
+                        className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Configura tu app en api.slack.com → OAuth &amp; Permissions → Bot Token
+                    </p>
+                  </div>
+
+                  {/* Toggles */}
+                  <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 bg-card">
+                      <div>
+                        <p className="text-sm font-medium">Activar integración</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Habilita las notificaciones de jornada en Slack
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSlackCfg(c => ({ ...c, enabled: !c.enabled }))}
+                        className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                          slackCfg.enabled ? "bg-primary" : "bg-muted"
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block size-5 rounded-full bg-white shadow transform transition-transform ${
+                            slackCfg.enabled ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3 bg-card">
+                      <div>
+                        <p className="text-sm font-medium">Notificación automática</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Notifica automáticamente cada movimiento registrado
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSlackCfg(c => ({ ...c, autoNotify: !c.autoNotify }))}
+                        className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                          slackCfg.autoNotify ? "bg-primary" : "bg-muted"
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block size-5 rounded-full bg-white shadow transform transition-transform ${
+                            slackCfg.autoNotify ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Channel card */}
+            {isAdmin && !slackLoading && (
+              <div className="rounded-card bg-card shadow-card p-5 flex flex-col gap-4">
+                <h2 className="font-semibold text-sm">Canal de destino</h2>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    ID del canal
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="#operaciones-service-actividad o C01234ABC"
+                    value={slackCfg.channelId ?? ""}
+                    onChange={e => setSlackCfg(c => ({ ...c, channelId: e.target.value || null }))}
+                    className="w-full rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-sm font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Copia el ID desde Slack: clic derecho en el canal → <em>Ver detalles del canal</em> → ID al final.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Feedback */}
+            {slackError && (
+              <p className="text-sm text-destructive">{slackError}</p>
+            )}
+            {slackTestMsg && (
+              <p className={`text-sm ${slackTestMsg.ok ? "text-[#1F8A5B]" : "text-destructive"}`}>
+                {slackTestMsg.ok ? "✓ " : "✗ "}{slackTestMsg.text}
+              </p>
+            )}
+
+            {/* Action buttons */}
+            {isAdmin && !slackLoading && (
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSlackTest}
+                  disabled={slackTesting || !slackCfg.botToken || !slackCfg.channelId}
+                  className="flex items-center gap-2 rounded-pill border border-border px-4 py-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-40 transition-colors"
+                >
+                  <MessageSquare className="size-4" />
+                  {slackTesting ? "Probando…" : "Probar conexión"}
+                </button>
+                <button
+                  onClick={handleSlackSave}
+                  disabled={slackSaving}
+                  className="flex items-center gap-2 rounded-pill px-5 py-2.5 text-sm font-medium text-white disabled:opacity-50 transition-opacity"
+                  style={{ background: "var(--brand-coral, #ED5650)" }}
+                >
+                  {slackSaveOk ? <Check className="size-4" /> : null}
+                  {slackSaving ? "Guardando…" : slackSaveOk ? "Guardado" : "Guardar cambios"}
+                </button>
+              </div>
+            )}
+
           </div>
         )}
 

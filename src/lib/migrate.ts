@@ -388,5 +388,24 @@ export async function runMigration(): Promise<void> {
 
   await execute(`ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS logo_data TEXT`);
 
+  // ── Integración Slack ─────────────────────────────────────────────────────
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS public.slack_config (
+      id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+      bot_token   TEXT,
+      channel_id  TEXT,
+      enabled     BOOLEAN     NOT NULL DEFAULT false,
+      auto_notify BOOLEAN     NOT NULL DEFAULT false,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // Singleton: solo puede existir una fila
+  await execute(`
+    CREATE UNIQUE INDEX IF NOT EXISTS slack_config_singleton ON public.slack_config ((true))
+  `);
+
   done = true; // solo se marca como completada si todo tuvo éxito
 }
