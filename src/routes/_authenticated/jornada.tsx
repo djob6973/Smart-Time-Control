@@ -308,15 +308,6 @@ function TabDashboard() {
     [tieneHorarioJornada],
   );
 
-  const counts = useMemo(() => ({
-    enJornada:  estados.filter((x) => x.est.estado === "en_jornada").length,
-    enBreak:    estados.filter((x) => x.est.estado === "en_break").length,
-    enAlmuerzo: estados.filter((x) => x.est.estado === "en_almuerzo").length,
-    fuera:      estados.filter((x) => x.est.estado === "fuera_jornada").length,
-    tardios:    estados.filter((x) => x.est.esTarde && esEsperadoHoy(x)).length,
-    pendientes: estados.filter((x) => ["pendiente_ingreso", "tarde", "ausente"].includes(x.est.estado) && esEsperadoHoy(x)).length,
-  }), [estados, esEsperadoHoy]);
-
   const filteredEstados = useMemo(() =>
     estados.filter(({ emp, est }) => {
       if (filterEmpleado && !emp.fullName.toLowerCase().includes(filterEmpleado.toLowerCase())) return false;
@@ -327,10 +318,19 @@ function TabDashboard() {
     [estados, filterEmpleado, filterArea, filterEstado],
   );
 
+  const counts = useMemo(() => ({
+    enJornada:  filteredEstados.filter((x) => x.est.estado === "en_jornada").length,
+    enBreak:    filteredEstados.filter((x) => x.est.estado === "en_break").length,
+    enAlmuerzo: filteredEstados.filter((x) => x.est.estado === "en_almuerzo").length,
+    fuera:      filteredEstados.filter((x) => x.est.estado === "fuera_jornada").length,
+    tardios:    filteredEstados.filter((x) => x.est.esTarde && esEsperadoHoy(x)).length,
+    pendientes: filteredEstados.filter((x) => ["pendiente_ingreso", "tarde", "ausente"].includes(x.est.estado) && esEsperadoHoy(x)).length,
+  }), [filteredEstados, esEsperadoHoy]);
+
   const breakCupo = getCuposDisponibles(undefined, "break",    fechaActiva);
   const almCupo   = getCuposDisponibles(undefined, "almuerzo", fechaActiva);
 
-  const conEntrada = estados.filter((x) =>
+  const conEntrada = filteredEstados.filter((x) =>
     registros.some((r) => r.employeeId === x.emp.id && r.fecha === fechaActiva && r.tipoMovimiento === "entrada"),
   );
   // Solo tardíos que SÍ tienen registro de entrada (llegaron tarde).
