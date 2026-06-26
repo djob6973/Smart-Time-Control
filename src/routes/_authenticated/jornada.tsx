@@ -266,6 +266,10 @@ function TabDashboard() {
     (e.status === "active" || (e.status === "inactive" && !!e.inactiveDate && e.inactiveDate >= fechaActiva))
   );
 
+  const [filterEmpleado, setFilterEmpleado] = useState("");
+  const [filterArea, setFilterArea]         = useState("");
+  const [filterEstado, setFilterEstado]     = useState("");
+
   const estados = useMemo(
     () => activeEmployees.map((e) => {
       const shift = getShiftProgramado(e.id, fechaActiva, shifts);
@@ -313,6 +317,16 @@ function TabDashboard() {
     pendientes: estados.filter((x) => ["pendiente_ingreso", "tarde", "ausente"].includes(x.est.estado) && esEsperadoHoy(x)).length,
   }), [estados, esEsperadoHoy]);
 
+  const filteredEstados = useMemo(() =>
+    estados.filter(({ emp, est }) => {
+      if (filterEmpleado && !emp.fullName.toLowerCase().includes(filterEmpleado.toLowerCase())) return false;
+      if (filterArea && emp.areaId !== filterArea) return false;
+      if (filterEstado && est.estado !== filterEstado) return false;
+      return true;
+    }),
+    [estados, filterEmpleado, filterArea, filterEstado],
+  );
+
   const breakCupo = getCuposDisponibles(undefined, "break",    fechaActiva);
   const almCupo   = getCuposDisponibles(undefined, "almuerzo", fechaActiva);
 
@@ -328,8 +342,8 @@ function TabDashboard() {
 
   return (
     <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-6">
-      {/* Date + refresh */}
-      <div className="flex items-center gap-3">
+      {/* Date + refresh + filters */}
+      <div className="flex flex-wrap items-center gap-3">
         <input
           type="date"
           value={fechaActiva}
@@ -342,6 +356,50 @@ function TabDashboard() {
         >
           <RefreshCw className="size-4" /> Actualizar
         </button>
+
+        <div className="h-5 w-px bg-border hidden sm:block" />
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar empleado…"
+            value={filterEmpleado}
+            onChange={(e) => setFilterEmpleado(e.target.value)}
+            className="text-sm rounded-pill border border-border bg-card pl-8 pr-3 py-2 w-44"
+          />
+        </div>
+
+        {!ownArea && (
+          <select
+            value={filterArea}
+            onChange={(e) => setFilterArea(e.target.value)}
+            className="text-sm rounded-pill border border-border bg-card px-3 py-2"
+          >
+            <option value="">Todas las áreas</option>
+            {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        )}
+
+        <select
+          value={filterEstado}
+          onChange={(e) => setFilterEstado(e.target.value)}
+          className="text-sm rounded-pill border border-border bg-card px-3 py-2"
+        >
+          <option value="">Todos los estados</option>
+          {(Object.entries(ESTADO_LABELS) as [string, string][]).map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </select>
+
+        {(filterEmpleado || filterArea || filterEstado) && (
+          <button
+            onClick={() => { setFilterEmpleado(""); setFilterArea(""); setFilterEstado(""); }}
+            className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-pill border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+          >
+            <X className="size-3" /> Limpiar
+          </button>
+        )}
       </div>
 
       {/* KPI row */}
@@ -380,7 +438,11 @@ function TabDashboard() {
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <h3 className="font-semibold text-sm">Estado en tiempo real</h3>
-          <span className="text-xs text-muted-foreground">{activeEmployees.length} empleados activos</span>
+          <span className="text-xs text-muted-foreground">
+            {filteredEstados.length !== activeEmployees.length
+              ? `${filteredEstados.length} de ${activeEmployees.length} empleados`
+              : `${activeEmployees.length} empleados activos`}
+          </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -392,7 +454,7 @@ function TabDashboard() {
               </tr>
             </thead>
             <tbody>
-              {estados.map(({ emp, est, shift }) => (
+              {filteredEstados.map(({ emp, est, shift }) => (
                 <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -454,8 +516,12 @@ function TabDashboard() {
                   </td>
                 </tr>
               ))}
-              {estados.length === 0 && (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Sin empleados activos</td></tr>
+              {filteredEstados.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="text-center py-12 text-muted-foreground">
+                    {estados.length === 0 ? "Sin empleados activos" : "Sin resultados para los filtros aplicados"}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
