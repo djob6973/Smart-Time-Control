@@ -93,7 +93,7 @@ function EmployeesPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar por nombre o documento..."
-              className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm outline-none w-64 focus:border-primary/40 transition-colors"
+              className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm outline-none w-80 focus:border-primary/40 transition-colors"
             />
           </div>
 
