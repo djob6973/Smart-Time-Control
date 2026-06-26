@@ -115,7 +115,7 @@ export const dispatchSlackJornada = createServerFn({ method: "POST" })
 
     const label = LABELS[data.tipo] ?? data.tipo;
     const area  = data.areaName ? ` · ${data.areaName}` : "";
-    const text  = `*${label}:* ${data.employeeName}${area} — ${data.hora}`;
+    const text  = `*${label}:* ${data.employeeName}${area} — ${data.hora}   <!subteam^S063DSM98AD>`;
 
     await postSlackMessage(cfg.botToken, cfg.channelId, text);
   });
