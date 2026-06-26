@@ -859,7 +859,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
             <div className="space-y-2">
               {selfRegs.map((r, i) => (
                 <div key={r.id} className="flex items-center gap-3">
-                  <div className="text-xs font-mono text-muted-foreground w-14 shrink-0">{fmtTime(r.horaExacta)}</div>
+                  <div className="text-xs font-mono text-muted-foreground w-24 shrink-0">{fmtTime(r.horaExacta)}</div>
                   <div className={cn("size-2 rounded-full shrink-0", r.esModificacion ? "bg-[#C98A00]" : "bg-primary")} />
                   <div className="text-sm flex-1">{TIPO_MOVIMIENTO_LABELS[r.tipoMovimiento]}</div>
                   {r.esModificacion && <span className="text-[10px] text-[#9a6b00] bg-[color-mix(in_srgb,#C98A00_14%,transparent)] px-1.5 rounded">Modificado</span>}
