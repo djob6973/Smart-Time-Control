@@ -366,7 +366,7 @@ function TabDashboard() {
             placeholder="Buscar empleado…"
             value={filterEmpleado}
             onChange={(e) => setFilterEmpleado(e.target.value)}
-            className="text-sm rounded-pill border border-border bg-card pl-8 pr-3 py-2 w-44"
+            className="text-sm rounded-pill border border-border bg-card pl-8 pr-3 py-2 w-64"
           />
         </div>
 
