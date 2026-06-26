@@ -911,7 +911,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
                               Modificado
                             </span>
                           )}
-                          <span className="font-mono text-sm font-bold tabular-nums">{fmtTime(r.horaExacta)}</span>
+                          <span className="font-mono text-sm tabular-nums">{fmtTime(r.horaExacta)}</span>
                         </div>
                       </div>
                     </div>
