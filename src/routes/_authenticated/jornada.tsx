@@ -852,20 +852,74 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
         </div>
 
         <div className="rounded-card bg-card p-5 shadow-card">
-          <h4 className="font-medium text-sm mb-4">Actividad de hoy</h4>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Actividad de hoy
+            </p>
+            <span
+              className="text-xs font-semibold px-2 py-0.5 rounded-pill"
+              style={{ background: "var(--color-secondary)", color: "var(--color-foreground)" }}
+            >
+              {selfRegs.length}
+            </span>
+          </div>
           {selfRegs.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">Sin registros aún.</p>
+            <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+              <Clock className="size-8 opacity-25" />
+              <p className="text-sm">Sin registros aún</p>
+            </div>
           ) : (
-            <div className="space-y-2">
-              {selfRegs.map((r, i) => (
-                <div key={r.id} className="flex items-center gap-3">
-                  <div className="text-xs font-mono text-muted-foreground w-24 shrink-0">{fmtTime(r.horaExacta)}</div>
-                  <div className={cn("size-2 rounded-full shrink-0", r.esModificacion ? "bg-[#C98A00]" : "bg-primary")} />
-                  <div className="text-sm flex-1">{TIPO_MOVIMIENTO_LABELS[r.tipoMovimiento]}</div>
-                  {r.esModificacion && <span className="text-[10px] text-[#9a6b00] bg-[color-mix(in_srgb,#C98A00_14%,transparent)] px-1.5 rounded">Modificado</span>}
-                  {i < selfRegs.length - 1 && <ChevronRight className="size-3 text-muted-foreground ml-auto" />}
-                </div>
-              ))}
+            <div className="relative">
+              <div
+                className="absolute top-2 bottom-2 w-px"
+                style={{ left: 19, background: "var(--color-border)" }}
+              />
+              <div className="space-y-2.5">
+                {selfRegs.map((r) => {
+                  const isEntrada  = r.tipoMovimiento === "entrada";
+                  const isSalida   = r.tipoMovimiento === "salida";
+                  const isAlmuerzo = r.tipoMovimiento.includes("almuerzo");
+                  const Icon = isEntrada ? LogIn : isSalida ? LogOut : isAlmuerzo ? UtensilsCrossed : Coffee;
+                  const dotBg = isEntrada
+                    ? "color-mix(in srgb,#1F8A5B 14%,transparent)"
+                    : isSalida
+                    ? "color-mix(in srgb,var(--color-primary) 12%,transparent)"
+                    : isAlmuerzo
+                    ? "var(--color-secondary)"
+                    : "color-mix(in srgb,#C98A00 16%,transparent)";
+                  const dotColor = isEntrada ? "#1F8A5B"
+                    : isSalida ? "var(--color-primary)"
+                    : isAlmuerzo ? "var(--color-foreground)"
+                    : "#9a6b00";
+                  return (
+                    <div key={r.id} className="flex items-center gap-3 pl-1">
+                      <div
+                        className="size-9 rounded-full flex items-center justify-center shrink-0 z-10"
+                        style={{ background: dotBg, color: dotColor }}
+                      >
+                        <Icon className="size-4" />
+                      </div>
+                      <div
+                        className="flex-1 flex items-center justify-between rounded-xl px-3 py-2"
+                        style={{ background: "var(--color-secondary)" }}
+                      >
+                        <span className="text-sm font-medium">{TIPO_MOVIMIENTO_LABELS[r.tipoMovimiento]}</span>
+                        <div className="flex items-center gap-2">
+                          {r.esModificacion && (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded-pill"
+                              style={{ background: "color-mix(in srgb,#C98A00 16%,transparent)", color: "#9a6b00" }}
+                            >
+                              Modificado
+                            </span>
+                          )}
+                          <span className="font-mono text-sm font-bold tabular-nums">{fmtTime(r.horaExacta)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
