@@ -4,7 +4,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM, currentWeekISO } from "@/lib/wfm/store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
-import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday } from "@/lib/wfm/calc";
+import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday, detectCode } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
 import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info, Filter, MoreHorizontal } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -274,7 +274,15 @@ function Scheduler() {
         s.employeeId === emp.id && s.date >= monthStartISO && s.date <= monthEndISO && s.code !== "OFF"
       );
       const workShifts = empShifts.filter(s => s.code !== "ABS");
-      const breakdown = sumBreakdowns(workShifts.map(s => shiftBreakdown(s, area)));
+      // Partial ABS: shift.start/end > 0 means there are real work hours alongside the absence
+      const partialAbsShifts = empShifts.filter(s => s.code === "ABS" && (s.start > 0 || s.end > 0));
+      const fullAbsShifts    = empShifts.filter(s => s.code === "ABS" && s.start === 0 && s.end === 0);
+      // Include work portion of partial absences in the programmed breakdown
+      const partialAsWork = partialAbsShifts.map(s => ({
+        ...s,
+        code: detectCode(s.start, s.end, s.date, s.breakMinutes, area?.maxHoursDay ?? 8),
+      }));
+      const breakdown = sumBreakdowns([...workShifts, ...partialAsWork].map(s => shiftBreakdown(s, area)));
       let monthHTotal = 0;
       for (const date of monthDays) {
         const s = getEffectiveShift(emp.id, date);
@@ -289,12 +297,17 @@ function Scheduler() {
           monthHTotal += shiftBreakdown(s, area).total;
         }
       }
+      // Absence days: full-day ABS count as 1; partial ABS count as fraction of an 8h day
+      const absenceDays = fullAbsShifts.length + partialAbsShifts.reduce((sum, s) => {
+        const info = parseAbsNote(s.note);
+        return sum + (info ? (info.absEnd - info.absStart) / 8 : 0.5);
+      }, 0);
       return {
         employee: emp,
         area,
         breakdown,
-        daysWorked: workShifts.length,
-        absenceDays: empShifts.filter(s => s.code === "ABS").length,
+        daysWorked: workShifts.length + partialAbsShifts.length,
+        absenceDays,
         contractHours: area?.maxHoursMonth ?? 192,
         monthHTotal,
       };
@@ -1192,7 +1205,8 @@ function MonthlyView({ summary }: {
                             <span>{daysWorked}d trabajados</span>
                             {absenceDays > 0 && (
                               <span className="inline-flex items-center gap-0.5 text-amber-600">
-                                <AlertTriangle className="size-2.5" />{absenceDays}d aus.
+                                <AlertTriangle className="size-2.5" />
+                                {Number.isInteger(absenceDays) ? absenceDays : absenceDays.toFixed(1)}d aus.
                               </span>
                             )}
                           </div>
