@@ -1649,7 +1649,7 @@ function SettingsPage() {
           onClick={() => { setEditTarget(null); setEditRoleDropOpen(false); }}
         >
           <div
-            className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-md p-6 space-y-5"
+            className="bg-card border border-border shadow-2xl w-full max-w-md p-6 space-y-5" style={{ borderRadius: 16 }}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
