@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, UserPlus, Lock, Mail } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Resource } from "@/lib/permissions";
 
@@ -41,10 +41,20 @@ function LoginPage() {
   return <LoginView onForgot={() => setView("forgot")} onRegister={() => setView("register")} />;
 }
 
-// ── Org logo (usa el cargado en Configuración o el SVG por defecto) ────
+// ── STC anagram SVG paths (reutilizado en varios lugares) ─────────────────
+const STC_PATHS = (
+  <>
+    <path d="M82.1925 882.245L82.1686 882.269L64.1995 864.287L70.9224 857.559L82.3073 868.952C85.8935 872.666 85.86 878.58 82.1973 882.245H82.1925Z" />
+    <path d="M82.1736 895.753L70.9369 906.998L64.1997 900.256L82.1736 882.269C85.8937 885.997 85.8937 892.026 82.1736 895.748V895.753Z" />
+    <path d="M57.9931 882.245L57.9692 882.269L40 864.287L46.7229 857.559L58.1078 868.952C61.694 872.666 61.6605 878.58 57.9978 882.245H57.9931Z" />
+    <path d="M57.9739 895.753L46.7372 906.998L40 900.261L57.9739 882.274C61.694 886.001 61.694 892.03 57.9739 895.753Z" />
+  </>
+);
 
-function OrgLogo({ size = 40 }: { size?: number }) {
+// ── Org logo — caja charcoal con logo de org o ícono STC ─────────────────
+function OrgLogoBox({ size = 46 }: { size?: number }) {
   const [hasLogo, setHasLogo] = useState<boolean | null>(null);
+  const r = Math.round(size * 0.26); // border-radius ~12px para 46px
 
   useEffect(() => {
     const img = new Image();
@@ -53,29 +63,43 @@ function OrgLogo({ size = 40 }: { size?: number }) {
     img.src = "/api/settings/favicon";
   }, []);
 
-  if (hasLogo) {
-    return (
-      <img
-        src="/api/settings/favicon"
-        alt="Logo"
-        style={{ width: size, height: size, objectFit: "contain", borderRadius: 8 }}
-      />
-    );
-  }
-
-  // ">>" SVG por defecto
   return (
-    <svg width={size} height={size} viewBox="0 0 46 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M46.1925 30.005L46.1686 30.029L28.1995 12.047L34.9224 5.319L46.3073 16.712C49.8935 20.426 49.86 26.34 46.1973 30.005H46.1925Z" fill="#ED5650"/>
-      <path d="M46.1736 43.513L34.9369 54.758L28.1997 48.016L46.1736 30.029C49.8937 33.757 49.8937 39.786 46.1736 43.508V43.513Z" fill="#ED5650"/>
-      <path d="M21.9931 30.005L21.9692 30.029L4 12.047L10.7229 5.319L22.1078 16.712C25.694 20.426 25.6605 26.34 21.9978 30.005H21.9931Z" fill="#ED5650"/>
-      <path d="M21.9739 43.513L10.7372 54.758L4 48.021L21.9739 30.034C25.694 33.761 25.694 39.79 21.9739 43.513Z" fill="#ED5650"/>
-    </svg>
+    <div
+      style={{
+        width: size, height: size,
+        borderRadius: r,
+        background: "#333333",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+        boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)",
+        overflow: "hidden",
+      }}
+    >
+      {hasLogo ? (
+        <img
+          src="/api/settings/favicon"
+          alt="Logo"
+          style={{ width: size, height: size, objectFit: "cover" }}
+        />
+      ) : (
+        <svg
+          viewBox="0 0 53.89 58.76"
+          width={Math.round(size * 0.48)}
+          height={Math.round(size * 0.48)}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <g transform="translate(-36 -852.24)" fill="#ED5650">
+            {STC_PATHS}
+          </g>
+        </svg>
+      )}
+    </div>
   );
 }
 
-// ── Right panel content (compartido por todas las vistas) ─────────────
-
+// ── Right panel ───────────────────────────────────────────────────────────
 function RightPanel() {
   const features = [
     "Cálculo automático de recargos y horas extra (HED · HEN · RN)",
@@ -84,132 +108,232 @@ function RightPanel() {
   ];
 
   return (
-    <div
+    <section
       className="hidden lg:flex lg:w-1/2 flex-col relative overflow-hidden"
-      style={{ background: "#161616" }}
+      style={{ background: "#232323" }}
     >
-      {/* Watermark pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+      {/* Watermark anagram */}
+      <svg
+        viewBox="0 0 53.89 58.76"
+        width="560" height="560"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='90' viewBox='0 0 46 50' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M46.1925 30.005L46.1686 30.029L28.1995 12.047L34.9224 5.319L46.3073 16.712C49.8935 20.426 49.86 26.34 46.1973 30.005H46.1925Z' fill='white'/%3E%3Cpath d='M46.1736 43.513L34.9369 54.758L28.1997 48.016L46.1736 30.029C49.8937 33.757 49.8937 39.786 46.1736 43.508V43.513Z' fill='white'/%3E%3Cpath d='M21.9931 30.005L21.9692 30.029L4 12.047L10.7229 5.319L22.1078 16.712C25.694 20.426 25.6605 26.34 21.9978 30.005H21.9931Z' fill='white'/%3E%3Cpath d='M21.9739 43.513L10.7372 54.758L4 48.021L21.9739 30.034C25.694 33.761 25.694 39.79 21.9739 43.513Z' fill='white'/%3E%3C/svg%3E")`,
-          backgroundRepeat: "repeat",
-          backgroundSize: "120px 135px",
+          position: "absolute",
+          right: -120,
+          bottom: -90,
+          color: "rgba(255,255,255,0.04)",
+          pointerEvents: "none",
         }}
-      />
+      >
+        <g transform="translate(-36 -852.24)" fill="currentColor">
+          {STC_PATHS}
+        </g>
+      </svg>
 
-      <div className="relative z-10 flex flex-col h-full p-12">
+      <div
+        className="relative z-10 flex flex-col h-full"
+        style={{ padding: "48px 60px" }}
+      >
         {/* Top label */}
-        <p
-          className="text-[10px] font-semibold uppercase tracking-[0.22em]"
-          style={{ color: "#4a4a4a" }}
-        >
-          Sistema // Operaciones
+        <p style={{
+          fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+          fontSize: 11,
+          letterSpacing: "0.16em",
+          color: "#7A7A7A",
+          textTransform: "uppercase",
+        }}>
+          SISTEMA // OPERACIONES
         </p>
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col justify-center max-w-md">
+        {/* Middle */}
+        <div className="flex-1 flex flex-col justify-center" style={{ maxWidth: 560 }}>
           {/* Badge */}
-          <div
-            className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 w-fit mb-8"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-          >
-            <span className="size-1.5 rounded-full bg-[#ED5650]" />
-            <span
-              className="text-[10px] font-semibold uppercase tracking-[0.18em]"
-              style={{ color: "#a0a0a0" }}
-            >
-              Cumplimiento laboral
-            </span>
-          </div>
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "6px 12px",
+            borderRadius: 999,
+            background: "rgba(237,86,80,0.16)",
+            border: "1px solid rgba(237,86,80,0.4)",
+            color: "#F3918D",
+            fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+            fontSize: 10.5,
+            letterSpacing: "0.12em",
+            width: "fit-content",
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ED5650", flexShrink: 0 }} />
+            CUMPLIMIENTO LABORAL
+          </span>
 
-          {/* Heading */}
-          <h2 className="text-[2.4rem] font-bold leading-[1.15] text-white mb-5">
+          {/* H2 */}
+          <h2 style={{
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            fontWeight: 500,
+            fontSize: 44,
+            lineHeight: 1.1,
+            letterSpacing: "-0.015em",
+            color: "#fff",
+            margin: "26px 0 0",
+          }}>
             Planifica turnos y controla la jornada de todo tu equipo en tiempo real.
           </h2>
 
-          {/* Red line */}
-          <div className="w-10 h-0.5 bg-[#ED5650] mb-6" />
+          {/* Coral line */}
+          <div style={{
+            width: 56,
+            height: 3,
+            background: "#ED5650",
+            borderRadius: 999,
+            margin: "26px 0",
+          }} />
 
           {/* Body */}
-          <p className="text-sm leading-relaxed mb-10" style={{ color: "#888" }}>
+          <p style={{
+            fontSize: 16,
+            lineHeight: 1.6,
+            color: "#ADADAE",
+            maxWidth: 460,
+            margin: 0,
+          }}>
             Smart Time Control programa horarios, registra entradas y calcula recargos y horas extra — listo para tu nómina y la ley colombiana.
           </p>
 
           {/* Features */}
-          <ul className="space-y-3.5">
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 40 }}>
             {features.map(f => (
-              <li key={f} className="flex items-start gap-3">
-                <svg width="18" height="18" viewBox="0 0 46 50" fill="none" className="shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M46.1925 30.005L46.1686 30.029L28.1995 12.047L34.9224 5.319L46.3073 16.712C49.8935 20.426 49.86 26.34 46.1973 30.005H46.1925Z" fill="#ED5650"/>
-                  <path d="M46.1736 43.513L34.9369 54.758L28.1997 48.016L46.1736 30.029C49.8937 33.757 49.8937 39.786 46.1736 43.508V43.513Z" fill="#ED5650"/>
-                  <path d="M21.9931 30.005L21.9692 30.029L4 12.047L10.7229 5.319L22.1078 16.712C25.694 20.426 25.6605 26.34 21.9978 30.005H21.9931Z" fill="#ED5650"/>
-                  <path d="M21.9739 43.513L10.7372 54.758L4 48.021L21.9739 30.034C25.694 33.761 25.694 39.79 21.9739 43.513Z" fill="#ED5650"/>
+              <div key={f} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <svg
+                  viewBox="0 0 53.89 58.76"
+                  width="15" height="15"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ flexShrink: 0 }}
+                >
+                  <g transform="translate(-36 -852.24)" fill="#ED5650">
+                    {STC_PATHS}
+                  </g>
                 </svg>
-                <span className="text-sm" style={{ color: "#888" }}>{f}</span>
-              </li>
+                <span style={{ fontSize: 14, color: "#ADADAE" }}>{f}</span>
+              </div>
             ))}
-          </ul>
-        </div>
-
-        {/* Bottom */}
-        <p
-          className="text-[10px] font-semibold uppercase tracking-[0.18em]"
-          style={{ color: "#333" }}
-        >
-          Smart Time Control · {new Date().getFullYear()}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ── Split layout wrapper ───────────────────────────────────────────────
-
-function SplitLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen flex bg-white">
-      {/* Left panel — 50% */}
-      <div className="flex flex-col w-full lg:w-1/2">
-        {/* Logo header */}
-        <div className="px-14 pt-10 flex items-center gap-3.5">
-          <OrgLogo size={44} />
-          <div>
-            <p className="text-base font-bold tracking-tight text-gray-900 leading-none">Smart Time Control</p>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 mt-1">Smarter Scheduling</p>
           </div>
         </div>
 
-        {/* Form */}
-        <div className="flex-1 flex items-center justify-center px-14 py-10">
-          <div className="w-full max-w-md">
+        {/* Bottom */}
+        <p style={{
+          fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+          fontSize: 11,
+          letterSpacing: "0.12em",
+          color: "#7A7A7A",
+          textTransform: "uppercase",
+        }}>
+          SMART TIME CONTROL · 2026
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ── Split layout ──────────────────────────────────────────────────────────
+function SplitLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", minHeight: "100vh", width: "100%", background: "#F1F1F1", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {/* Form side */}
+      <section
+        className="flex flex-col w-full lg:w-1/2"
+        style={{ background: "#F1F1F1", display: "grid", gridTemplateRows: "auto 1fr auto" }}
+      >
+        {/* Brand lockup */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "48px 56px 0" }}>
+          <OrgLogoBox size={46} />
+          <div>
+            <div style={{
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontWeight: 500,
+              fontSize: 19,
+              color: "#333333",
+              lineHeight: 1.1,
+            }}>
+              Smart Time Control
+            </div>
+            <div style={{
+              fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+              fontSize: 11,
+              letterSpacing: "0.14em",
+              color: "rgba(51,51,51,0.55)",
+              marginTop: 5,
+              textTransform: "uppercase",
+            }}>
+              SMARTER SCHEDULING
+            </div>
+          </div>
+        </div>
+
+        {/* Form area */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 56px" }}>
+          <div style={{ width: "100%", maxWidth: 392 }}>
             {children}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-14 pb-10">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-300 flex items-center gap-1.5">
-            <Lock className="size-3" />
-            Smart Time Control · Control de Jornada Seguro
-          </p>
+        <div style={{ padding: "0 56px 48px", display: "flex", alignItems: "center", gap: 8 }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9E9E9E" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+            <rect x="4" y="11" width="16" height="9" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          </svg>
+          <span style={{
+            fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+            fontSize: 11,
+            letterSpacing: "0.10em",
+            color: "#9E9E9E",
+            textTransform: "uppercase",
+          }}>
+            SMART TIME CONTROL · CONTROL DE JORNADA SEGURO
+          </span>
         </div>
-      </div>
+      </section>
 
-      {/* Right panel — 50% */}
+      {/* Promo side */}
       <RightPanel />
     </div>
   );
 }
 
-// ── Login view ─────────────────────────────────────────────────────────
+// ── Shared input / label styles ───────────────────────────────────────────
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "#575757",
+  marginBottom: 9,
+};
 
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 50,
+  border: "1px solid #D5D6D7",
+  borderRadius: 8,
+  background: "#fff",
+  fontFamily: "system-ui, -apple-system, sans-serif",
+  fontSize: 15,
+  color: "#333333",
+  outline: "none",
+  transition: "border-color 120ms ease, box-shadow 120ms ease",
+};
+
+// ── Login view ─────────────────────────────────────────────────────────────
 function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister: () => void }) {
   const { signIn } = useAuth();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [remember, setRemember] = useState(false);
+  const [remember, setRemember] = useState(true);
   const [error, setError]       = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
 
@@ -230,117 +354,188 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
 
   return (
     <SplitLayout>
-      <div className="space-y-8">
+      <div>
         {/* Heading */}
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">Bienvenido de vuelta</h1>
-          <p className="text-base text-gray-500 mt-2 leading-snug">
-            Inicia sesión para gestionar turnos, jornadas y reportes de tu equipo.
-          </p>
-        </div>
+        <h1 style={{
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          fontWeight: 500,
+          fontSize: 34,
+          lineHeight: 1.12,
+          letterSpacing: "-0.01em",
+          color: "#333333",
+          margin: 0,
+        }}>
+          Bienvenido de vuelta
+        </h1>
+        <p style={{
+          fontSize: 15,
+          lineHeight: 1.55,
+          color: "rgba(51,51,51,0.65)",
+          margin: "14px 0 0",
+          maxWidth: 340,
+        }}>
+          Inicia sesión para gestionar turnos, jornadas y reportes de tu equipo.
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Email */}
-          <div className="space-y-2">
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
-              Correo electrónico
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+          <div>
+            <label style={labelStyle}>Correo electrónico</label>
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9E9E9E", display: "flex" }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="m3 7 9 6 9-6" />
+                </svg>
+              </span>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="usuario@empresa.com" required autoComplete="email"
-                className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-base outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+                placeholder="usuario@empresa.com" required autoComplete="username"
+                style={{ ...inputStyle, paddingLeft: 42, paddingRight: 14 }}
+                onFocus={e => { e.currentTarget.style.borderColor = "#ED5650"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(237,86,80,0.15)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "#D5D6D7"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
           </div>
 
           {/* Contraseña */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
-                Contraseña
-              </label>
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>Contraseña</label>
               <button
                 type="button" onClick={onForgot}
-                className="text-sm text-[#ED5650] hover:underline font-medium"
+                style={{ fontSize: 12.5, fontWeight: 500, color: "#ED5650", background: "none", border: "none", cursor: "pointer", padding: 0 }}
               >
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9E9E9E", display: "flex" }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                  <rect x="4" y="11" width="16" height="9" rx="2" />
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+              </span>
               <input
                 type={showPass ? "text" : "password"} value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required autoComplete="current-password"
-                className="w-full border border-gray-200 rounded-xl pl-11 pr-12 py-3 text-base outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900"
+                style={{ ...inputStyle, paddingLeft: 42, paddingRight: 46 }}
+                onFocus={e => { e.currentTarget.style.borderColor = "#ED5650"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(237,86,80,0.15)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "#D5D6D7"; e.currentTarget.style.boxShadow = "none"; }}
               />
               <button
                 type="button" onClick={() => setShowPass(v => !v)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Mostrar contraseña"
+                style={{
+                  position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                  width: 32, height: 32, border: "none", background: "transparent",
+                  color: "#9E9E9E", display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", borderRadius: 8,
+                }}
               >
-                {showPass ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                {showPass ? (
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61" /><path d="m2 2 20 20" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
 
-          {/* Recordar equipo */}
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <div
+          {/* Recordar */}
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", marginTop: -2 }}>
+            <span
               onClick={() => setRemember(v => !v)}
-              className={`size-5 rounded flex items-center justify-center border transition-colors shrink-0 ${
-                remember ? "bg-[#ED5650] border-[#ED5650]" : "border-gray-300 bg-white"
-              }`}
+              style={{
+                width: 20, height: 20, borderRadius: 6,
+                background: remember ? "#ED5650" : "#fff",
+                border: remember ? "1.5px solid #ED5650" : "1.5px solid #D5D6D7",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, transition: "background 120ms, border-color 120ms",
+              }}
             >
               {remember && (
-                <svg className="size-3 text-white" viewBox="0 0 12 10" fill="none">
-                  <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="round">
+                  <path d="m5 12 5 5 9-10" />
                 </svg>
               )}
-            </div>
-            <span className="text-sm text-gray-600">Recordar este equipo durante 30 días</span>
+            </span>
+            <span
+              onClick={() => setRemember(v => !v)}
+              style={{ fontSize: 13.5, color: "#575757" }}
+            >
+              Recordar este equipo durante 30 días
+            </span>
           </label>
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
-              <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
-              <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 10,
+              borderRadius: 8, border: "1px solid #fecaca",
+              background: "#fef2f2", padding: "12px 14px",
+            }}>
+              <AlertCircle style={{ width: 16, height: 16, color: "#ED5650", flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: 14, color: "#ED5650", lineHeight: 1.4, margin: 0 }}>{error}</p>
             </div>
           )}
 
           {/* Submit */}
           <button
             type="submit" disabled={loading || !email || !password}
-            className="w-full rounded-xl py-3.5 text-base font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-            style={{ background: "#ED5650" }}
+            style={{
+              width: "100%", height: 52, border: "none",
+              borderRadius: 999, background: "#ED5650",
+              color: "#fff", fontFamily: "system-ui, -apple-system, sans-serif",
+              fontWeight: 500, fontSize: 15, letterSpacing: "0.01em",
+              cursor: loading || !email || !password ? "not-allowed" : "pointer",
+              opacity: loading || !email || !password ? 0.5 : 1,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              transition: "background 120ms ease",
+            }}
           >
-            {loading ? "Iniciando sesión…" : "Iniciar sesión"}
+            {loading ? "Verificando…" : "Iniciar sesión"}
           </button>
-        </form>
 
-        {/* Registro */}
-        <div className="space-y-3.5">
-          <div className="relative flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-sm text-gray-400">¿Nuevo en el sistema?</span>
-            <div className="flex-1 h-px bg-gray-100" />
+          {/* Crear cuenta */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "4px 0" }}>
+              <span style={{ flex: 1, height: 1, background: "#D5D6D7" }} />
+              <span style={{ fontSize: 12.5, color: "#575757" }}>¿Nuevo en el sistema?</span>
+              <span style={{ flex: 1, height: 1, background: "#D5D6D7" }} />
+            </div>
+            <button
+              type="button" onClick={onRegister}
+              style={{
+                width: "100%", height: 50, marginTop: 4,
+                border: "1.5px solid #333333", borderRadius: 999,
+                background: "transparent", color: "#333333",
+                fontFamily: "system-ui, -apple-system, sans-serif",
+                fontWeight: 500, fontSize: 14.5,
+                cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                transition: "background 120ms ease, color 120ms ease",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#333333"; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#333333"; }}
+            >
+              <UserPlus style={{ width: 18, height: 18 }} />
+              Crear cuenta
+            </button>
           </div>
-          <button
-            type="button" onClick={onRegister}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3.5 text-base font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            <UserPlus className="size-5" /> Crear cuenta
-          </button>
-        </div>
+        </form>
       </div>
     </SplitLayout>
   );
 }
 
-// ── Forgot password view ───────────────────────────────────────────────
-
+// ── Forgot password view ───────────────────────────────────────────────────
 function ForgotPasswordView({ onBack }: { onBack: () => void }) {
   const { requestPasswordReset } = useAuth();
   const [email, setEmail]       = useState("");
@@ -427,33 +622,42 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
           <ArrowLeft className="size-4" /> Volver
         </button>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Recuperar contraseña</h1>
-          <p className="text-sm text-gray-500 mt-1.5">Te generaremos un enlace de recuperación.</p>
+          <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 500, fontSize: 30, color: "#333333", margin: 0, lineHeight: 1.2 }}>Recuperar contraseña</h1>
+          <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 10 }}>Te generaremos un enlace de recuperación.</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
-              Correo electrónico
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div>
+            <label style={labelStyle}>Correo electrónico</label>
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9E9E9E", display: "flex" }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" />
+                </svg>
+              </span>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="usuario@empresa.com" required autoComplete="email"
-                className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+                style={{ ...inputStyle, paddingLeft: 42, paddingRight: 14 }}
+                onFocus={e => { e.currentTarget.style.borderColor = "#ED5650"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(237,86,80,0.15)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "#D5D6D7"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
           </div>
           {error && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
-              <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
-              <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, borderRadius: 8, border: "1px solid #fecaca", background: "#fef2f2", padding: "12px 14px" }}>
+              <AlertCircle style={{ width: 16, height: 16, color: "#ED5650", flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: 14, color: "#ED5650", lineHeight: 1.4, margin: 0 }}>{error}</p>
             </div>
           )}
           <button
             type="submit" disabled={loading || !email}
-            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-            style={{ background: "#ED5650" }}
+            style={{
+              width: "100%", height: 52, border: "none", borderRadius: 999,
+              background: "#ED5650", color: "#fff",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontWeight: 500, fontSize: 15, cursor: loading || !email ? "not-allowed" : "pointer",
+              opacity: loading || !email ? 0.5 : 1,
+            }}
           >
             {loading ? "Enviando…" : "Enviar enlace de recuperación"}
           </button>
@@ -463,8 +667,7 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
   );
 }
 
-// ── Register view ──────────────────────────────────────────────────────
-
+// ── Register view ──────────────────────────────────────────────────────────
 function RegisterView({ onBack }: { onBack: () => void }) {
   const { signUp } = useAuth();
   const [nombre,   setNombre]   = useState("");
@@ -497,8 +700,8 @@ function RegisterView({ onBack }: { onBack: () => void }) {
       <SplitLayout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Cuenta creada</h1>
-            <p className="text-sm text-gray-500 mt-1">Ya puedes iniciar sesión</p>
+            <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 500, fontSize: 30, color: "#333333", margin: 0 }}>Cuenta creada</h1>
+            <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 10 }}>Ya puedes iniciar sesión</p>
           </div>
           <div className="flex flex-col items-center gap-4 py-6">
             <div className="size-14 rounded-full bg-emerald-50 flex items-center justify-center">
@@ -510,8 +713,12 @@ function RegisterView({ onBack }: { onBack: () => void }) {
           </div>
           <button
             onClick={onBack}
-            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-            style={{ background: "#ED5650" }}
+            style={{
+              width: "100%", height: 52, border: "none", borderRadius: 999,
+              background: "#ED5650", color: "#fff",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontWeight: 500, fontSize: 15, cursor: "pointer",
+            }}
           >
             Ir al inicio de sesión
           </button>
@@ -527,82 +734,112 @@ function RegisterView({ onBack }: { onBack: () => void }) {
           <ArrowLeft className="size-4" /> Volver
         </button>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Crear cuenta</h1>
-          <p className="text-sm text-gray-500 mt-1.5">Completa los datos para registrarte.</p>
+          <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 500, fontSize: 30, color: "#333333", margin: 0 }}>Crear cuenta</h1>
+          <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 10 }}>Completa los datos para registrarte.</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Nombre */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Nombre completo</label>
+          <div>
+            <label style={labelStyle}>Nombre completo</label>
             <input
               type="text" value={nombre} onChange={e => setNombre(e.target.value)}
               placeholder="Juan Pérez" required autoComplete="name"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+              style={{ ...inputStyle, paddingLeft: 14, paddingRight: 14 }}
+              onFocus={e => { e.currentTarget.style.borderColor = "#ED5650"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(237,86,80,0.15)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = "#D5D6D7"; e.currentTarget.style.boxShadow = "none"; }}
             />
           </div>
 
           {/* Email */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Correo electrónico</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+          <div>
+            <label style={labelStyle}>Correo electrónico</label>
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9E9E9E", display: "flex" }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" />
+                </svg>
+              </span>
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="usuario@empresa.com" required autoComplete="email"
-                className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+                style={{ ...inputStyle, paddingLeft: 42, paddingRight: 14 }}
+                onFocus={e => { e.currentTarget.style.borderColor = "#ED5650"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(237,86,80,0.15)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "#D5D6D7"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
           </div>
 
           {/* Contraseña */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Contraseña</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+          <div>
+            <label style={labelStyle}>Contraseña</label>
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9E9E9E", display: "flex" }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                  <rect x="4" y="11" width="16" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+              </span>
               <input
                 type={showPass ? "text" : "password"} value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required autoComplete="new-password"
-                className="w-full border border-gray-200 rounded-xl pl-10 pr-11 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900"
+                style={{ ...inputStyle, paddingLeft: 42, paddingRight: 46 }}
+                onFocus={e => { e.currentTarget.style.borderColor = "#ED5650"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(237,86,80,0.15)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "#D5D6D7"; e.currentTarget.style.boxShadow = "none"; }}
               />
               <button
                 type="button" onClick={() => setShowPass(v => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, border: "none", background: "transparent", color: "#9E9E9E", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", borderRadius: 8 }}
               >
-                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showPass ? (
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" /><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61" /><path d="m2 2 20 20" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
               </button>
             </div>
             {password && <PasswordStrength password={password} />}
           </div>
 
           {/* Confirmar */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Confirmar contraseña</label>
+          <div>
+            <label style={labelStyle}>Confirmar contraseña</label>
             <input
               type={showPass ? "text" : "password"} value={confirm}
               onChange={e => setConfirm(e.target.value)}
               placeholder="••••••••" required autoComplete="new-password"
-              className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 transition-all bg-white text-gray-900 ${
-                confirm && !match
-                  ? "border-red-300 focus:ring-red-100 focus:border-red-400"
-                  : "border-gray-200 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60"
-              }`}
+              style={{
+                ...inputStyle,
+                paddingLeft: 14, paddingRight: 14,
+                borderColor: confirm && !match ? "#f87171" : "#D5D6D7",
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = confirm && !match ? "#f87171" : "#ED5650"; e.currentTarget.style.boxShadow = `0 0 0 3px ${confirm && !match ? "rgba(248,113,113,0.15)" : "rgba(237,86,80,0.15)"}`; }}
+              onBlur={e => { e.currentTarget.style.borderColor = confirm && !match ? "#f87171" : "#D5D6D7"; e.currentTarget.style.boxShadow = "none"; }}
             />
-            {confirm && !match && <p className="text-xs text-[#ED5650]">Las contraseñas no coinciden.</p>}
+            {confirm && !match && <p style={{ fontSize: 12, color: "#ED5650", marginTop: 4 }}>Las contraseñas no coinciden.</p>}
           </div>
 
-          {/* Error */}
           {error && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
-              <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
-              <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, borderRadius: 8, border: "1px solid #fecaca", background: "#fef2f2", padding: "12px 14px" }}>
+              <AlertCircle style={{ width: 16, height: 16, color: "#ED5650", flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: 14, color: "#ED5650", lineHeight: 1.4, margin: 0 }}>{error}</p>
             </div>
           )}
 
           <button
             type="submit" disabled={loading || !nombre || !email || !password || !confirm}
-            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
-            style={{ background: "#ED5650" }}
+            style={{
+              width: "100%", height: 52, border: "none", borderRadius: 999,
+              background: "#ED5650", color: "#fff",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontWeight: 500, fontSize: 15,
+              cursor: loading || !nombre || !email || !password || !confirm ? "not-allowed" : "pointer",
+              opacity: loading || !nombre || !email || !password || !confirm ? 0.5 : 1,
+            }}
           >
             {loading ? "Creando cuenta…" : "Crear cuenta"}
           </button>
@@ -612,8 +849,7 @@ function RegisterView({ onBack }: { onBack: () => void }) {
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────
-
+// ── Helpers ────────────────────────────────────────────────────────────────
 export function getPasswordChecks(password: string) {
   return [
     { ok: password.length >= 8,         label: "Mínimo 8 caracteres" },
@@ -628,7 +864,7 @@ export function PasswordStrength({ password }: { password: string }) {
   const score  = checks.filter(c => c.ok).length;
   const colors = ["bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-emerald-400", "bg-emerald-500"];
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 mt-2">
       <div className="flex gap-1">
         {checks.map((_, i) => (
           <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : "bg-gray-200"}`} />
