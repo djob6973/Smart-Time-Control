@@ -1445,7 +1445,11 @@ function ShiftTooltip({ shift, breakdown, workHours, pos, c }: {
             {workHours > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Trabajo adicional</span>
-                <span className="font-semibold">{workHours.toFixed(1)}h</span>
+                <span className="font-semibold">
+                  {shift.start > 0 || shift.end > 0
+                    ? `${pad(shift.start)} – ${pad(shift.end)} · ${workHours.toFixed(1)}h`
+                    : `${workHours.toFixed(1)}h`}
+                </span>
               </div>
             )}
           </div>
