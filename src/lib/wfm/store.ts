@@ -219,7 +219,27 @@ export const useWFM = create<WFMState>()((set, get) => ({
         if (abs) {
           prevShiftEnd = null;
           const isPartial = abs.startHour !== undefined && abs.endHour !== undefined;
-          const absNote = isPartial ? `abs:${abs.type}:${abs.startHour}:${abs.endHour}` : `abs:${abs.type}`;
+          let absNote: string;
+          if (isPartial && avail) {
+            const absStart = abs.startHour!;
+            const absEnd   = abs.endHour!;
+            const shiftStart = Math.max(avail.start, area.startHour);
+            const shiftEnd   = Math.min(avail.end,   area.endHour);
+            // Compute the work window: portion of the shift not covered by the absence
+            let workStart = 0, workEnd = 0;
+            if (absStart > shiftStart && absEnd >= shiftEnd) {
+              // Absence at the end — work is [shiftStart, absStart]
+              workStart = shiftStart; workEnd = absStart;
+            } else if (absStart <= shiftStart && absEnd < shiftEnd) {
+              // Absence at the start — work is [absEnd, shiftEnd]
+              workStart = absEnd; workEnd = shiftEnd;
+            }
+            absNote = workStart < workEnd
+              ? `abs:${abs.type}:${absStart}:${absEnd}:${workStart}:${workEnd}`
+              : `abs:${abs.type}:${absStart}:${absEnd}`;
+          } else {
+            absNote = isPartial ? `abs:${abs.type}:${abs.startHour}:${abs.endHour}` : `abs:${abs.type}`;
+          }
           newShifts.push({ id: `${e.id}-${date}`, employeeId: e.id, date, start: 0, end: 0, breakMinutes: 0, code: "ABS", note: absNote });
           continue;
         }

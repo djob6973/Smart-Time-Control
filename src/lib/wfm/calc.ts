@@ -76,11 +76,11 @@ const KNOWN_ABS_TYPES = new Set([
 
 /**
  * Parses the absence metadata encoded in a shift's note field.
- * New format: "abs:TYPE" (full day) | "abs:TYPE:ABSSTART:ABSEND" (partial)
+ * New format: "abs:TYPE" (full day) | "abs:TYPE:ABSSTART:ABSEND" (partial) | "abs:TYPE:ABSSTART:ABSEND:WORKSTART:WORKEND" (partial with work hours)
  * Legacy format: just the absence type name (e.g. "vacaciones") — treated as full-day.
  * Returns null if the note does not encode absence info.
  */
-export function parseAbsNote(note?: string): { type: string; absStart: number; absEnd: number } | null {
+export function parseAbsNote(note?: string): { type: string; absStart: number; absEnd: number; workStart?: number; workEnd?: number } | null {
   if (!note) return null;
   if (note.startsWith("abs:")) {
     const parts = note.split(":");
@@ -90,6 +90,15 @@ export function parseAbsNote(note?: string): { type: string; absStart: number; a
       const absEnd   = parseInt(parts[3], 10);
       if (isNaN(absStart) || isNaN(absEnd)) return { type: parts[1], absStart: 0, absEnd: 8 };
       return { type: parts[1], absStart, absEnd };
+    }
+    if (parts.length === 6) {
+      const absStart  = parseInt(parts[2], 10);
+      const absEnd    = parseInt(parts[3], 10);
+      const workStart = parseInt(parts[4], 10);
+      const workEnd   = parseInt(parts[5], 10);
+      if (isNaN(absStart) || isNaN(absEnd)) return { type: parts[1], absStart: 0, absEnd: 8 };
+      const hasWork = !isNaN(workStart) && !isNaN(workEnd) && workStart < workEnd;
+      return { type: parts[1], absStart, absEnd, ...(hasWork ? { workStart, workEnd } : {}) };
     }
     return null;
   }

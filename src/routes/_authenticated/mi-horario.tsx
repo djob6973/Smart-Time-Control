@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
+import { parseAbsNote } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
 import type { Shift } from "@/lib/wfm/types";
@@ -81,17 +82,18 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
   const { registros, getEstadoEmpleado } = useJornada();
 
   const shift        = shifts.find(s => s.employeeId === employeeId && s.date === date) ?? null;
-  const estado       = getEstadoEmpleado(
-    employeeId,
-    date,
-    shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null,
-  );
+  const absNote      = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
+  const isPartialAbs = shift?.code === "ABS" && absNote?.workStart != null;
+  const shiftStart   = shift && shift.code !== "OFF" && shift.code !== "ABS"
+    ? shift.start
+    : (absNote?.workStart != null ? absNote.workStart : null);
+  const estado       = getEstadoEmpleado(employeeId, date, shiftStart);
   const registrosHoy = [...registros.filter(r => r.employeeId === employeeId && r.fecha === date)]
     .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
 
-  const isOff = shift?.code === "OFF";
-  const isAbs = shift?.code === "ABS";
-  const isWork = shift && !isOff && !isAbs;
+  const isOff  = shift?.code === "OFF";
+  const isAbs  = shift?.code === "ABS" && !isPartialAbs;
+  const isWork = (shift && !isOff && !isAbs) || isPartialAbs;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
@@ -138,32 +140,43 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
             {isWork && (
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  {(shift.start >= 21 || shift.end <= 6) ? (
+                  {isPartialAbs ? (
+                    <Sun className="size-4" style={{ color: "var(--color-primary)" }} />
+                  ) : (shift!.start >= 21 || shift!.end <= 6) ? (
                     <Moon className="size-4" style={{ color: "var(--color-primary)" }} />
                   ) : (
                     <Sun className="size-4" style={{ color: "var(--color-primary)" }} />
                   )}
                   <span className="font-semibold text-base" style={{ color: "var(--color-primary)" }}>
-                    {CODE_LABEL[shift.code] ?? shift.code}
+                    {isPartialAbs ? "Turno parcial" : (CODE_LABEL[shift!.code] ?? shift!.code)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="font-mono font-bold text-xl tabular-nums">{fmtHour(shift.start)}</span>
+                  <span className="font-mono font-bold text-xl tabular-nums">
+                    {isPartialAbs ? fmtHour(absNote!.workStart!) : fmtHour(shift!.start)}
+                  </span>
                   <ChevronRight className="size-4 text-muted-foreground" />
-                  <span className="font-mono font-bold text-xl tabular-nums">{fmtHour(shift.end)}</span>
+                  <span className="font-mono font-bold text-xl tabular-nums">
+                    {isPartialAbs ? fmtHour(absNote!.workEnd!) : fmtHour(shift!.end)}
+                  </span>
                 </div>
+                {isPartialAbs && (
+                  <p className="text-xs mt-1" style={{ color: "#C98A00" }}>
+                    Ausencia {String(absNote!.absStart).padStart(2,"0")}:00 – {String(absNote!.absEnd).padStart(2,"0")}:00
+                  </p>
+                )}
               </div>
             )}
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
-            {isWork && (
+            {isWork && !isPartialAbs && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Coffee className="size-3.5" />
-                <span>{shift.breakMinutes} min break</span>
+                <span>{shift!.breakMinutes} min break</span>
               </div>
             )}
-            {isWork && shift.locked && (
+            {isWork && shift!.locked && (
               <span
                 className="inline-flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-pill"
                 style={{ background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}

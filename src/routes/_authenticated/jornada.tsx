@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
+import { parseAbsNote } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
 import { dispatchJornadaEvent } from "@/lib/notifications/dispatch";
@@ -620,14 +621,15 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       });
 
   // Self mode derived values
-  const selfEmp   = isSelfMode ? employees.find((e) => e.id === autoEmployeeId) : null;
-  const selfShift = isSelfMode ? getShiftProgramado(autoEmployeeId!, hoy, shifts) : null;
+  const selfEmp      = isSelfMode ? employees.find((e) => e.id === autoEmployeeId) : null;
+  const selfShift    = isSelfMode ? getShiftProgramado(autoEmployeeId!, hoy, shifts) : null;
+  const selfAbsNote  = selfShift?.code === "ABS" ? parseAbsNote(selfShift.note) : null;
+  // For partial absences, use the work-portion start so estado is computed correctly
+  const selfShiftStart = selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS"
+    ? selfShift.start
+    : (selfAbsNote?.workStart != null ? selfAbsNote.workStart : null);
   const selfEst   = isSelfMode
-    ? getEstadoEmpleado(
-        autoEmployeeId!,
-        hoy,
-        selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS" ? selfShift.start : null,
-      )
+    ? getEstadoEmpleado(autoEmployeeId!, hoy, selfShiftStart)
     : null;
   const selfRegs  = isSelfMode
     ? [...registros.filter((r) => r.employeeId === autoEmployeeId && r.fecha === hoy)]
@@ -644,7 +646,8 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     return horarios.some((h) => h.id === asig.horarioId && h.activo && h.diasAplicables.includes(hoyDia));
   }, [autoEmployeeId, horariosEmpleado, horarios, hoy, hoyDia]);
 
-  const selfCanRegister = (!!selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS") || selfHasJornadaHorario;
+  const selfIsPartialAbs = selfShift?.code === "ABS" && selfAbsNote?.workStart != null;
+  const selfCanRegister = (!!selfShift && selfShift.code !== "OFF" && (selfShift.code !== "ABS" || selfIsPartialAbs)) || selfHasJornadaHorario;
 
   const selfBreaks    = selfRegs.filter((r) => r.tipoMovimiento === "salida_break").length;
   const selfAlmuerzos = selfRegs.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
@@ -758,17 +761,27 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   if (isSelfMode && selfEmp && selfEst) {
     return (
       <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-        {selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS" ? (
-          <div className="rounded-card border border-primary/30 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CalendarDays className="size-4 text-primary" />
-              <h4 className="font-medium text-sm text-primary">Horario programado</h4>
+        {selfShift && selfShift.code !== "OFF" && (selfShift.code !== "ABS" || selfIsPartialAbs) ? (
+          <div className="space-y-2">
+            <div className="rounded-card border border-primary/30 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="size-4 text-primary" />
+                <h4 className="font-medium text-sm text-primary">Horario programado</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div><div className="text-xs text-muted-foreground">Entrada</div><div className="font-semibold">{String(selfIsPartialAbs ? selfAbsNote!.workStart! : selfShift.start).padStart(2,"0")}:00</div></div>
+                <div><div className="text-xs text-muted-foreground">Salida</div><div className="font-semibold">{String(selfIsPartialAbs ? selfAbsNote!.workEnd! : selfShift.end).padStart(2,"0")}:00</div></div>
+                <div><div className="text-xs text-muted-foreground">Break</div><div className="font-semibold">{selfIsPartialAbs ? "—" : `${selfShift.breakMinutes} min`}</div></div>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-sm">
-              <div><div className="text-xs text-muted-foreground">Entrada</div><div className="font-semibold">{String(selfShift.start).padStart(2,"0")}:00</div></div>
-              <div><div className="text-xs text-muted-foreground">Salida</div><div className="font-semibold">{String(selfShift.end).padStart(2,"0")}:00</div></div>
-              <div><div className="text-xs text-muted-foreground">Break</div><div className="font-semibold">{selfShift.breakMinutes} min</div></div>
-            </div>
+            {selfIsPartialAbs && (
+              <div className="rounded-card border border-amber-200 bg-amber-50 p-3 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+                <span className="text-sm text-amber-800">
+                  Ausencia parcial: {String(selfAbsNote!.absStart).padStart(2,"0")}:00 – {String(selfAbsNote!.absEnd).padStart(2,"0")}:00
+                </span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-card border border-amber-200 bg-amber-50 p-4 flex items-center gap-2">
