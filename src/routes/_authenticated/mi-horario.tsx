@@ -78,22 +78,34 @@ const CODE_LABEL: Record<string, string> = {
 // ── Day View ───────────────────────────────────────────────────────────────
 
 function DayView({ employeeId, date }: { employeeId: string; date: string }) {
-  const { shifts } = useWFM();
+  const { shifts, employees } = useWFM();
   const { registros, getEstadoEmpleado } = useJornada();
 
   const shift        = shifts.find(s => s.employeeId === employeeId && s.date === date) ?? null;
   const absNote      = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
-  const isPartialAbs = shift?.code === "ABS" && absNote?.workStart != null;
+  // Partial absence: note has explicit absStart/absEnd (4 or 6-part format)
+  const isPartialAbs = absNote != null && (shift?.note?.split(":").length ?? 0) >= 4;
+  // Derive work hours: prefer stored (6-part), fall back to employee availability
+  const workHours = (() => {
+    if (!isPartialAbs || !absNote) return null;
+    if (absNote.workStart != null) return { start: absNote.workStart, end: absNote.workEnd! };
+    const dow  = new Date(date + "T12:00:00").getDay();
+    const avail = employees.find(e => e.id === employeeId)?.availability[dow];
+    if (!avail) return null;
+    if (absNote.absStart > avail.start) return { start: avail.start, end: absNote.absStart };
+    if (absNote.absEnd   < avail.end)   return { start: absNote.absEnd, end: avail.end };
+    return null;
+  })();
   const shiftStart   = shift && shift.code !== "OFF" && shift.code !== "ABS"
     ? shift.start
-    : (absNote?.workStart != null ? absNote.workStart : null);
+    : (workHours?.start ?? null);
   const estado       = getEstadoEmpleado(employeeId, date, shiftStart);
   const registrosHoy = [...registros.filter(r => r.employeeId === employeeId && r.fecha === date)]
     .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
 
   const isOff  = shift?.code === "OFF";
-  const isAbs  = shift?.code === "ABS" && !isPartialAbs;
-  const isWork = (shift && !isOff && !isAbs) || isPartialAbs;
+  const isAbs  = shift?.code === "ABS" && !(isPartialAbs && workHours != null);
+  const isWork = (shift && !isOff && !isAbs) || (isPartialAbs && workHours != null);
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
@@ -140,29 +152,27 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
             {isWork && (
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  {isPartialAbs ? (
+                  {workHours || (!shift || shift.start < 21 && shift.end > 6) ? (
                     <Sun className="size-4" style={{ color: "var(--color-primary)" }} />
-                  ) : (shift!.start >= 21 || shift!.end <= 6) ? (
-                    <Moon className="size-4" style={{ color: "var(--color-primary)" }} />
                   ) : (
-                    <Sun className="size-4" style={{ color: "var(--color-primary)" }} />
+                    <Moon className="size-4" style={{ color: "var(--color-primary)" }} />
                   )}
                   <span className="font-semibold text-base" style={{ color: "var(--color-primary)" }}>
-                    {isPartialAbs ? "Turno parcial" : (CODE_LABEL[shift!.code] ?? shift!.code)}
+                    {workHours ? "Turno parcial" : (CODE_LABEL[shift!.code] ?? shift!.code)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-mono font-bold text-xl tabular-nums">
-                    {isPartialAbs ? fmtHour(absNote!.workStart!) : fmtHour(shift!.start)}
+                    {fmtHour(workHours ? workHours.start : shift!.start)}
                   </span>
                   <ChevronRight className="size-4 text-muted-foreground" />
                   <span className="font-mono font-bold text-xl tabular-nums">
-                    {isPartialAbs ? fmtHour(absNote!.workEnd!) : fmtHour(shift!.end)}
+                    {fmtHour(workHours ? workHours.end : shift!.end)}
                   </span>
                 </div>
-                {isPartialAbs && (
+                {isPartialAbs && absNote && (
                   <p className="text-xs mt-1" style={{ color: "#C98A00" }}>
-                    Ausencia {String(absNote!.absStart).padStart(2,"0")}:00 – {String(absNote!.absEnd).padStart(2,"0")}:00
+                    Ausencia {String(absNote.absStart).padStart(2,"0")}:00 – {String(absNote.absEnd).padStart(2,"0")}:00
                   </p>
                 )}
               </div>
@@ -170,7 +180,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
-            {isWork && !isPartialAbs && (
+            {isWork && !workHours && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Coffee className="size-3.5" />
                 <span>{shift!.breakMinutes} min break</span>
