@@ -1690,7 +1690,13 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
   const maxMonth = area?.maxHoursMonth ?? 192;
 
   // Projected totals including this shift's work hours
-  const projDay = workHours;
+  // For partial-absence shifts that also have programmed work hours, the total
+  // daily commitment is absence + work (both count against the day's limit).
+  const isPartialAbsWithWork = (code === "ABS" || isAbsShift) && (start !== 0 || end !== 0) && workHours > 0;
+  const effAbsHrsForProj = code === "ABS"
+    ? (absFullDay ? 8 : Math.max(0, absHrEnd - absHrStart))
+    : absHours;
+  const projDay = isPartialAbsWithWork ? effAbsHrsForProj + workHours : workHours;
   const projWeek = hoursCtx.week + workHours;
   const projMonth = hoursCtx.month + workHours;
 
@@ -1788,8 +1794,8 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
     }
 
     // Block when area doesn't allow overtime or Sunday/holiday work
-    if (!area?.allowOvertime && code !== "OFF" && code !== "ABS") {
-      if (isSundayOrHoliday(date)) {
+    if (!area?.allowOvertime && code !== "OFF" && (code !== "ABS" || workHours > 0)) {
+      if (workHours > 0 && isSundayOrHoliday(date)) {
         toast.error(
           `El área "${area?.name}" no permite trabajo dominical ni festivo. Revisa la configuración del área.`,
           { duration: 6000 },
@@ -2029,7 +2035,7 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
               )}
 
               {/* Bloqueo: área sin horas extras — trabajo dominical/festivo */}
-              {!area?.allowOvertime && code !== "OFF" && code !== "ABS" && isSundayOrHoliday(date) && (
+              {!area?.allowOvertime && code !== "OFF" && (code !== "ABS" || workHours > 0) && workHours > 0 && isSundayOrHoliday(date) && (
                 <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-xs text-red-800">
                   <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-red-500" />
                   <span>
@@ -2094,7 +2100,7 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                   ? (absFullDay ? 8 : Math.max(0, absHrEnd - absHrStart))
                   : absHours;
                 const effTotal = effAbsHours + workHours;
-                const effExtra = Math.max(0, effTotal - 8);
+                const effExtra = Math.max(0, effTotal - maxDay);
                 const showAbs  = code === "ABS" || isAbsShift;
                 return (
                   <div className="rounded-xl bg-secondary/60 p-3 text-xs space-y-1">
