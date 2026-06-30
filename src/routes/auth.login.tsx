@@ -1,9 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, ArrowLeft, CheckCircle2, UserPlus, Lock, Mail } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Resource } from "@/lib/permissions";
-import { UserPlus } from "lucide-react";
 
 const ORDERED_HOME_ROUTES: { to: string; resource: Resource }[] = [
   { to: "/",           resource: "dashboard" },
@@ -37,34 +36,127 @@ function LoginPage() {
     }
   }, [user, role, loading, roleLoading, navigate, hasPermission]);
 
-  if (view === "forgot")    return <ForgotPasswordView onBack={() => setView("login")} />;
-  if (view === "register")  return <RegisterView onBack={() => setView("login")} />;
+  if (view === "forgot")   return <ForgotPasswordView onBack={() => setView("login")} />;
+  if (view === "register") return <RegisterView onBack={() => setView("login")} />;
   return <LoginView onForgot={() => setView("forgot")} onRegister={() => setView("register")} />;
 }
 
-// ── Shared card ────────────────────────────────────────────────────────
+// ── Org logo (usa el cargado en Configuración o el SVG por defecto) ────
 
-function AuthCard({ title, subtitle, children }: {
-  title: string; subtitle?: string; children: React.ReactNode;
-}) {
+function OrgLogo({ size = 40 }: { size?: number }) {
+  const [hasLogo, setHasLogo] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload  = () => setHasLogo(true);
+    img.onerror = () => setHasLogo(false);
+    img.src = "/api/settings/favicon";
+  }, []);
+
+  if (hasLogo) {
+    return (
+      <img
+        src="/api/settings/favicon"
+        alt="Logo"
+        style={{ width: size, height: size, objectFit: "contain", borderRadius: 8 }}
+      />
+    );
+  }
+
+  // ">>" SVG por defecto
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-5">
-      <div className="w-full max-w-sm">
-        {/* Marca */}
-        <div className="text-center mb-8">
-          <div className="inline-flex size-14 rounded-card bg-primary items-center justify-center text-2xl font-bold text-primary-foreground shadow-card mb-4 font-display">
-            S
+    <svg width={size} height={size} viewBox="0 0 46 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M46.1925 30.005L46.1686 30.029L28.1995 12.047L34.9224 5.319L46.3073 16.712C49.8935 20.426 49.86 26.34 46.1973 30.005H46.1925Z" fill="#ED5650"/>
+      <path d="M46.1736 43.513L34.9369 54.758L28.1997 48.016L46.1736 30.029C49.8937 33.757 49.8937 39.786 46.1736 43.508V43.513Z" fill="#ED5650"/>
+      <path d="M21.9931 30.005L21.9692 30.029L4 12.047L10.7229 5.319L22.1078 16.712C25.694 20.426 25.6605 26.34 21.9978 30.005H21.9931Z" fill="#ED5650"/>
+      <path d="M21.9739 43.513L10.7372 54.758L4 48.021L21.9739 30.034C25.694 33.761 25.694 39.79 21.9739 43.513Z" fill="#ED5650"/>
+    </svg>
+  );
+}
+
+// ── Right panel content (compartido por todas las vistas) ─────────────
+
+function RightPanel() {
+  const features = [
+    "Cálculo automático de recargos y horas extra (HED · HEN · RN)",
+    "Control de jornada con check-in y check-out en vivo",
+    "Alertas operativas y reportes listos para nómina",
+  ];
+
+  return (
+    <div
+      className="hidden lg:flex flex-1 flex-col relative overflow-hidden"
+      style={{ background: "#161616" }}
+    >
+      {/* Watermark pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='90' viewBox='0 0 46 50' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M46.1925 30.005L46.1686 30.029L28.1995 12.047L34.9224 5.319L46.3073 16.712C49.8935 20.426 49.86 26.34 46.1973 30.005H46.1925Z' fill='white'/%3E%3Cpath d='M46.1736 43.513L34.9369 54.758L28.1997 48.016L46.1736 30.029C49.8937 33.757 49.8937 39.786 46.1736 43.508V43.513Z' fill='white'/%3E%3Cpath d='M21.9931 30.005L21.9692 30.029L4 12.047L10.7229 5.319L22.1078 16.712C25.694 20.426 25.6605 26.34 21.9978 30.005H21.9931Z' fill='white'/%3E%3Cpath d='M21.9739 43.513L10.7372 54.758L4 48.021L21.9739 30.034C25.694 33.761 25.694 39.79 21.9739 43.513Z' fill='white'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "repeat",
+          backgroundSize: "120px 135px",
+        }}
+      />
+
+      <div className="relative z-10 flex flex-col h-full p-12">
+        {/* Top label */}
+        <p
+          className="text-[10px] font-semibold uppercase tracking-[0.22em]"
+          style={{ color: "#4a4a4a" }}
+        >
+          Sistema // Operaciones
+        </p>
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col justify-center max-w-md">
+          {/* Badge */}
+          <div
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 w-fit mb-8"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <span className="size-1.5 rounded-full bg-[#ED5650]" />
+            <span
+              className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+              style={{ color: "#a0a0a0" }}
+            >
+              Cumplimiento laboral
+            </span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight font-display">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+
+          {/* Heading */}
+          <h2 className="text-[2.4rem] font-bold leading-[1.15] text-white mb-5">
+            Planifica turnos y controla la jornada de todo tu equipo en tiempo real.
+          </h2>
+
+          {/* Red line */}
+          <div className="w-10 h-0.5 bg-[#ED5650] mb-6" />
+
+          {/* Body */}
+          <p className="text-sm leading-relaxed mb-10" style={{ color: "#888" }}>
+            Smart Time Control programa horarios, registra entradas y calcula recargos y horas extra — listo para tu nómina y la ley colombiana.
+          </p>
+
+          {/* Features */}
+          <ul className="space-y-3.5">
+            {features.map(f => (
+              <li key={f} className="flex items-start gap-3">
+                <svg width="18" height="18" viewBox="0 0 46 50" fill="none" className="shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M46.1925 30.005L46.1686 30.029L28.1995 12.047L34.9224 5.319L46.3073 16.712C49.8935 20.426 49.86 26.34 46.1973 30.005H46.1925Z" fill="#ED5650"/>
+                  <path d="M46.1736 43.513L34.9369 54.758L28.1997 48.016L46.1736 30.029C49.8937 33.757 49.8937 39.786 46.1736 43.508V43.513Z" fill="#ED5650"/>
+                  <path d="M21.9931 30.005L21.9692 30.029L4 12.047L10.7229 5.319L22.1078 16.712C25.694 20.426 25.6605 26.34 21.9978 30.005H21.9931Z" fill="#ED5650"/>
+                  <path d="M21.9739 43.513L10.7372 54.758L4 48.021L21.9739 30.034C25.694 33.761 25.694 39.79 21.9739 43.513Z" fill="#ED5650"/>
+                </svg>
+                <span className="text-sm" style={{ color: "#888" }}>{f}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Card */}
-        <div className="rounded-card bg-card shadow-card p-8">
-          {children}
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        {/* Bottom */}
+        <p
+          className="text-[10px] font-semibold uppercase tracking-[0.18em]"
+          style={{ color: "#333" }}
+        >
           Smart Time Control · {new Date().getFullYear()}
         </p>
       </div>
@@ -72,14 +164,52 @@ function AuthCard({ title, subtitle, children }: {
   );
 }
 
-// ── Login view ──────────────────────────────────────────────────────────
+// ── Split layout wrapper ───────────────────────────────────────────────
+
+function SplitLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex bg-white">
+      {/* Left panel */}
+      <div className="flex flex-col w-full lg:w-[480px] xl:w-[520px] shrink-0">
+        {/* Logo header */}
+        <div className="px-10 pt-9 flex items-center gap-3">
+          <OrgLogo size={38} />
+          <div>
+            <p className="text-sm font-bold tracking-tight text-gray-900 leading-none">Smart Time Control</p>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-400 mt-0.5">Smarter Scheduling</p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 flex items-center justify-center px-10 py-8">
+          <div className="w-full max-w-sm">
+            {children}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-10 pb-8">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-gray-300 flex items-center gap-1.5">
+            <Lock className="size-2.5" />
+            Smart Time Control · Control de Jornada Seguro
+          </p>
+        </div>
+      </div>
+
+      {/* Right panel */}
+      <RightPanel />
+    </div>
+  );
+}
+
+// ── Login view ─────────────────────────────────────────────────────────
 
 function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister: () => void }) {
   const { signIn } = useAuth();
-  const navigate = useNavigate();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [loading, setLoading]   = useState(false);
 
@@ -99,92 +229,126 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
   }
 
   return (
-    <AuthCard title="Smart Time Control" subtitle="Smarter scheduling">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-            Correo electrónico
-          </label>
-          <input
-            type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="usuario@empresa.com" required autoComplete="email"
-            className="w-full border border-border rounded-pill px-4 py-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
+    <SplitLayout>
+      <div className="space-y-7">
+        {/* Heading */}
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Bienvenido de vuelta</h1>
+          <p className="text-sm text-gray-500 mt-1.5 leading-snug">
+            Inicia sesión para gestionar turnos, jornadas y reportes de tu equipo.
+          </p>
         </div>
 
-        {/* Contraseña */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-              Contraseña
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
+              Correo electrónico
             </label>
-            <button
-              type="button" onClick={onForgot}
-              className="text-xs text-primary hover:underline font-medium"
-            >
-              ¿Olvidaste tu contraseña?
-            </button>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="usuario@empresa.com" required autoComplete="email"
+                className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+              />
+            </div>
           </div>
-          <div className="relative">
-            <input
-              type={showPass ? "text" : "password"} value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" required autoComplete="current-password"
-              className="w-full border border-border rounded-pill px-4 py-2.5 pr-11 text-sm bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-            />
-            <button
-              type="button" onClick={() => setShowPass(v => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
-          </div>
-        </div>
 
-        {/* Error */}
-        {error && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3">
-            <AlertCircle className="size-4 text-primary shrink-0 mt-0.5" />
-            <p className="text-sm text-primary leading-snug">{error}</p>
+          {/* Contraseña */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
+                Contraseña
+              </label>
+              <button
+                type="button" onClick={onForgot}
+                className="text-xs text-[#ED5650] hover:underline font-medium"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+              <input
+                type={showPass ? "text" : "password"} value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" required autoComplete="current-password"
+                className="w-full border border-gray-200 rounded-xl pl-10 pr-11 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900"
+              />
+              <button
+                type="button" onClick={() => setShowPass(v => !v)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
           </div>
-        )}
 
-        {/* Submit */}
-        <button
-          type="submit" disabled={loading || !email || !password}
-          className="w-full rounded-pill bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-        >
-          {loading ? "Iniciando sesión…" : "Iniciar sesión"}
-        </button>
+          {/* Recordar equipo */}
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <div
+              onClick={() => setRemember(v => !v)}
+              className={`size-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                remember ? "bg-[#ED5650] border-[#ED5650]" : "border-gray-300 bg-white"
+              }`}
+            >
+              {remember && (
+                <svg className="size-2.5 text-white" viewBox="0 0 12 10" fill="none">
+                  <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </div>
+            <span className="text-sm text-gray-600">Recordar este equipo durante 30 días</span>
+          </label>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
+              <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
+              <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit" disabled={loading || !email || !password}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+            style={{ background: "#ED5650" }}
+          >
+            {loading ? "Iniciando sesión…" : "Iniciar sesión"}
+          </button>
+        </form>
 
         {/* Registro */}
-        <div className="relative flex items-center gap-3 py-1">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted-foreground">¿Nuevo en el sistema?</span>
-          <div className="flex-1 h-px bg-border" />
+        <div className="space-y-3">
+          <div className="relative flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-100" />
+            <span className="text-xs text-gray-400">¿Nuevo en el sistema?</span>
+            <div className="flex-1 h-px bg-gray-100" />
+          </div>
+          <button
+            type="button" onClick={onRegister}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            <UserPlus className="size-4" /> Crear cuenta
+          </button>
         </div>
-        <button
-          type="button" onClick={onRegister}
-          className="w-full flex items-center justify-center gap-2 rounded-pill border border-border px-4 py-2.5 text-sm font-medium hover:bg-secondary transition-colors"
-        >
-          <UserPlus className="size-4" /> Crear cuenta
-        </button>
-      </form>
-    </AuthCard>
+      </div>
+    </SplitLayout>
   );
 }
 
-// ── Forgot password view ────────────────────────────────────────────────
+// ── Forgot password view ───────────────────────────────────────────────
 
 function ForgotPasswordView({ onBack }: { onBack: () => void }) {
   const { requestPasswordReset } = useAuth();
-  const [email, setEmail]         = useState("");
-  const [sent, setSent]           = useState(false);
-  const [resetUrl, setResetUrl]   = useState<string | null>(null);
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const [cooldown, setCooldown]   = useState(0);
+  const [email, setEmail]       = useState("");
+  const [sent, setSent]         = useState(false);
+  const [resetUrl, setResetUrl] = useState<string | null>(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -204,32 +368,37 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
 
   if (sent) {
     return (
-      <AuthCard title="Enlace generado" subtitle={`Recuperación para ${email}`}>
-        <div className="space-y-5">
+      <SplitLayout>
+        <div className="space-y-6">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+            <ArrowLeft className="size-4" /> Volver
+          </button>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Enlace generado</h1>
+            <p className="text-sm text-gray-500 mt-1">Recuperación para {email}</p>
+          </div>
           <div className="flex flex-col items-center gap-4 py-4">
-            <div className="size-14 rounded-full bg-success/10 flex items-center justify-center">
-              <CheckCircle2 className="size-7 text-success" />
+            <div className="size-14 rounded-full bg-emerald-50 flex items-center justify-center">
+              <CheckCircle2 className="size-7 text-emerald-500" />
             </div>
             {resetUrl ? (
               <div className="w-full space-y-2">
-                <p className="text-sm text-center text-muted-foreground">
-                  Copia este enlace para restablecer tu contraseña:
-                </p>
-                <div className="rounded-lg border border-border bg-muted px-3 py-2 break-all">
-                  <a href={resetUrl} className="text-xs text-primary hover:underline font-mono">{resetUrl}</a>
+                <p className="text-sm text-center text-gray-500">Copia este enlace para restablecer tu contraseña:</p>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 break-all">
+                  <a href={resetUrl} className="text-xs text-[#ED5650] hover:underline font-mono">{resetUrl}</a>
                 </div>
-                <p className="text-xs text-center text-muted-foreground">Válido por 1 hora.</p>
+                <p className="text-xs text-center text-gray-400">Válido por 1 hora.</p>
               </div>
             ) : (
-              <p className="text-sm text-center text-muted-foreground leading-relaxed">
+              <p className="text-sm text-center text-gray-500 leading-relaxed">
                 Si esa dirección está registrada, el administrador puede proporcionarte el enlace de recuperación.
               </p>
             )}
           </div>
           {error && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3">
-              <AlertCircle className="size-4 text-primary shrink-0 mt-0.5" />
-              <p className="text-sm text-primary leading-snug">{error}</p>
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
+              <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
+              <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
             </div>
           )}
           <button
@@ -242,58 +411,59 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
               });
             }}
             disabled={cooldown > 0 || loading}
-            className="w-full rounded-pill border border-border px-4 py-2.5 text-sm font-medium hover:bg-secondary transition-colors disabled:opacity-50"
+            className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
             {loading ? "Generando…" : cooldown > 0 ? `Nuevo enlace en ${cooldown}s` : "Generar nuevo enlace"}
           </button>
-          <button
-            onClick={onBack}
-            className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="size-4" /> Volver al inicio de sesión
-          </button>
         </div>
-      </AuthCard>
+      </SplitLayout>
     );
   }
 
   return (
-    <AuthCard title="Recuperar contraseña" subtitle="Te enviaremos un enlace a tu correo">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-            Correo electrónico
-          </label>
-          <input
-            type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="usuario@empresa.com" required autoComplete="email"
-            className="w-full border border-border rounded-pill px-4 py-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
+    <SplitLayout>
+      <div className="space-y-6">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+          <ArrowLeft className="size-4" /> Volver
+        </button>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Recuperar contraseña</h1>
+          <p className="text-sm text-gray-500 mt-1.5">Te generaremos un enlace de recuperación.</p>
         </div>
-        {error && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3">
-            <AlertCircle className="size-4 text-primary shrink-0 mt-0.5" />
-            <p className="text-sm text-primary leading-snug">{error}</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
+              Correo electrónico
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="usuario@empresa.com" required autoComplete="email"
+                className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+              />
+            </div>
           </div>
-        )}
-        <button
-          type="submit" disabled={loading || !email}
-          className="w-full rounded-pill bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-        >
-          {loading ? "Enviando…" : "Enviar enlace de recuperación"}
-        </button>
-        <button
-          type="button" onClick={onBack}
-          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="size-4" /> Volver al inicio de sesión
-        </button>
-      </form>
-    </AuthCard>
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
+              <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
+              <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
+            </div>
+          )}
+          <button
+            type="submit" disabled={loading || !email}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+            style={{ background: "#ED5650" }}
+          >
+            {loading ? "Enviando…" : "Enviar enlace de recuperación"}
+          </button>
+        </form>
+      </div>
+    </SplitLayout>
   );
 }
 
-// ── Register view ────────────────────────────────────────────────────────
+// ── Register view ──────────────────────────────────────────────────────
 
 function RegisterView({ onBack }: { onBack: () => void }) {
   const { signUp } = useAuth();
@@ -307,13 +477,13 @@ function RegisterView({ onBack }: { onBack: () => void }) {
   const [done,     setDone]     = useState(false);
 
   const checks  = getPasswordChecks(password);
-  const allPass = checks.every((c) => c.ok);
+  const allPass = checks.every(c => c.ok);
   const match   = password === confirm;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!allPass)  { setError("La contraseña no cumple los requisitos."); return; }
-    if (!match)    { setError("Las contraseñas no coinciden."); return; }
+    if (!allPass) { setError("La contraseña no cumple los requisitos."); return; }
+    if (!match)   { setError("Las contraseñas no coinciden."); return; }
     setLoading(true);
     setError(null);
     const result = await signUp(email, password, nombre);
@@ -324,144 +494,149 @@ function RegisterView({ onBack }: { onBack: () => void }) {
 
   if (done) {
     return (
-      <AuthCard title="Cuenta creada" subtitle="Ya puedes iniciar sesión">
-        <div className="space-y-5">
-          <div className="flex flex-col items-center gap-4 py-4">
+      <SplitLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Cuenta creada</h1>
+            <p className="text-sm text-gray-500 mt-1">Ya puedes iniciar sesión</p>
+          </div>
+          <div className="flex flex-col items-center gap-4 py-6">
             <div className="size-14 rounded-full bg-emerald-50 flex items-center justify-center">
               <CheckCircle2 className="size-7 text-emerald-500" />
             </div>
-            <p className="text-sm text-center text-muted-foreground leading-relaxed">
+            <p className="text-sm text-center text-gray-500 leading-relaxed">
               Tu cuenta ha sido creada exitosamente. Inicia sesión con tu correo y contraseña.
             </p>
           </div>
           <button
             onClick={onBack}
-            className="w-full rounded-pill bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+            style={{ background: "#ED5650" }}
           >
             Ir al inicio de sesión
           </button>
         </div>
-      </AuthCard>
+      </SplitLayout>
     );
   }
 
   return (
-    <AuthCard title="Crear cuenta" subtitle="Completa los datos para registrarte">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Nombre */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-            Nombre completo
-          </label>
-          <input
-            type="text" value={nombre} onChange={(e) => setNombre(e.target.value)}
-            placeholder="Juan Pérez" required autoComplete="name"
-            className="w-full border border-border rounded-pill px-4 py-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
+    <SplitLayout>
+      <div className="space-y-6">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+          <ArrowLeft className="size-4" /> Volver
+        </button>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Crear cuenta</h1>
+          <p className="text-sm text-gray-500 mt-1.5">Completa los datos para registrarte.</p>
         </div>
-
-        {/* Email */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-            Correo electrónico
-          </label>
-          <input
-            type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder="usuario@empresa.com" required autoComplete="email"
-            className="w-full border border-border rounded-pill px-4 py-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
-        </div>
-
-        {/* Contraseña */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-            Contraseña
-          </label>
-          <div className="relative">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Nombre */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Nombre completo</label>
             <input
-              type={showPass ? "text" : "password"} value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" required autoComplete="new-password"
-              className="w-full border border-border rounded-pill px-4 py-2.5 pr-11 text-sm bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              type="text" value={nombre} onChange={e => setNombre(e.target.value)}
+              placeholder="Juan Pérez" required autoComplete="name"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
             />
-            <button
-              type="button" onClick={() => setShowPass(v => !v)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
           </div>
-          {password && <PasswordStrength password={password} />}
-        </div>
 
-        {/* Confirmar contraseña */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-            Confirmar contraseña
-          </label>
-          <input
-            type={showPass ? "text" : "password"} value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="••••••••" required autoComplete="new-password"
-            className={`w-full border rounded-pill px-4 py-2.5 text-sm bg-background outline-none focus:ring-2 focus:ring-primary/20 transition-all ${
-              confirm && !match ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"
-            }`}
-          />
-          {confirm && !match && (
-            <p className="text-xs text-destructive">Las contraseñas no coinciden.</p>
+          {/* Email */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Correo electrónico</label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="usuario@empresa.com" required autoComplete="email"
+                className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+              />
+            </div>
+          </div>
+
+          {/* Contraseña */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Contraseña</label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+              <input
+                type={showPass ? "text" : "password"} value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" required autoComplete="new-password"
+                className="w-full border border-gray-200 rounded-xl pl-10 pr-11 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900"
+              />
+              <button
+                type="button" onClick={() => setShowPass(v => !v)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            {password && <PasswordStrength password={password} />}
+          </div>
+
+          {/* Confirmar */}
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">Confirmar contraseña</label>
+            <input
+              type={showPass ? "text" : "password"} value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="••••••••" required autoComplete="new-password"
+              className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 transition-all bg-white text-gray-900 ${
+                confirm && !match
+                  ? "border-red-300 focus:ring-red-100 focus:border-red-400"
+                  : "border-gray-200 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60"
+              }`}
+            />
+            {confirm && !match && <p className="text-xs text-[#ED5650]">Las contraseñas no coinciden.</p>}
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
+              <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
+              <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
+            </div>
           )}
-        </div>
 
-        {/* Error */}
-        {error && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3">
-            <AlertCircle className="size-4 text-primary shrink-0 mt-0.5" />
-            <p className="text-sm text-primary leading-snug">{error}</p>
-          </div>
-        )}
-
-        {/* Submit */}
-        <button
-          type="submit" disabled={loading || !nombre || !email || !password || !confirm}
-          className="w-full rounded-pill bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-        >
-          {loading ? "Creando cuenta…" : "Crear cuenta"}
-        </button>
-
-        <button
-          type="button" onClick={onBack}
-          className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="size-4" /> Volver al inicio de sesión
-        </button>
-      </form>
-    </AuthCard>
+          <button
+            type="submit" disabled={loading || !nombre || !email || !password || !confirm}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+            style={{ background: "#ED5650" }}
+          >
+            {loading ? "Creando cuenta…" : "Crear cuenta"}
+          </button>
+        </form>
+      </div>
+    </SplitLayout>
   );
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────
+
 export function getPasswordChecks(password: string) {
   return [
-    { ok: password.length >= 8,          label: "Mínimo 8 caracteres" },
-    { ok: /[A-Z]/.test(password),         label: "Al menos una mayúscula" },
-    { ok: /[0-9]/.test(password),         label: "Al menos un número" },
-    { ok: /[^A-Za-z0-9]/.test(password),  label: "Al menos un símbolo" },
+    { ok: password.length >= 8,         label: "Mínimo 8 caracteres" },
+    { ok: /[A-Z]/.test(password),        label: "Al menos una mayúscula" },
+    { ok: /[0-9]/.test(password),        label: "Al menos un número" },
+    { ok: /[^A-Za-z0-9]/.test(password), label: "Al menos un símbolo" },
   ];
 }
 
 export function PasswordStrength({ password }: { password: string }) {
   const checks = getPasswordChecks(password);
-  const score  = checks.filter((c) => c.ok).length;
-  const colors = ["bg-destructive", "bg-orange-400", "bg-yellow-400", "bg-emerald-400", "bg-emerald-500"];
+  const score  = checks.filter(c => c.ok).length;
+  const colors = ["bg-red-400", "bg-orange-400", "bg-yellow-400", "bg-emerald-400", "bg-emerald-500"];
   return (
     <div className="space-y-1.5">
       <div className="flex gap-1">
         {checks.map((_, i) => (
-          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : "bg-muted"}`} />
+          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? colors[score] : "bg-gray-200"}`} />
         ))}
       </div>
       <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-        {checks.map((c) => (
-          <li key={c.label} className={`flex items-center gap-1 text-xs ${c.ok ? "text-emerald-600" : "text-muted-foreground"}`}>
+        {checks.map(c => (
+          <li key={c.label} className={`flex items-center gap-1 text-xs ${c.ok ? "text-emerald-600" : "text-gray-400"}`}>
             <span>{c.ok ? "✓" : "○"}</span>
             {c.label}
           </li>
