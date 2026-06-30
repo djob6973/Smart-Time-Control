@@ -85,7 +85,7 @@ function RightPanel() {
 
   return (
     <div
-      className="hidden lg:flex flex-1 flex-col relative overflow-hidden"
+      className="hidden lg:flex lg:w-1/2 flex-col relative overflow-hidden"
       style={{ background: "#161616" }}
     >
       {/* Watermark pattern */}
@@ -169,34 +169,34 @@ function RightPanel() {
 function SplitLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex bg-white">
-      {/* Left panel */}
-      <div className="flex flex-col w-full lg:w-[480px] xl:w-[520px] shrink-0">
+      {/* Left panel — 50% */}
+      <div className="flex flex-col w-full lg:w-1/2">
         {/* Logo header */}
-        <div className="px-10 pt-9 flex items-center gap-3">
-          <OrgLogo size={38} />
+        <div className="px-14 pt-10 flex items-center gap-3.5">
+          <OrgLogo size={44} />
           <div>
-            <p className="text-sm font-bold tracking-tight text-gray-900 leading-none">Smart Time Control</p>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-400 mt-0.5">Smarter Scheduling</p>
+            <p className="text-base font-bold tracking-tight text-gray-900 leading-none">Smart Time Control</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 mt-1">Smarter Scheduling</p>
           </div>
         </div>
 
         {/* Form */}
-        <div className="flex-1 flex items-center justify-center px-10 py-8">
-          <div className="w-full max-w-sm">
+        <div className="flex-1 flex items-center justify-center px-14 py-10">
+          <div className="w-full max-w-md">
             {children}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-10 pb-8">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-gray-300 flex items-center gap-1.5">
-            <Lock className="size-2.5" />
+        <div className="px-14 pb-10">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-300 flex items-center gap-1.5">
+            <Lock className="size-3" />
             Smart Time Control · Control de Jornada Seguro
           </p>
         </div>
       </div>
 
-      {/* Right panel */}
+      {/* Right panel — 50% */}
       <RightPanel />
     </div>
   );
@@ -230,71 +230,71 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
 
   return (
     <SplitLayout>
-      <div className="space-y-7">
+      <div className="space-y-8">
         {/* Heading */}
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Bienvenido de vuelta</h1>
-          <p className="text-sm text-gray-500 mt-1.5 leading-snug">
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">Bienvenido de vuelta</h1>
+          <p className="text-base text-gray-500 mt-2 leading-snug">
             Inicia sesión para gestionar turnos, jornadas y reportes de tu equipo.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
+          <div className="space-y-2">
+            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
               Correo electrónico
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
               <input
                 type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder="usuario@empresa.com" required autoComplete="email"
-                className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
+                className="w-full border border-gray-200 rounded-xl pl-11 pr-4 py-3 text-base outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900 placeholder:text-gray-300"
               />
             </div>
           </div>
 
           {/* Contraseña */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
+              <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.12em]">
                 Contraseña
               </label>
               <button
                 type="button" onClick={onForgot}
-                className="text-xs text-[#ED5650] hover:underline font-medium"
+                className="text-sm text-[#ED5650] hover:underline font-medium"
               >
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
               <input
                 type={showPass ? "text" : "password"} value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••" required autoComplete="current-password"
-                className="w-full border border-gray-200 rounded-xl pl-10 pr-11 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900"
+                className="w-full border border-gray-200 rounded-xl pl-11 pr-12 py-3 text-base outline-none focus:ring-2 focus:ring-[#ED5650]/20 focus:border-[#ED5650]/60 transition-all bg-white text-gray-900"
               />
               <button
                 type="button" onClick={() => setShowPass(v => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showPass ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
               </button>
             </div>
           </div>
 
           {/* Recordar equipo */}
-          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
             <div
               onClick={() => setRemember(v => !v)}
-              className={`size-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
+              className={`size-5 rounded flex items-center justify-center border transition-colors shrink-0 ${
                 remember ? "bg-[#ED5650] border-[#ED5650]" : "border-gray-300 bg-white"
               }`}
             >
               {remember && (
-                <svg className="size-2.5 text-white" viewBox="0 0 12 10" fill="none">
+                <svg className="size-3 text-white" viewBox="0 0 12 10" fill="none">
                   <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
@@ -304,7 +304,7 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
               <AlertCircle className="size-4 text-[#ED5650] shrink-0 mt-0.5" />
               <p className="text-sm text-[#ED5650] leading-snug">{error}</p>
             </div>
@@ -313,7 +313,7 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
           {/* Submit */}
           <button
             type="submit" disabled={loading || !email || !password}
-            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="w-full rounded-xl py-3.5 text-base font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
             style={{ background: "#ED5650" }}
           >
             {loading ? "Iniciando sesión…" : "Iniciar sesión"}
@@ -321,17 +321,17 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
         </form>
 
         {/* Registro */}
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <div className="relative flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-xs text-gray-400">¿Nuevo en el sistema?</span>
+            <span className="text-sm text-gray-400">¿Nuevo en el sistema?</span>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
           <button
             type="button" onClick={onRegister}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3.5 text-base font-medium text-gray-600 hover:bg-gray-50 transition-colors"
           >
-            <UserPlus className="size-4" /> Crear cuenta
+            <UserPlus className="size-5" /> Crear cuenta
           </button>
         </div>
       </div>
