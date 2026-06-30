@@ -275,10 +275,28 @@ function TabDashboard() {
   const estados = useMemo(
     () => activeEmployees.map((e) => {
       const shift = getShiftProgramado(e.id, fechaActiva, shifts);
-      const shiftStart = shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null;
+      const absNote = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
+      const isPartialAbs = absNote != null && (shift?.note?.split(":").length ?? 0) >= 4;
+      // For partial absences derive work hours from employee availability
+      const workHours = (() => {
+        if (!isPartialAbs || !absNote) return null;
+        if (absNote.workStart != null) return { start: absNote.workStart, end: absNote.workEnd! };
+        const dow = new Date(`${fechaActiva}T12:00:00`).getDay();
+        const avail = e.availability[dow];
+        if (!avail) return null;
+        if (absNote.absStart > avail.start) return { start: avail.start, end: absNote.absStart };
+        if (absNote.absEnd   < avail.end)   return { start: absNote.absEnd, end: avail.end };
+        return null;
+      })();
+      const shiftStart = shift && shift.code !== "OFF" && shift.code !== "ABS"
+        ? shift.start
+        : (workHours?.start ?? null);
       return {
         emp: e,
         shift,
+        workHours,
+        isPartialAbs,
+        absNote,
         est: getEstadoEmpleado(e.id, fechaActiva, shiftStart),
       };
     }),
@@ -456,7 +474,7 @@ function TabDashboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredEstados.map(({ emp, est, shift }) => (
+              {filteredEstados.map(({ emp, est, shift, workHours, isPartialAbs, absNote }) => (
                 <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -470,6 +488,16 @@ function TabDashboard() {
                   <td className="px-4 py-3">
                     {shift ? (
                       shift.code === "OFF" ? <span className="text-xs text-muted-foreground">Descanso</span> :
+                      shift.code === "ABS" && isPartialAbs && workHours ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-medium text-primary">
+                            {String(workHours.start).padStart(2,"0")}:00 – {String(workHours.end).padStart(2,"0")}:00
+                          </span>
+                          <span className="text-[10px] text-amber-600">
+                            Aus. {String(absNote!.absStart).padStart(2,"0")}:00–{String(absNote!.absEnd).padStart(2,"0")}:00
+                          </span>
+                        </div>
+                      ) :
                       shift.code === "ABS" ? <span className="text-xs text-muted-foreground">Ausencia</span> : (
                         <span className="text-xs font-medium text-primary">
                           {String(shift.start).padStart(2,"0")}:00 – {String(shift.end).padStart(2,"0")}:00
