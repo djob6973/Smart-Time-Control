@@ -68,10 +68,9 @@ function OrgLogoBox({ size = 46 }: { size?: number }) {
       style={{
         width: size, height: size,
         borderRadius: r,
-        background: "#333333",
+        background: "transparent",
         display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0,
-        boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)",
         overflow: "hidden",
       }}
     >
