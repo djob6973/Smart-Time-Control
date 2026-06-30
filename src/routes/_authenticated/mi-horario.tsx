@@ -85,9 +85,10 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
   const absNote      = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
   // Partial absence: note has explicit absStart/absEnd (4 or 6-part format)
   const isPartialAbs = absNote != null && (shift?.note?.split(":").length ?? 0) >= 4;
-  // Derive work hours: prefer stored (6-part), fall back to avail + area
+  // Derive work hours: use shift.start/end when preserved from original shift, else fallback
   const workHours = (() => {
-    if (!isPartialAbs || !absNote) return null;
+    if (!isPartialAbs || !absNote || !shift) return null;
+    if (shift.start > 0 || shift.end > 0) return { start: shift.start, end: shift.end };
     if (absNote.workStart != null) return { start: absNote.workStart, end: absNote.workEnd! };
     const emp   = employees.find(e => e.id === employeeId);
     const dow   = new Date(date + "T12:00:00").getDay();

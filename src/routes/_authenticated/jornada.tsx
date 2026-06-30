@@ -278,7 +278,9 @@ function TabDashboard() {
       const absNote = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
       const isPartialAbs = absNote != null && (shift?.note?.split(":").length ?? 0) >= 4;
       const workHours = (() => {
-        if (!isPartialAbs || !absNote) return null;
+        if (!isPartialAbs || !absNote || !shift) return null;
+        // shift.start/end preserve the original work hours when applied over an existing shift
+        if (shift.start > 0 || shift.end > 0) return { start: shift.start, end: shift.end };
         if (absNote.workStart != null) return { start: absNote.workStart, end: absNote.workEnd! };
         const dow   = new Date(`${fechaActiva}T12:00:00`).getDay();
         const avail = e.availability[dow];
@@ -652,9 +654,10 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const selfAbsNote  = selfShift?.code === "ABS" ? parseAbsNote(selfShift.note) : null;
   // Partial absence: note has explicit absStart/absEnd (4 or 6-part format), not just the 2-part full-day
   const selfIsPartialAbs = selfAbsNote != null && (selfShift?.note?.split(":").length ?? 0) >= 4;
-  // Derive work hours: prefer stored workStart/workEnd (6-part), fall back to avail + area
+  // Derive work hours: use shift.start/end when preserved from original shift, else fallback
   const selfWorkHours = (() => {
-    if (!selfIsPartialAbs || !selfAbsNote) return null;
+    if (!selfIsPartialAbs || !selfAbsNote || !selfShift) return null;
+    if (selfShift.start > 0 || selfShift.end > 0) return { start: selfShift.start, end: selfShift.end };
     if (selfAbsNote.workStart != null) return { start: selfAbsNote.workStart, end: selfAbsNote.workEnd! };
     const avail = selfEmp?.availability[hoyDia];
     if (!avail) return null;
