@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
-import { parseAbsNote } from "@/lib/wfm/calc";
+import { parseAbsNote, computePartialAbsWorkHours } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
 import type { Shift } from "@/lib/wfm/types";
@@ -78,23 +78,23 @@ const CODE_LABEL: Record<string, string> = {
 // ── Day View ───────────────────────────────────────────────────────────────
 
 function DayView({ employeeId, date }: { employeeId: string; date: string }) {
-  const { shifts, employees } = useWFM();
+  const { shifts, employees, areas } = useWFM();
   const { registros, getEstadoEmpleado } = useJornada();
 
   const shift        = shifts.find(s => s.employeeId === employeeId && s.date === date) ?? null;
   const absNote      = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
   // Partial absence: note has explicit absStart/absEnd (4 or 6-part format)
   const isPartialAbs = absNote != null && (shift?.note?.split(":").length ?? 0) >= 4;
-  // Derive work hours: prefer stored (6-part), fall back to employee availability
+  // Derive work hours: prefer stored (6-part), fall back to avail + area
   const workHours = (() => {
     if (!isPartialAbs || !absNote) return null;
     if (absNote.workStart != null) return { start: absNote.workStart, end: absNote.workEnd! };
-    const dow  = new Date(date + "T12:00:00").getDay();
-    const avail = employees.find(e => e.id === employeeId)?.availability[dow];
+    const emp   = employees.find(e => e.id === employeeId);
+    const dow   = new Date(date + "T12:00:00").getDay();
+    const avail = emp?.availability[dow];
     if (!avail) return null;
-    if (absNote.absStart > avail.start) return { start: avail.start, end: absNote.absStart };
-    if (absNote.absEnd   < avail.end)   return { start: absNote.absEnd, end: avail.end };
-    return null;
+    const area  = areas.find(a => a.id === emp?.areaId);
+    return computePartialAbsWorkHours(avail, area?.startHour ?? 0, area?.endHour ?? 24, absNote.absStart, absNote.absEnd);
   })();
   const shiftStart   = shift && shift.code !== "OFF" && shift.code !== "ABS"
     ? shift.start

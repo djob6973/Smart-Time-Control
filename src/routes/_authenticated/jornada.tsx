@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
-import { parseAbsNote } from "@/lib/wfm/calc";
+import { parseAbsNote, computePartialAbsWorkHours } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
 import { dispatchJornadaEvent } from "@/lib/notifications/dispatch";
@@ -277,16 +277,14 @@ function TabDashboard() {
       const shift = getShiftProgramado(e.id, fechaActiva, shifts);
       const absNote = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
       const isPartialAbs = absNote != null && (shift?.note?.split(":").length ?? 0) >= 4;
-      // For partial absences derive work hours from employee availability
       const workHours = (() => {
         if (!isPartialAbs || !absNote) return null;
         if (absNote.workStart != null) return { start: absNote.workStart, end: absNote.workEnd! };
-        const dow = new Date(`${fechaActiva}T12:00:00`).getDay();
+        const dow   = new Date(`${fechaActiva}T12:00:00`).getDay();
         const avail = e.availability[dow];
         if (!avail) return null;
-        if (absNote.absStart > avail.start) return { start: avail.start, end: absNote.absStart };
-        if (absNote.absEnd   < avail.end)   return { start: absNote.absEnd, end: avail.end };
-        return null;
+        const area  = areas.find((a) => a.id === e.areaId);
+        return computePartialAbsWorkHours(avail, area?.startHour ?? 0, area?.endHour ?? 24, absNote.absStart, absNote.absEnd);
       })();
       const shiftStart = shift && shift.code !== "OFF" && shift.code !== "ABS"
         ? shift.start
@@ -654,15 +652,14 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const selfAbsNote  = selfShift?.code === "ABS" ? parseAbsNote(selfShift.note) : null;
   // Partial absence: note has explicit absStart/absEnd (4 or 6-part format), not just the 2-part full-day
   const selfIsPartialAbs = selfAbsNote != null && (selfShift?.note?.split(":").length ?? 0) >= 4;
-  // Derive work hours: prefer stored workStart/workEnd (6-part), fall back to employee availability
+  // Derive work hours: prefer stored workStart/workEnd (6-part), fall back to avail + area
   const selfWorkHours = (() => {
     if (!selfIsPartialAbs || !selfAbsNote) return null;
     if (selfAbsNote.workStart != null) return { start: selfAbsNote.workStart, end: selfAbsNote.workEnd! };
     const avail = selfEmp?.availability[hoyDia];
     if (!avail) return null;
-    if (selfAbsNote.absStart > avail.start) return { start: avail.start, end: selfAbsNote.absStart };
-    if (selfAbsNote.absEnd < avail.end)     return { start: selfAbsNote.absEnd, end: avail.end };
-    return null;
+    const area = areas.find((a) => a.id === selfEmp?.areaId);
+    return computePartialAbsWorkHours(avail, area?.startHour ?? 0, area?.endHour ?? 24, selfAbsNote.absStart, selfAbsNote.absEnd);
   })();
   const selfShiftStart = selfShift && selfShift.code !== "OFF" && selfShift.code !== "ABS"
     ? selfShift.start

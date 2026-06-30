@@ -107,6 +107,31 @@ export function parseAbsNote(note?: string): { type: string; absStart: number; a
   return null;
 }
 
+/**
+ * Given an employee's availability window, area bounds, and a partial absence window,
+ * returns the actual work portion of the shift (shift = intersection of avail + area, minus absence).
+ * Returns null if the absence covers the entire shift or no valid shift exists.
+ */
+export function computePartialAbsWorkHours(
+  avail: { start: number; end: number },
+  areaStart: number,
+  areaEnd: number,
+  absStart: number,
+  absEnd: number,
+): { start: number; end: number } | null {
+  const shiftStart = Math.max(avail.start, areaStart);
+  const shiftEnd   = Math.min(avail.end,   areaEnd);
+  if (shiftStart >= shiftEnd) return null;
+  // Absence doesn't overlap the shift at all → full shift is the work period
+  if (absEnd <= shiftStart || absStart >= shiftEnd) return { start: shiftStart, end: shiftEnd };
+  // Absence covers entire shift
+  if (absStart <= shiftStart && absEnd >= shiftEnd) return null;
+  // Absence at the end → work before absence
+  if (absStart > shiftStart) return { start: shiftStart, end: absStart };
+  // Absence at the start → work after absence
+  return { start: absEnd, end: shiftEnd };
+}
+
 export function detectCode(start: number, end: number, dateISO: string, breakMinutes = 60, maxHoursDay = 8): NoveltyCode {
   if (end <= start) return "OFF";
   const duration = Math.max(0, end - start - breakMinutes / 60);
