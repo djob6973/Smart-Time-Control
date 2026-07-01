@@ -246,7 +246,7 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
         style={{ background: "#F1F1F1", display: "grid", gridTemplateRows: "auto 1fr auto" }}
       >
         {/* Brand lockup */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "40px 56px 0" }}>
+        <div className="px-5 sm:px-8 lg:px-14" style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 32 }}>
           <OrgLogoBox size={36} />
           <div>
             <div style={{
@@ -272,15 +272,15 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Form area */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 56px" }}>
+        <div className="px-5 sm:px-8 lg:px-14" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: "100%", maxWidth: 420 }}>
             {children}
           </div>
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "0 56px 48px", display: "flex", alignItems: "center", gap: 8 }}>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9E9E9E" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round">
+        <div className="px-5 sm:px-8 lg:px-14 pb-8 sm:pb-12" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9E9E9E" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="round" style={{ flexShrink: 0 }}>
             <rect x="4" y="11" width="16" height="9" rx="2" />
             <path d="M8 11V7a4 4 0 0 1 8 0v4" />
           </svg>
