@@ -147,7 +147,7 @@ function RightPanel() {
         </p>
 
         {/* Middle */}
-        <div className="flex-1 flex flex-col justify-center" style={{ maxWidth: 560 }}>
+        <div className="flex-1 flex flex-col justify-center" style={{ maxWidth: 460 }}>
           {/* Badge */}
           <span style={{
             display: "inline-flex",
@@ -171,11 +171,11 @@ function RightPanel() {
           <h2 style={{
             fontFamily: "system-ui, -apple-system, sans-serif",
             fontWeight: 500,
-            fontSize: 44,
-            lineHeight: 1.1,
+            fontSize: 36,
+            lineHeight: 1.15,
             letterSpacing: "-0.015em",
             color: "#fff",
-            margin: "26px 0 0",
+            margin: "24px 0 0",
           }}>
             Planifica turnos y controla la jornada de todo tu equipo en tiempo real.
           </h2>
@@ -186,22 +186,22 @@ function RightPanel() {
             height: 3,
             background: "#ED5650",
             borderRadius: 999,
-            margin: "26px 0",
+            margin: "24px 0",
           }} />
 
           {/* Body */}
           <p style={{
-            fontSize: 16,
-            lineHeight: 1.6,
+            fontSize: 15,
+            lineHeight: 1.5,
             color: "#ADADAE",
-            maxWidth: 460,
+            maxWidth: 400,
             margin: 0,
           }}>
             Smart Time Control programa horarios, registra entradas y calcula recargos y horas extra — listo para tu nómina y la ley colombiana.
           </p>
 
           {/* Features */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 40 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 32 }}>
             {features.map(f => (
               <div key={f} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <svg
@@ -246,13 +246,13 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
         style={{ background: "#F1F1F1", display: "grid", gridTemplateRows: "auto 1fr auto" }}
       >
         {/* Brand lockup */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "48px 56px 0" }}>
-          <OrgLogoBox size={46} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "40px 56px 0" }}>
+          <OrgLogoBox size={36} />
           <div>
             <div style={{
               fontFamily: "system-ui, -apple-system, sans-serif",
-              fontWeight: 500,
-              fontSize: 19,
+              fontWeight: 600,
+              fontSize: 16,
               color: "#333333",
               lineHeight: 1.1,
             }}>
@@ -260,10 +260,10 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div style={{
               fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
-              fontSize: 11,
+              fontSize: 10,
               letterSpacing: "0.14em",
               color: "rgba(51,51,51,0.55)",
-              marginTop: 5,
+              marginTop: 4,
               textTransform: "uppercase",
             }}>
               SMARTER SCHEDULING
@@ -273,7 +273,7 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
 
         {/* Form area */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0 56px" }}>
-          <div style={{ width: "100%", maxWidth: 392 }}>
+          <div style={{ width: "100%", maxWidth: 420 }}>
             {children}
           </div>
         </div>
@@ -306,21 +306,21 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
 const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: "0.08em",
+  fontWeight: 600,
+  letterSpacing: "0.06em",
   textTransform: "uppercase",
   color: "#575757",
-  marginBottom: 9,
+  marginBottom: 8,
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  height: 50,
+  height: 46,
   border: "1px solid #D5D6D7",
   borderRadius: 8,
   background: "#fff",
   fontFamily: "system-ui, -apple-system, sans-serif",
-  fontSize: 15,
+  fontSize: 14,
   color: "#333333",
   outline: "none",
   transition: "border-color 120ms ease, box-shadow 120ms ease",
@@ -357,9 +357,9 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
         {/* Heading */}
         <h1 style={{
           fontFamily: "system-ui, -apple-system, sans-serif",
-          fontWeight: 500,
-          fontSize: 34,
-          lineHeight: 1.12,
+          fontWeight: 600,
+          fontSize: 28,
+          lineHeight: 1.2,
           letterSpacing: "-0.01em",
           color: "#333333",
           margin: 0,
@@ -368,15 +368,15 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
         </h1>
         <p style={{
           fontSize: 15,
-          lineHeight: 1.55,
+          lineHeight: 1.5,
           color: "rgba(51,51,51,0.65)",
-          margin: "14px 0 0",
+          margin: "16px 0 0",
           maxWidth: 340,
         }}>
           Inicia sesión para gestionar turnos, jornadas y reportes de tu equipo.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 20 }}>
+        <form onSubmit={handleSubmit} style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Email */}
           <div>
             <label style={labelStyle}>Correo electrónico</label>
@@ -489,10 +489,10 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
           <button
             type="submit" disabled={loading || !email || !password}
             style={{
-              width: "100%", height: 52, border: "none",
+              width: "100%", height: 48, border: "none",
               borderRadius: 999, background: "#ED5650",
               color: "#fff", fontFamily: "system-ui, -apple-system, sans-serif",
-              fontWeight: 500, fontSize: 15, letterSpacing: "0.01em",
+              fontWeight: 600, fontSize: 15, letterSpacing: "0.01em",
               cursor: loading || !email || !password ? "not-allowed" : "pointer",
               opacity: loading || !email || !password ? 0.5 : 1,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
@@ -512,7 +512,7 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
             <button
               type="button" onClick={onRegister}
               style={{
-                width: "100%", height: 50, marginTop: 4,
+                width: "100%", height: 48, marginTop: 4,
                 border: "1.5px solid #333333", borderRadius: 999,
                 background: "transparent", color: "#333333",
                 fontFamily: "system-ui, -apple-system, sans-serif",
@@ -621,8 +621,8 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
           <ArrowLeft className="size-4" /> Volver
         </button>
         <div>
-          <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 500, fontSize: 30, color: "#333333", margin: 0, lineHeight: 1.2 }}>Recuperar contraseña</h1>
-          <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 10 }}>Te generaremos un enlace de recuperación.</p>
+          <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 600, fontSize: 28, color: "#333333", margin: 0, lineHeight: 1.2 }}>Recuperar contraseña</h1>
+          <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 8 }}>Te generaremos un enlace de recuperación.</p>
         </div>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div>
@@ -651,10 +651,10 @@ function ForgotPasswordView({ onBack }: { onBack: () => void }) {
           <button
             type="submit" disabled={loading || !email}
             style={{
-              width: "100%", height: 52, border: "none", borderRadius: 999,
+              width: "100%", height: 48, border: "none", borderRadius: 999,
               background: "#ED5650", color: "#fff",
               fontFamily: "system-ui, -apple-system, sans-serif",
-              fontWeight: 500, fontSize: 15, cursor: loading || !email ? "not-allowed" : "pointer",
+              fontWeight: 600, fontSize: 15, cursor: loading || !email ? "not-allowed" : "pointer",
               opacity: loading || !email ? 0.5 : 1,
             }}
           >
@@ -699,8 +699,8 @@ function RegisterView({ onBack }: { onBack: () => void }) {
       <SplitLayout>
         <div className="space-y-6">
           <div>
-            <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 500, fontSize: 30, color: "#333333", margin: 0 }}>Cuenta creada</h1>
-            <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 10 }}>Ya puedes iniciar sesión</p>
+            <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 600, fontSize: 28, color: "#333333", margin: 0 }}>Cuenta creada</h1>
+            <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 8 }}>Ya puedes iniciar sesión</p>
           </div>
           <div className="flex flex-col items-center gap-4 py-6">
             <div className="size-14 rounded-full bg-emerald-50 flex items-center justify-center">
@@ -713,10 +713,10 @@ function RegisterView({ onBack }: { onBack: () => void }) {
           <button
             onClick={onBack}
             style={{
-              width: "100%", height: 52, border: "none", borderRadius: 999,
+              width: "100%", height: 48, border: "none", borderRadius: 999,
               background: "#ED5650", color: "#fff",
               fontFamily: "system-ui, -apple-system, sans-serif",
-              fontWeight: 500, fontSize: 15, cursor: "pointer",
+              fontWeight: 600, fontSize: 15, cursor: "pointer",
             }}
           >
             Ir al inicio de sesión
@@ -733,8 +733,8 @@ function RegisterView({ onBack }: { onBack: () => void }) {
           <ArrowLeft className="size-4" /> Volver
         </button>
         <div>
-          <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 500, fontSize: 30, color: "#333333", margin: 0 }}>Crear cuenta</h1>
-          <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 10 }}>Completa los datos para registrarte.</p>
+          <h1 style={{ fontFamily: "system-ui, -apple-system, sans-serif", fontWeight: 600, fontSize: 28, color: "#333333", margin: 0 }}>Crear cuenta</h1>
+          <p style={{ fontSize: 15, color: "rgba(51,51,51,0.65)", marginTop: 8 }}>Completa los datos para registrarte.</p>
         </div>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Nombre */}
@@ -832,10 +832,10 @@ function RegisterView({ onBack }: { onBack: () => void }) {
           <button
             type="submit" disabled={loading || !nombre || !email || !password || !confirm}
             style={{
-              width: "100%", height: 52, border: "none", borderRadius: 999,
+              width: "100%", height: 48, border: "none", borderRadius: 999,
               background: "#ED5650", color: "#fff",
               fontFamily: "system-ui, -apple-system, sans-serif",
-              fontWeight: 500, fontSize: 15,
+              fontWeight: 600, fontSize: 15,
               cursor: loading || !nombre || !email || !password || !confirm ? "not-allowed" : "pointer",
               opacity: loading || !nombre || !email || !password || !confirm ? 0.5 : 1,
             }}
