@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { AlertCircle, ArrowLeft, CheckCircle2, UserPlus } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Resource } from "@/lib/permissions";
 
@@ -503,31 +503,20 @@ function LoginView({ onForgot, onRegister }: { onForgot: () => void; onRegister:
           </button>
 
           {/* Crear cuenta */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "4px 0" }}>
-              <span style={{ flex: 1, height: 1, background: "#D5D6D7" }} />
-              <span style={{ fontSize: 12.5, color: "#575757" }}>¿Nuevo en el sistema?</span>
-              <span style={{ flex: 1, height: 1, background: "#D5D6D7" }} />
-            </div>
+          <p style={{ textAlign: "center", fontSize: 13.5, color: "#575757", margin: "4px 0 0" }}>
+            ¿No tienes cuenta?{" "}
             <button
               type="button" onClick={onRegister}
               style={{
-                width: "100%", height: 48, marginTop: 4,
-                border: "1.5px solid #333333", borderRadius: 999,
-                background: "transparent", color: "#333333",
+                border: "none", background: "none", padding: 0,
                 fontFamily: "system-ui, -apple-system, sans-serif",
-                fontWeight: 500, fontSize: 14.5,
+                fontWeight: 600, fontSize: 13.5, color: "#ED5650",
                 cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                transition: "background 120ms ease, color 120ms ease",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#333333"; e.currentTarget.style.color = "#fff"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#333333"; }}
             >
-              <UserPlus style={{ width: 18, height: 18 }} />
               Crear cuenta
             </button>
-          </div>
+          </p>
         </form>
       </div>
     </SplitLayout>
