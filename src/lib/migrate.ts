@@ -407,5 +407,17 @@ export async function runMigration(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS slack_config_singleton ON public.slack_config ((true))
   `);
 
+  // ── Festivos personalizados ───────────────────────────────────────────────
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS public.custom_holidays (
+      date        DATE        PRIMARY KEY,
+      is_holiday  BOOLEAN     NOT NULL DEFAULT true,
+      description TEXT        NOT NULL DEFAULT '',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
   done = true; // solo se marca como completada si todo tuvo éxito
 }

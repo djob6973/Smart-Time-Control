@@ -21,6 +21,11 @@ import {
   type SlackConfig,
 } from "@/lib/slack";
 import { LogoUpload } from "@/components/wfm/LogoUpload";
+import {
+  getCustomHolidays, upsertCustomHoliday, deleteCustomHoliday,
+  type CustomHoliday,
+} from "@/lib/api/custom-holidays";
+import { getHolidaysForYear } from "@/lib/wfm/calc";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -283,7 +288,41 @@ function SettingsPage() {
   const { role: authRole, user, organization, organizations, switchOrg } = useAuth();
   const isAdmin = authRole === "admin";
 
-  const [tab, setTab] = useState<"users" | "roles" | "org" | "marca" | "slack">("users");
+  const [tab, setTab] = useState<"users" | "roles" | "org" | "marca" | "slack" | "festivos">("users");
+
+  // Festivos tab state
+  const [holidayYear, setHolidayYear]         = useState(new Date().getFullYear());
+  const [customHolidays, setCustomHolidays]   = useState<CustomHoliday[]>([]);
+  const [holidaysLoading, setHolidaysLoading] = useState(false);
+  const [newHolidayDate, setNewHolidayDate]   = useState("");
+  const [newHolidayDesc, setNewHolidayDesc]   = useState("");
+  const [newHolidayType, setNewHolidayType]   = useState<"add" | "remove">("add");
+  const [holidaySaving, setHolidaySaving]     = useState(false);
+
+  async function fetchCustomHolidays() {
+    setHolidaysLoading(true);
+    try { setCustomHolidays(await getCustomHolidays()); }
+    catch { /* ignore */ }
+    finally { setHolidaysLoading(false); }
+  }
+
+  async function handleUpsertHoliday() {
+    if (!newHolidayDate) return;
+    setHolidaySaving(true);
+    try {
+      await upsertCustomHoliday({ data: { date: newHolidayDate, is_holiday: newHolidayType === "add", description: newHolidayDesc } });
+      setNewHolidayDate(""); setNewHolidayDesc(""); setNewHolidayType("add");
+      await fetchCustomHolidays();
+    } catch { /* ignore */ }
+    finally { setHolidaySaving(false); }
+  }
+
+  async function handleDeleteHoliday(date: string) {
+    try {
+      await deleteCustomHoliday({ data: { date } });
+      await fetchCustomHolidays();
+    } catch { /* ignore */ }
+  }
 
   // Slack tab state
   const [slackCfg, setSlackCfg]           = useState<SlackConfig>({ botToken: null, channelId: null, enabled: false, autoNotify: false });
@@ -362,6 +401,7 @@ function SettingsPage() {
       setSlackLoading(true);
       getSlackConfig().then(cfg => setSlackCfg(cfg)).catch(() => {}).finally(() => setSlackLoading(false));
     }
+    if (tab === "festivos") fetchCustomHolidays();
   }, [tab, isAdmin, organization?.id]);
 
   useEffect(() => {
@@ -683,7 +723,8 @@ function SettingsPage() {
     { key: "roles" as const, label: "Roles y permisos", Icon: Shield },
     { key: "org"   as const, label: "Organización",     Icon: Building2 },
     { key: "marca" as const, label: "Marca",             Icon: Palette },
-    { key: "slack" as const, label: "Slack",             Icon: MessageSquare },
+    { key: "slack"     as const, label: "Slack",             Icon: MessageSquare },
+    { key: "festivos"  as const, label: "Festivos",          Icon: CalendarCheck },
   ];
 
   return (
@@ -1484,6 +1525,128 @@ function SettingsPage() {
                 >
                   {slackSaveOk ? <Check className="size-4" /> : null}
                   {slackSaving ? "Guardando…" : slackSaveOk ? "Guardado" : "Guardar cambios"}
+                </button>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* ── Festivos ──────────────────────────────────────────────────── */}
+        {tab === "festivos" && (
+          <div className="flex flex-col gap-6 max-w-2xl">
+
+            {/* Year selector */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setHolidayYear(y => y - 1)}
+                className="size-8 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm font-medium"
+              >‹</button>
+              <span className="text-base font-semibold w-16 text-center">{holidayYear}</span>
+              <button
+                onClick={() => setHolidayYear(y => y + 1)}
+                className="size-8 rounded-full border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm font-medium"
+              >›</button>
+            </div>
+
+            {/* Lista de festivos del año */}
+            <div className="rounded-card bg-card shadow-card overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
+                <CalendarCheck className="size-4 text-primary" />
+                <span className="text-sm font-semibold">Festivos {holidayYear}</span>
+              </div>
+              {(() => {
+                const autoSet = getHolidaysForYear(holidayYear);
+                const overrideMap = Object.fromEntries(customHolidays.map(c => [c.date, c]));
+                const allDates = new Set([...autoSet, ...Object.keys(overrideMap)]);
+                const rows = [...allDates]
+                  .filter(d => d.startsWith(String(holidayYear)))
+                  .sort();
+                return (
+                  <ul className="divide-y divide-border">
+                    {rows.map(date => {
+                      const override = overrideMap[date];
+                      const autoIsHoliday = autoSet.has(date);
+                      const isHol = override ? override.is_holiday : autoIsHoliday;
+                      return (
+                        <li key={date} className={`flex items-center gap-3 px-5 py-3 ${!isHol ? "opacity-50" : ""}`}>
+                          <span className={`size-2 rounded-full shrink-0 ${isHol ? "bg-primary" : "bg-muted-foreground"}`} />
+                          <span className="text-sm tabular-nums w-28 shrink-0">{date}</span>
+                          <span className="text-sm text-muted-foreground flex-1 truncate">
+                            {override?.description || "Festivo automático"}
+                          </span>
+                          {override && (
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              override.is_holiday
+                                ? "bg-primary/10 text-primary"
+                                : "bg-destructive/10 text-destructive"
+                            }`}>
+                              {override.is_holiday ? "Manual" : "Suprimido"}
+                            </span>
+                          )}
+                          {override && isAdmin && (
+                            <button
+                              onClick={() => handleDeleteHoliday(date)}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              title="Quitar override"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                    {rows.length === 0 && (
+                      <li className="px-5 py-6 text-sm text-muted-foreground text-center">Sin festivos calculados para {holidayYear}</li>
+                    )}
+                  </ul>
+                );
+              })()}
+            </div>
+
+            {/* Agregar override — solo admin */}
+            {isAdmin && (
+              <div className="rounded-card bg-card shadow-card p-5 space-y-4">
+                <p className="text-sm font-semibold">Agregar o modificar un festivo</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha</label>
+                    <input
+                      type="date"
+                      value={newHolidayDate}
+                      onChange={e => setNewHolidayDate(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</label>
+                    <select
+                      value={newHolidayType}
+                      onChange={e => setNewHolidayType(e.target.value as "add" | "remove")}
+                      className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="add">Marcar como festivo</option>
+                      <option value="remove">Suprimir festivo automático</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Descripción</label>
+                  <input
+                    type="text"
+                    value={newHolidayDesc}
+                    onChange={e => setNewHolidayDesc(e.target.value)}
+                    placeholder="Ej: Festivo local empresa, Día operativo especial…"
+                    className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <button
+                  onClick={handleUpsertHoliday}
+                  disabled={!newHolidayDate || holidaySaving}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  <Plus className="size-4" />
+                  {holidaySaving ? "Guardando…" : "Guardar"}
                 </button>
               </div>
             )}

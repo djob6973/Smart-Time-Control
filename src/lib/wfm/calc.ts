@@ -155,14 +155,29 @@ export function detectCode(start: number, end: number, dateISO: string, breakMin
   return "STD";
 }
 
-export function isHoliday(dateStr: string): boolean {
+/**
+ * Determina si una fecha es festivo en Colombia.
+ * @param overrides  Mapa de overrides DB: { "YYYY-MM-DD": true|false }.
+ *                   true = forzar festivo, false = forzar NO festivo.
+ *                   Si se omite, solo usa el algoritmo automático.
+ */
+export function isHoliday(dateStr: string, overrides?: Record<string, boolean>): boolean {
+  if (overrides && Object.prototype.hasOwnProperty.call(overrides, dateStr)) {
+    return overrides[dateStr];
+  }
   const year = parseInt(dateStr.slice(0, 4), 10);
   if (!holidayCache.has(year)) holidayCache.set(year, buildHolidays(year));
   return holidayCache.get(year)!.has(dateStr);
 }
 
-export function isSundayOrHoliday(dateStr: string): boolean {
-  return isSunday(dateStr) || isHoliday(dateStr);
+export function isSundayOrHoliday(dateStr: string, overrides?: Record<string, boolean>): boolean {
+  return isSunday(dateStr) || isHoliday(dateStr, overrides);
+}
+
+/** Retorna el set de festivos automáticos para un año (sin overrides). */
+export function getHolidaysForYear(year: number): Set<string> {
+  if (!holidayCache.has(year)) holidayCache.set(year, buildHolidays(year));
+  return holidayCache.get(year)!;
 }
 
 /** Returns hours within [start,end) that fall into night window (21-06). */
