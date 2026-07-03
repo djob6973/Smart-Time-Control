@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { toast } from "sonner";
 import type { Area, Employee, Absence, Shift } from "./types";
-import { detectCode, parseAbsNote, isHoliday } from "./calc";
+import { detectCode, parseAbsNote, isHoliday, setHolidayOverrides } from "./calc";
+import { loadHolidayOverrides } from "@/lib/api/custom-holidays";
 import { seedAreas, seedEmployees, seedAbsences, seedShifts } from "./mock";
 import { toISO, startOfWeek, addDays } from "./date";
 import * as db from "./db";
@@ -65,12 +66,14 @@ export const useWFM = create<WFMState>()((set, get) => ({
   initFromDB: async () => {
     set({ loading: true });
     try {
-      const [areas, employees, absences, shifts] = await Promise.all([
+      const [areas, employees, absences, shifts, overrides] = await Promise.all([
         db.fetchAreas(),
         db.fetchEmployees(),
         db.fetchAbsences(),
         db.fetchShifts(),
+        loadHolidayOverrides(),
       ]);
+      setHolidayOverrides(overrides);
       set({ areas, employees, absences, shifts, initialized: true });
     } finally {
       set({ loading: false });

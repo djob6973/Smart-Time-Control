@@ -22,10 +22,10 @@ import {
 } from "@/lib/slack";
 import { LogoUpload } from "@/components/wfm/LogoUpload";
 import {
-  getCustomHolidays, upsertCustomHoliday, deleteCustomHoliday,
+  getCustomHolidays, upsertCustomHoliday, deleteCustomHoliday, loadHolidayOverrides,
   type CustomHoliday,
 } from "@/lib/api/custom-holidays";
-import { getHolidaysForYear } from "@/lib/wfm/calc";
+import { getHolidaysForYear, setHolidayOverrides } from "@/lib/wfm/calc";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -312,7 +312,8 @@ function SettingsPage() {
     try {
       await upsertCustomHoliday({ data: { date: newHolidayDate, is_holiday: newHolidayType === "add", description: newHolidayDesc } });
       setNewHolidayDate(""); setNewHolidayDesc(""); setNewHolidayType("add");
-      await fetchCustomHolidays();
+      const [, overrides] = await Promise.all([fetchCustomHolidays(), loadHolidayOverrides()]);
+      setHolidayOverrides(overrides);
     } catch { /* ignore */ }
     finally { setHolidaySaving(false); }
   }
@@ -320,7 +321,8 @@ function SettingsPage() {
   async function handleDeleteHoliday(date: string) {
     try {
       await deleteCustomHoliday({ data: { date } });
-      await fetchCustomHolidays();
+      const [, overrides] = await Promise.all([fetchCustomHolidays(), loadHolidayOverrides()]);
+      setHolidayOverrides(overrides);
     } catch { /* ignore */ }
   }
 

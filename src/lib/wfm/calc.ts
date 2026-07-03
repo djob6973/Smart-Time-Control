@@ -74,6 +74,14 @@ function buildHolidays(year: number): Set<string> {
 
 const holidayCache = new Map<number, Set<string>>();
 
+// Overrides cargados desde DB (custom_holidays). Se inicializan una sola vez en el store.
+let _overrides: Record<string, boolean> = {};
+
+/** Carga los overrides de festivos personalizados en el motor de cálculo. */
+export function setHolidayOverrides(overrides: Record<string, boolean>): void {
+  _overrides = overrides;
+}
+
 const KNOWN_ABS_TYPES = new Set([
   "vacaciones", "incapacidad", "licencia", "permiso", "no_remunerada", "compensatorio",
 ]);
@@ -157,21 +165,20 @@ export function detectCode(start: number, end: number, dateISO: string, breakMin
 
 /**
  * Determina si una fecha es festivo en Colombia.
- * @param overrides  Mapa de overrides DB: { "YYYY-MM-DD": true|false }.
- *                   true = forzar festivo, false = forzar NO festivo.
- *                   Si se omite, solo usa el algoritmo automático.
+ * Primero consulta los overrides cargados desde DB (setHolidayOverrides),
+ * luego el algoritmo automático (Ley Emiliani + Semana Santa + fijos).
  */
-export function isHoliday(dateStr: string, overrides?: Record<string, boolean>): boolean {
-  if (overrides && Object.prototype.hasOwnProperty.call(overrides, dateStr)) {
-    return overrides[dateStr];
+export function isHoliday(dateStr: string): boolean {
+  if (Object.prototype.hasOwnProperty.call(_overrides, dateStr)) {
+    return _overrides[dateStr];
   }
   const year = parseInt(dateStr.slice(0, 4), 10);
   if (!holidayCache.has(year)) holidayCache.set(year, buildHolidays(year));
   return holidayCache.get(year)!.has(dateStr);
 }
 
-export function isSundayOrHoliday(dateStr: string, overrides?: Record<string, boolean>): boolean {
-  return isSunday(dateStr) || isHoliday(dateStr, overrides);
+export function isSundayOrHoliday(dateStr: string): boolean {
+  return isSunday(dateStr) || isHoliday(dateStr);
 }
 
 /** Retorna el set de festivos automáticos para un año (sin overrides). */
