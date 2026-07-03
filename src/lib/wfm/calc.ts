@@ -1,6 +1,6 @@
 import type { Shift, NoveltyBreakdown, NoveltyCode, Area } from "./types";
 
-const NIGHT_START = 21; // 21:00
+const NIGHT_START = 19; // 19:00 — Ley 2101/2021: jornada nocturna 7:00 p.m. – 6:00 a.m.
 const NIGHT_END = 6;    // 06:00
 
 export function isSunday(dateStr: string): boolean {

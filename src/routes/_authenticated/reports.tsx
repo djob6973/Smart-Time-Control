@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/reports")({
 /* ------------------------------------------------------------------ */
 /*  Constants                                                           */
 /* ------------------------------------------------------------------ */
-const NIGHT_START = 21;
+const NIGHT_START = 19; // Ley 2101/2021: nocturna desde las 7:00 p.m.
 const TARGET_CODES = ["HED", "HEN", "RN", "RDF", "HEDF"] as const;
 type TargetCode = (typeof TARGET_CODES)[number];
 type Period = "Semana" | "Mes" | "Trimestre";

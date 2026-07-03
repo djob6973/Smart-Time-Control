@@ -1511,32 +1511,32 @@ const LEGEND_TOOLTIPS: Record<string, { title: string; desc: string; when: strin
   STD:  {
     title: "Jornada Estándar",
     desc:  "Horas ordinarias diurnas dentro del límite diario configurado en el área.",
-    when:  "06:00 – 21:00 · Días hábiles (lunes–sábado) · Hasta el máximo diario del área (por defecto 8 h)",
+    when:  "06:00 – 19:00 · Días hábiles (lunes–sábado) · Hasta el máximo diario del área (por defecto 8 h)",
   },
   HED:  {
     title: "Hora Extra Diurna",
     desc:  "Se activa cuando la jornada supera el máximo diario en franja diurna.",
-    when:  "A partir de la hora 9 (o del máx. del área) · 06:00 – 21:00 · Días hábiles",
+    when:  "A partir de la hora 9 (o del máx. del área) · 06:00 – 19:00 · Días hábiles",
   },
   HEN:  {
     title: "Hora Extra Nocturna",
     desc:  "Horas adicionales al estándar trabajadas en la franja nocturna.",
-    when:  "A partir de la hora 9 · 21:00 – 06:00 · Días hábiles",
+    when:  "A partir de la hora 9 · 19:00 – 06:00 · Días hábiles",
   },
   RN:   {
     title: "Recargo Nocturno",
     desc:  "Horas dentro del estándar (≤ máx. diario) trabajadas en horario nocturno.",
-    when:  "21:00 – 06:00 · Días hábiles · Sin superar el máximo diario",
+    when:  "19:00 – 06:00 · Días hábiles · Sin superar el máximo diario",
   },
   RDF:  {
     title: "Recargo Dominical / Festivo",
     desc:  "Trabajo en domingo o festivo colombiano dentro de la jornada estándar.",
-    when:  "06:00 – 21:00 · Domingos y festivos · Hasta el máximo diario del área",
+    when:  "06:00 – 19:00 · Domingos y festivos · Hasta el máximo diario del área",
   },
   HEDF: {
     title: "Hora Extra Dom. Diurna",
     desc:  "Horas extras en domingo o festivo en franja diurna, superando el estándar.",
-    when:  "A partir de la hora 9 · 06:00 – 21:00 · Domingos / festivos colombianos",
+    when:  "A partir de la hora 9 · 06:00 – 19:00 · Domingos / festivos colombianos",
   },
   ABS:  {
     title: "Ausencia",
