@@ -185,7 +185,7 @@ export function Sidebar() {
                         onClick={() => { setLang(code); setLangOpen(false); }}
                         className="w-full flex items-center gap-2.5 rounded-xl transition-colors"
                         style={{
-                          padding: "8px 10px",
+                          padding: "11px 10px",
                           background: selected ? "rgba(255,255,255,0.06)" : "transparent",
                         }}
                         onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
