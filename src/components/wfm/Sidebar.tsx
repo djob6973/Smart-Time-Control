@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, CalendarDays, Users, Building2,
   CalendarOff, FileText, Settings, Clock, CalendarCheck,
-  Sun, Moon, ChevronRight, Languages, CircleUser,
+  Sun, Moon, ChevronRight, Languages, User,
 } from "lucide-react";
 import { useEffect, useRef, useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
@@ -250,7 +250,7 @@ export function Sidebar() {
                   : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               )}
             >
-              <CircleUser className="size-[18px]" />
+              <User className="size-[16px]" strokeWidth={1.5} />
             </button>
 
           </div>
