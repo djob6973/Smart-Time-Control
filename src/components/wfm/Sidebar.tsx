@@ -168,7 +168,7 @@ export function Sidebar() {
 
               {langOpen && (
                 <div
-                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-2xl shadow-xl overflow-hidden"
+                  className="absolute bottom-full mb-2 left-0 rounded-2xl shadow-xl overflow-hidden"
                   style={{
                     minWidth: 172, zIndex: 200,
                     background: "#1f1f1f",
