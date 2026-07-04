@@ -168,20 +168,61 @@ export function Sidebar() {
 
               {langOpen && (
                 <div
-                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-xl border border-border bg-card shadow-lg overflow-hidden"
-                  style={{ minWidth: 140, zIndex: 200 }}
+                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-2xl shadow-xl overflow-hidden"
+                  style={{
+                    minWidth: 172, zIndex: 200,
+                    background: "#1f1f1f",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    padding: "6px",
+                  }}
                 >
-                  {LANGUAGES.map(({ code, label, flag }) => (
-                    <button
-                      key={code}
-                      onClick={() => { setLang(code); setLangOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-secondary transition-colors text-left"
-                      style={{ fontWeight: lang === code ? 600 : 400 }}
-                    >
-                      <span>{flag}</span>
-                      <span>{label}</span>
-                    </button>
-                  ))}
+                  {LANGUAGES.map(({ code, label }) => {
+                    const countryCode = code === "es" ? "ES" : code === "en" ? "US" : "BR";
+                    const selected = lang === code;
+                    return (
+                      <button
+                        key={code}
+                        onClick={() => { setLang(code); setLangOpen(false); }}
+                        className="w-full flex items-center gap-2.5 rounded-xl transition-colors"
+                        style={{
+                          padding: "8px 10px",
+                          background: selected ? "rgba(255,255,255,0.06)" : "transparent",
+                        }}
+                        onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = selected ? "rgba(255,255,255,0.06)" : "transparent"; }}
+                      >
+                        {/* Badge código */}
+                        <span
+                          style={{
+                            width: 28, height: 20, borderRadius: 5,
+                            background: "rgba(255,255,255,0.1)",
+                            color: "rgba(255,255,255,0.6)",
+                            fontSize: 10, fontWeight: 700,
+                            letterSpacing: "0.04em",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {countryCode}
+                        </span>
+                        {/* Nombre */}
+                        <span style={{
+                          flex: 1, textAlign: "left",
+                          fontSize: 13.5,
+                          color: selected ? "#fff" : "rgba(255,255,255,0.55)",
+                          fontWeight: selected ? 500 : 400,
+                        }}>
+                          {label}
+                        </span>
+                        {/* Check */}
+                        {selected && (
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2.5 7L5.5 10L11.5 4" stroke="#ED5650" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
