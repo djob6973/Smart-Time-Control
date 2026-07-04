@@ -399,3 +399,34 @@ export const dbRemoveOrgMember = createServerFn({ method: "POST" })
     );
     return { success: true };
   });
+
+// ── Auto-asignación del rol Gestor (usuario pendiente) ────────────────────────
+// Permite a un usuario recién creado (sin rol) asignarse el rol "gestor" sin
+// intervención de un administrador. Solo aplica si el usuario está en estado Pendiente.
+
+export const selfAssignGestorRole = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ userId: z.string() }))
+  .handler(async ({ data }) => {
+    const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
+
+    // Verifica que el usuario realmente no tiene rol asignado aún
+    const existing = await queryOne<{ role_id: string }>(
+      `SELECT role_id FROM public.user_roles WHERE user_id = $1 LIMIT 1`,
+      [data.userId],
+    );
+    if (existing) throw new Error("El usuario ya tiene un rol asignado.");
+
+    const gestorRole = await queryOne<{ id: string }>(
+      `SELECT id FROM public.roles WHERE nombre = 'gestor' LIMIT 1`,
+    );
+    if (!gestorRole) throw new Error("El rol 'gestor' no existe en el sistema.");
+
+    await execute(
+      `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT DO NOTHING`,
+      [data.userId, gestorRole.id, DEFAULT_ORG_ID],
+    );
+
+    return { success: true };
+  });
