@@ -13,93 +13,76 @@ export const Route = createFileRoute("/_authenticated")({
 function BrandSplash() {
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center"
-      style={{ zIndex: 9999, background: "#1c1c1c", overflow: "hidden" }}
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "#222222", overflow: "hidden",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
     >
-      {/* Fondo: cuadrícula de logos con fade radial */}
+      {/* Fondo: cuadrícula de logos que se desvanece de izquierda a derecha */}
       <div
         aria-hidden
         style={{
           position: "absolute", inset: 0,
           display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gridTemplateRows: "repeat(5, 1fr)",
-          gap: 0,
-          maskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 28%, black 80%)",
-          WebkitMaskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 28%, black 80%)",
-          opacity: 0.18,
+          gridTemplateColumns: "repeat(6, 1fr)",
+          gridTemplateRows: "repeat(6, 1fr)",
+          maskImage: "linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, transparent 65%)",
+          WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, transparent 65%)",
         }}
       >
-        {Array.from({ length: 35 }).map((_, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {Array.from({ length: 36 }).map((_, i) => (
+          <div
+            key={i}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
             <img
               src="/api/settings/favicon"
               alt=""
-              style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 10 }}
+              style={{ width: 52, height: 52, objectFit: "contain", borderRadius: 12, opacity: 0.9 }}
             />
           </div>
         ))}
       </div>
 
-      {/* Halo de luz central */}
+      {/* Contenido central */}
       <div
-        aria-hidden
         style={{
-          position: "absolute",
-          width: 480, height: 480,
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(237,86,80,0.12) 0%, transparent 70%)",
-          pointerEvents: "none",
+          position: "relative",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", gap: 28, textAlign: "center",
         }}
-      />
-
-      {/* Contenido principal */}
-      <div className="relative flex flex-col items-center gap-6 text-center">
-        <div style={{ position: "relative" }}>
-          <div
-            style={{
-              position: "absolute", inset: -12,
-              borderRadius: 28,
-              background: "rgba(237,86,80,0.12)",
-              filter: "blur(16px)",
-            }}
-          />
+      >
+        {/* Logo + nombre en horizontal */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <img
             src="/api/settings/favicon"
             alt="Smart Time Control"
-            style={{
-              position: "relative",
-              width: 72, height: 72,
-              objectFit: "contain",
-              borderRadius: 18,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            }}
+            style={{ width: 42, height: 42, objectFit: "contain", borderRadius: 10 }}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
+          <div style={{ textAlign: "left" }}>
+            <div style={{ color: "#fff", fontSize: 20, fontWeight: 700, letterSpacing: "-0.01em", lineHeight: 1.1 }}>
+              Smart Time Control
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: 3 }}>
+              Sistema de Turnos
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
-            Smart Time Control
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13.5, lineHeight: 1.6, margin: 0, maxWidth: 260 }}>
-            Planifica turnos y controla la jornada<br />de todo tu equipo en tiempo real.
+        {/* Tagline */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 0, maxWidth: 380 }}>
+          <p style={{
+            color: "#fff", fontSize: 28, fontWeight: 700,
+            lineHeight: 1.3, margin: 0, letterSpacing: "-0.02em",
+          }}>
+            Planifica turnos y controla<br />
+            la jornada de todo tu equipo<br />
+            en tiempo real.
           </p>
-        </div>
-
-        {/* Dots */}
-        <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: "rgba(255,255,255,0.25)",
-                animation: `stc-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-                display: "block",
-              }}
-            />
-          ))}
+          {/* Línea roja */}
+          <div style={{ width: 60, height: 3, background: "#ED5650", borderRadius: 2, margin: "20px auto 0" }} />
         </div>
       </div>
 
