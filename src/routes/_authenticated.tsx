@@ -19,19 +19,22 @@ function BrandSplash() {
         display: "flex", alignItems: "center", justifyContent: "center",
       }}
     >
-      {/* Fondo: cuadrícula de logos que se desvanece de izquierda a derecha */}
+      {/* Fondo: cuadrícula de logos borrosa que se desvanece de izquierda a derecha */}
       <div
         aria-hidden
         style={{
           position: "absolute", inset: 0,
           display: "grid",
-          gridTemplateColumns: "repeat(6, 1fr)",
+          gridTemplateColumns: "repeat(8, 1fr)",
           gridTemplateRows: "repeat(6, 1fr)",
-          maskImage: "linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, transparent 65%)",
-          WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, transparent 65%)",
+          columnGap: 0,
+          rowGap: 0,
+          filter: "blur(3px)",
+          maskImage: "linear-gradient(to right, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 38%, transparent 62%)",
+          WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.3) 38%, transparent 62%)",
         }}
       >
-        {Array.from({ length: 36 }).map((_, i) => (
+        {Array.from({ length: 48 }).map((_, i) => (
           <div
             key={i}
             style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -39,7 +42,7 @@ function BrandSplash() {
             <img
               src="/api/settings/favicon"
               alt=""
-              style={{ width: 52, height: 52, objectFit: "contain", borderRadius: 12, opacity: 0.9 }}
+              style={{ width: 48, height: 48, objectFit: "contain", borderRadius: 10, opacity: 0.85 }}
             />
           </div>
         ))}
@@ -81,15 +84,19 @@ function BrandSplash() {
             la jornada de todo tu equipo<br />
             en tiempo real.
           </p>
-          {/* Línea roja */}
-          <div style={{ width: 60, height: 3, background: "#ED5650", borderRadius: 2, margin: "20px auto 0" }} />
+          {/* Línea roja con animación de carga */}
+          <div style={{ width: 120, height: 3, background: "rgba(237,86,80,0.2)", borderRadius: 2, margin: "20px auto 0", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", inset: 0, borderRadius: 2, animation: "stc-bar 1.6s ease-in-out infinite", background: "#ED5650", transformOrigin: "left center" }} />
+          </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes stc-pulse {
-          0%, 100% { opacity: 0.25; transform: scale(0.75); }
-          50%       { opacity: 1;    transform: scale(1); }
+        @keyframes stc-bar {
+          0%   { transform: scaleX(0);   opacity: 1; }
+          60%  { transform: scaleX(1);   opacity: 1; }
+          80%  { transform: scaleX(1);   opacity: 0; }
+          100% { transform: scaleX(0);   opacity: 0; }
         }
       `}</style>
     </div>
