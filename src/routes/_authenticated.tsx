@@ -10,47 +10,103 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 // ── Splash de marca ────────────────────────────────────────────────────────────
-// Se muestra mientras se resuelve la identidad del usuario.
 function BrandSplash() {
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center gap-8 bg-[#232323]"
-      style={{ zIndex: 9999 }}
+      className="fixed inset-0 flex flex-col items-center justify-center"
+      style={{ zIndex: 9999, background: "#1c1c1c", overflow: "hidden" }}
     >
-      {/* Logo */}
-      <div className="flex flex-col items-center gap-5">
-        <img
-          src="/api/settings/favicon"
-          alt="Logo"
-          className="size-16 object-contain rounded-xl"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-        />
-        <div className="text-center space-y-2">
-          <h1 className="text-white text-2xl font-bold tracking-tight">
-            Smart Time Control
-          </h1>
-          <p className="text-white/50 text-sm max-w-xs leading-relaxed text-center">
-            Planifica turnos y controla la jornada de<br />
-            todo tu equipo en tiempo real.
-          </p>
-        </div>
-      </div>
-
-      {/* Indicador de carga */}
-      <div className="flex gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="size-1.5 rounded-full bg-white/30"
-            style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }}
-          />
+      {/* Fondo: cuadrícula de logos con fade radial */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", inset: 0,
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gridTemplateRows: "repeat(5, 1fr)",
+          gap: 0,
+          maskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 28%, black 80%)",
+          WebkitMaskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 28%, black 80%)",
+          opacity: 0.18,
+        }}
+      >
+        {Array.from({ length: 35 }).map((_, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img
+              src="/api/settings/favicon"
+              alt=""
+              style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 10 }}
+            />
+          </div>
         ))}
       </div>
 
+      {/* Halo de luz central */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          width: 480, height: 480,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(237,86,80,0.12) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Contenido principal */}
+      <div className="relative flex flex-col items-center gap-6 text-center">
+        <div style={{ position: "relative" }}>
+          <div
+            style={{
+              position: "absolute", inset: -12,
+              borderRadius: 28,
+              background: "rgba(237,86,80,0.12)",
+              filter: "blur(16px)",
+            }}
+          />
+          <img
+            src="/api/settings/favicon"
+            alt="Smart Time Control"
+            style={{
+              position: "relative",
+              width: 72, height: 72,
+              objectFit: "contain",
+              borderRadius: 18,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
+            Smart Time Control
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13.5, lineHeight: 1.6, margin: 0, maxWidth: 260 }}>
+            Planifica turnos y controla la jornada<br />de todo tu equipo en tiempo real.
+          </p>
+        </div>
+
+        {/* Dots */}
+        <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: "rgba(255,255,255,0.25)",
+                animation: `stc-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                display: "block",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.3; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1); }
+        @keyframes stc-pulse {
+          0%, 100% { opacity: 0.25; transform: scale(0.75); }
+          50%       { opacity: 1;    transform: scale(1); }
         }
       `}</style>
     </div>
