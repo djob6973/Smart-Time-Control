@@ -170,7 +170,7 @@ export function Sidebar() {
               {langOpen && (
                 <div
                   className="absolute bottom-full mb-2 left-0 shadow-xl overflow-hidden"
-                  style={{ borderRadius: 12 }}
+                  style={{ borderRadius: 8 }}
                   style={{
                     minWidth: 172, zIndex: 200,
                     background: "#1f1f1f",
