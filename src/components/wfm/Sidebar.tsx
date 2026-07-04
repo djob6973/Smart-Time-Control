@@ -1,13 +1,15 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, CalendarDays, Users, Building2,
-  CalendarOff, FileText, Settings, Clock, CalendarCheck, Sun, Moon, ChevronRight,
+  CalendarOff, FileText, Settings, Clock, CalendarCheck,
+  Sun, Moon, ChevronRight, Languages, CircleUser,
 } from "lucide-react";
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useRef, useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useAppContext } from "@/lib/app-context";
 import { useTheme } from "@/lib/theme";
+import { useI18n, LANGUAGES } from "@/lib/i18n";
 import type { Resource } from "@/lib/permissions";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -40,15 +42,29 @@ const NAV: NavItem[] = [
 ];
 
 export function Sidebar() {
-  const path    = useRouterState({ select: (s) => s.location.pathname });
+  const path     = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
   const { profile, role, roleLoading, hasPermission, organization } = useAuth();
   const { sidebarOpen, closeSidebar } = useAppContext();
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const { lang, setLang, t } = useI18n();
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     closeSidebar();
   }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { isDark, toggle: toggleTheme } = useTheme();
+  // Cierra el picker de idioma al hacer clic fuera
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    }
+    if (langOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [langOpen]);
 
   const isLinkedEmployee = !!profile?.employeeId;
 
@@ -138,14 +154,61 @@ export function Sidebar() {
         {/* Footer: acciones + usuario */}
         <div className="shrink-0 pt-3 mt-3">
           {/* Fila de acciones */}
-          <div className="flex items-center justify-center px-2 pb-3">
+          <div className="flex items-center justify-around px-2 pb-3">
+
+            {/* Selector de idioma */}
+            <div ref={langRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setLangOpen(v => !v)}
+                title={t("language")}
+                className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+              >
+                <Languages className="size-[18px]" />
+              </button>
+
+              {langOpen && (
+                <div
+                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-xl border border-border bg-card shadow-lg overflow-hidden"
+                  style={{ minWidth: 140, zIndex: 200 }}
+                >
+                  {LANGUAGES.map(({ code, label, flag }) => (
+                    <button
+                      key={code}
+                      onClick={() => { setLang(code); setLangOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-secondary transition-colors text-left"
+                      style={{ fontWeight: lang === code ? 600 : 400 }}
+                    >
+                      <span>{flag}</span>
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Tema */}
             <button
               onClick={toggleTheme}
-              title={isDark ? "Modo claro" : "Modo oscuro"}
+              title={isDark ? t("light_mode") : t("dark_mode")}
               className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
             >
               {isDark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
             </button>
+
+            {/* Mi cuenta */}
+            <button
+              onClick={() => navigate({ to: "/mi-cuenta" })}
+              title={t("mi_cuenta")}
+              className={cn(
+                "size-9 rounded-lg flex items-center justify-center transition-colors",
+                path === "/mi-cuenta"
+                  ? "bg-sidebar-accent text-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+              )}
+            >
+              <CircleUser className="size-[18px]" />
+            </button>
+
           </div>
           {/* Fila de usuario */}
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent/60 transition-colors cursor-default">

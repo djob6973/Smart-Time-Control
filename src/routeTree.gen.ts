@@ -21,6 +21,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedSchedulerRouteImport } from './routes/_authenticated/scheduler'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedMiHorarioRouteImport } from './routes/_authenticated/mi-horario'
+import { Route as AuthenticatedMiCuentaRouteImport } from './routes/_authenticated/mi-cuenta'
 import { Route as AuthenticatedJornadaRouteImport } from './routes/_authenticated/jornada'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
 import { Route as AuthenticatedAreasRouteImport } from './routes/_authenticated/areas'
@@ -85,6 +86,11 @@ const AuthenticatedMiHorarioRoute = AuthenticatedMiHorarioRouteImport.update({
   path: '/mi-horario',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedMiCuentaRoute = AuthenticatedMiCuentaRouteImport.update({
+  id: '/mi-cuenta',
+  path: '/mi-cuenta',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedJornadaRoute = AuthenticatedJornadaRouteImport.update({
   id: '/jornada',
   path: '/jornada',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/areas': typeof AuthenticatedAreasRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/jornada': typeof AuthenticatedJornadaRoute
+  '/mi-cuenta': typeof AuthenticatedMiCuentaRoute
   '/mi-horario': typeof AuthenticatedMiHorarioRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/scheduler': typeof AuthenticatedSchedulerRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/areas': typeof AuthenticatedAreasRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/jornada': typeof AuthenticatedJornadaRoute
+  '/mi-cuenta': typeof AuthenticatedMiCuentaRoute
   '/mi-horario': typeof AuthenticatedMiHorarioRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/scheduler': typeof AuthenticatedSchedulerRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated/areas': typeof AuthenticatedAreasRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/jornada': typeof AuthenticatedJornadaRoute
+  '/_authenticated/mi-cuenta': typeof AuthenticatedMiCuentaRoute
   '/_authenticated/mi-horario': typeof AuthenticatedMiHorarioRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/scheduler': typeof AuthenticatedSchedulerRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/areas'
     | '/employees'
     | '/jornada'
+    | '/mi-cuenta'
     | '/mi-horario'
     | '/reports'
     | '/scheduler'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/areas'
     | '/employees'
     | '/jornada'
+    | '/mi-cuenta'
     | '/mi-horario'
     | '/reports'
     | '/scheduler'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/_authenticated/areas'
     | '/_authenticated/employees'
     | '/_authenticated/jornada'
+    | '/_authenticated/mi-cuenta'
     | '/_authenticated/mi-horario'
     | '/_authenticated/reports'
     | '/_authenticated/scheduler'
@@ -307,6 +319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMiHorarioRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/mi-cuenta': {
+      id: '/_authenticated/mi-cuenta'
+      path: '/mi-cuenta'
+      fullPath: '/mi-cuenta'
+      preLoaderRoute: typeof AuthenticatedMiCuentaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/jornada': {
       id: '/_authenticated/jornada'
       path: '/jornada'
@@ -343,6 +362,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAreasRoute: typeof AuthenticatedAreasRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedJornadaRoute: typeof AuthenticatedJornadaRoute
+  AuthenticatedMiCuentaRoute: typeof AuthenticatedMiCuentaRoute
   AuthenticatedMiHorarioRoute: typeof AuthenticatedMiHorarioRoute
   AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSchedulerRoute: typeof AuthenticatedSchedulerRoute
@@ -355,6 +375,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAreasRoute: AuthenticatedAreasRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedJornadaRoute: AuthenticatedJornadaRoute,
+  AuthenticatedMiCuentaRoute: AuthenticatedMiCuentaRoute,
   AuthenticatedMiHorarioRoute: AuthenticatedMiHorarioRoute,
   AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSchedulerRoute: AuthenticatedSchedulerRoute,
