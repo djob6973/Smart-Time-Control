@@ -170,11 +170,11 @@ export function Sidebar() {
               {langOpen && (
                 <div
                   className="absolute bottom-full mb-2 left-0 shadow-xl overflow-hidden"
-                  style={{ borderRadius: 8 }}
                   style={{
+                    borderRadius: 8,
                     minWidth: 172, zIndex: 200,
                     background: "#1f1f1f",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.15)",
                     padding: "6px",
                   }}
                 >
@@ -243,12 +243,7 @@ export function Sidebar() {
             <button
               onClick={() => navigate({ to: "/mi-cuenta" })}
               title={t("mi_cuenta")}
-              className={cn(
-                "size-9 rounded-lg flex items-center justify-center transition-colors",
-                path === "/mi-cuenta"
-                  ? "bg-sidebar-accent text-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              )}
+              className="size-9 rounded-lg flex items-center justify-center transition-colors text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
             >
               <User className="size-[16px]" strokeWidth={1.5} />
             </button>
