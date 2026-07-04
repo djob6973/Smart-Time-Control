@@ -45,6 +45,8 @@ export interface AuthContextValue {
   loading: boolean;
   roleLoading: boolean;
   isPending: boolean;
+  // No-ops mantenidos para compatibilidad con código existente.
+  // El acceso lo gestiona el perímetro de Dokku (oauth2-proxy), no la app.
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string, nombre: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
@@ -53,6 +55,7 @@ export interface AuthContextValue {
   hasPermission: (resource: Resource, action: Action) => boolean;
   hasLimit: (key: keyof AccessLimits) => boolean;
   reloadRole: () => Promise<void>;
+  // Mantenidos como no-ops — sin passwords en este sistema
   requestPasswordReset: (email: string) => Promise<{ error: string | null; resetUrl?: string | null }>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<string | null>;
 }
@@ -85,73 +88,60 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
   const fullName = data.nombre ?? data.full_name ?? "";
   const isActive = data.activo ?? data.is_active ?? false;
   return {
-    id: data.id,
-    nombre: fullName,
-    email: data.email,
-    activo: isActive,
-    areaId: data.area_id ?? null,
-    fullName,
-    isActive,
-    employeeId: data.employee_id ?? null,
+    id: data.id, nombre: fullName, email: data.email,
+    activo: isActive, areaId: data.area_id ?? null,
+    fullName, isActive, employeeId: data.employee_id ?? null,
   };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [role, setRole] = useState<RoleName | null>(null);
-  const [rolePerms, setRolePerms] = useState<Record<string, string[]> | null>(null);
-  const [limits, setLimits] = useState<AccessLimits | null>(null);
+  const [user, setUser]                   = useState<AuthUser | null>(null);
+  const [profile, setProfile]             = useState<Profile | null>(null);
+  const [role, setRole]                   = useState<RoleName | null>(null);
+  const [rolePerms, setRolePerms]         = useState<Record<string, string[]> | null>(null);
+  const [limits, setLimits]               = useState<AccessLimits | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [roleLoading, setRoleLoading] = useState(false);
+  const [organization, setOrganization]   = useState<Organization | null>(null);
+  const [loading, setLoading]             = useState(true);
+  const [roleLoading, setRoleLoading]     = useState(false);
 
   const isPending = !loading && !roleLoading && user !== null && role === null;
 
   const resolveOrg = useCallback((orgs: Organization[]) => {
     if (!orgs.length) return null;
-    const storedId =
-      typeof window !== "undefined" ? localStorage.getItem(ORG_KEY) : null;
+    const storedId = typeof window !== "undefined" ? localStorage.getItem(ORG_KEY) : null;
     return (storedId && orgs.find((o) => o.id === storedId && o.activo)) || orgs[0];
   }, []);
 
-  const loadData = useCallback(
-    async (userId: string) => {
-      setRoleLoading(true);
-      try {
-        const { role: r, rolePerms: rp, limits: lm, organizations: orgs } =
-          await fetchUserData(userId);
-        const mappedOrgs = (orgs as (Organization & { logo_data?: string | null })[]).map(
-          ({ logo_data, ...o }) => ({ ...o, logo: logo_data ?? null }),
-        );
-        setRole(r);
-        setRolePerms(rp);
-        setLimits(lm);
-        setOrganizations(mappedOrgs);
-        setOrganization(resolveOrg(mappedOrgs));
-        fetchProfile(userId).then(setProfile).catch(() => {});
-      } catch {
-        // user stays in isPending state
-      } finally {
-        setRoleLoading(false);
-      }
-    },
-    [resolveOrg],
-  );
+  const loadData = useCallback(async (userId: string) => {
+    setRoleLoading(true);
+    try {
+      const { role: r, rolePerms: rp, limits: lm, organizations: orgs } = await fetchUserData(userId);
+      const mappedOrgs = (orgs as (Organization & { logo_data?: string | null })[]).map(
+        ({ logo_data, ...o }) => ({ ...o, logo: logo_data ?? null }),
+      );
+      setRole(r);
+      setRolePerms(rp);
+      setLimits(lm);
+      setOrganizations(mappedOrgs);
+      setOrganization(resolveOrg(mappedOrgs));
+      fetchProfile(userId).then(setProfile).catch(() => {});
+    } catch {
+      // usuario queda en estado isPending
+    } finally {
+      setRoleLoading(false);
+    }
+  }, [resolveOrg]);
 
   const clearData = useCallback(() => {
-    setUser(null);
-    setProfile(null);
-    setRole(null);
-    setRolePerms(null);
-    setLimits(null);
-    setOrganizations([]);
-    setOrganization(null);
+    setUser(null); setProfile(null); setRole(null);
+    setRolePerms(null); setLimits(null);
+    setOrganizations([]); setOrganization(null);
     setRoleLoading(false);
   }, []);
 
-  // Initialize session on mount by checking the session cookie via /api/auth/me
+  // Al montar, llama /api/auth/me que lee el header X-Forwarded-Email (o DEV_USER_EMAIL)
+  // y hace upsert automático del usuario.
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
@@ -165,80 +155,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, [loadData]);
 
-  const switchOrg = useCallback(
-    (orgId: string) => {
-      const org = organizations.find((o) => o.id === orgId) ?? null;
-      if (org) {
-        localStorage.setItem(ORG_KEY, orgId);
-        setOrganization(org);
-      }
-    },
-    [organizations],
-  );
-
-  const signIn = useCallback(async (email: string, password: string) => {
-    const r = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await r.json();
-    if (!r.ok) return { error: data.error ?? "Error al iniciar sesión" };
-    setUser(data);
-    loadData(data.id);
-    return {};
-  }, [loadData]);
-
-  const signUp = useCallback(async (email: string, password: string, nombre: string) => {
-    const r = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, nombre }),
-    });
-    const data = await r.json();
-    if (!r.ok) return { error: data.error ?? "Error al registrar usuario" };
-    setUser(data);
-    loadData(data.id);
-    return {};
-  }, [loadData]);
-
-  // Google SSO is handled at the nginx perimeter on Dokku; no client-side OAuth flow
-  const signInWithGoogle = useCallback(async () => {
-    return { error: "El acceso con Google está gestionado por el sistema de autenticación externo." };
-  }, []);
-
-  const signOut = useCallback(async () => {
-    await fetch("/api/auth/signout", { method: "POST" }).catch(() => {});
-    localStorage.removeItem(ORG_KEY);
-    clearData();
-  }, [clearData]);
+  const switchOrg = useCallback((orgId: string) => {
+    const org = organizations.find((o) => o.id === orgId) ?? null;
+    if (org) { localStorage.setItem(ORG_KEY, orgId); setOrganization(org); }
+  }, [organizations]);
 
   const reloadRole = useCallback(async () => {
     if (!user) return;
     await loadData(user.id);
   }, [user, loadData]);
-
-  const requestPasswordReset = useCallback(async (email: string) => {
-    const r = await fetch("/api/auth/reset-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    const data = await r.json();
-    if (!r.ok) return { error: data.error ?? "Error al procesar la solicitud" };
-    return { error: null, resetUrl: data.resetUrl ?? null };
-  }, []);
-
-  const updatePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<string | null> => {
-    const r = await fetch("/api/auth/change-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-    const data = await r.json();
-    if (!r.ok) return data.error ?? "No se pudo actualizar la contraseña";
-    return null;
-  }, []);
 
   const checkLimit = useCallback(
     (key: keyof AccessLimits) => limits?.[key] ?? false,
@@ -251,7 +176,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (role === "admin") return true;
       if (rolePerms) {
         const perm = rolePerms[resource];
-        // Key absent from DB (new resource not yet saved) → fall back to static defaults
         if (perm === undefined) return hasPermission(role, resource, action);
         if (!perm) return false;
         const LEVELS = ["none", "view", "edit", "full"];
@@ -265,6 +189,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     [role, rolePerms],
   );
+
+  // ── No-ops: el perímetro de Dokku gestiona el acceso ────────────────────────
+  const signIn            = useCallback(async () => ({}), []);
+  const signUp            = useCallback(async () => ({}), []);
+  const signInWithGoogle  = useCallback(async () => ({}), []);
+  const signOut           = useCallback(async () => { clearData(); }, [clearData]);
+  const requestPasswordReset = useCallback(async () => ({ error: null }), []);
+  const updatePassword    = useCallback(async () => null, []);
 
   return (
     <AuthContext.Provider
@@ -285,17 +217,5 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Standalone function for the reset-password page (uses token from URL, no session required)
-export async function resetPassword(token: string, newPassword: string): Promise<string | null> {
-  const r = await fetch("/api/auth/reset-password", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, newPassword }),
-  });
-  const data = await r.json();
-  if (!r.ok) return data.error ?? "No se pudo actualizar la contraseña";
-  return null;
-}
-
-// Re-export for backward compatibility with any code that imported DEFAULT_LIMITS_BY_ROLE from here
+// Re-export para compatibilidad con código existente
 export { DEFAULT_LIMITS_BY_ROLE, DEFAULT_LIMITS };
