@@ -171,7 +171,7 @@ export function Sidebar() {
                 <div
                   className="absolute bottom-full mb-2 left-0 shadow-xl overflow-hidden"
                   style={{
-                    borderRadius: 8,
+                    borderRadius: 20,
                     minWidth: 172, zIndex: 200,
                     background: "#1f1f1f",
                     border: "1px solid rgba(255,255,255,0.15)",
