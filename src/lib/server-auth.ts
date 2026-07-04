@@ -86,6 +86,26 @@ export async function upsertUser(email: string): Promise<AuthContext> {
     }
   }
 
+  // Para usuarios no-admin: migra automáticamente role_id legacy de user_profiles → user_roles
+  // Cubre usuarios creados antes del sistema de roles basado en user_roles.
+  if (!isAdmin) {
+    const hasRole = await queryOne<{ role_id: string }>(
+      `SELECT role_id FROM public.user_roles WHERE user_id = $1 LIMIT 1`,
+      [user.id],
+    );
+    if (!hasRole) {
+      await execute(
+        `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
+         SELECT $1, r.id, $2, NOW()
+         FROM public.user_profiles up
+         JOIN public.roles r ON r.id::text = up.role_id OR r.nombre = up.role_id
+         WHERE up.id = $1 AND up.role_id IS NOT NULL
+         ON CONFLICT DO NOTHING`,
+        [user.id, DEFAULT_ORG_ID],
+      ).catch(() => {});
+    }
+  }
+
   // Garantiza membresía en la organización por defecto
   await execute(
     `INSERT INTO public.user_organizations (user_id, organization_id, activo)

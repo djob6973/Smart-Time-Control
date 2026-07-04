@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, CalendarDays, Users, Building2,
-  CalendarOff, FileText, Settings, LogOut, Clock, CalendarCheck, KeyRound, Eye, EyeOff, X, Sun, Moon, ChevronRight,
+  CalendarOff, FileText, Settings, Clock, CalendarCheck, Sun, Moon, ChevronRight,
 } from "lucide-react";
 import { useEffect, useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
@@ -41,47 +41,8 @@ const NAV: NavItem[] = [
 
 export function Sidebar() {
   const path    = useRouterState({ select: (s) => s.location.pathname });
-  const { profile, role, roleLoading, signOut, hasPermission, updatePassword, organization } = useAuth();
+  const { profile, role, roleLoading, hasPermission, organization } = useAuth();
   const { sidebarOpen, closeSidebar } = useAppContext();
-
-  const [passOpen,     setPassOpen]     = useState(false);
-  const [currentPass,  setCurrentPass]  = useState("");
-  const [newPass,      setNewPass]      = useState("");
-  const [confirmPass,  setConfirmPass]  = useState("");
-  const [showCurrent,  setShowCurrent]  = useState(false);
-  const [showNew,      setShowNew]      = useState(false);
-  const [showConf,     setShowConf]     = useState(false);
-  const [passLoading,  setPassLoading]  = useState(false);
-  const [passError,    setPassError]    = useState<string | null>(null);
-  const [passDone,     setPassDone]     = useState(false);
-
-  function resetPassModal() {
-    setCurrentPass(""); setNewPass(""); setConfirmPass("");
-    setShowCurrent(false); setShowNew(false); setShowConf(false);
-    setPassError(null); setPassDone(false);
-  }
-
-  async function handleChangePassword() {
-    if (!currentPass) {
-      setPassError("Ingresa tu contraseña actual.");
-      return;
-    }
-    if (!newPass || newPass.length < 8) {
-      setPassError("La nueva contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-    if (newPass !== confirmPass) {
-      setPassError("Las contraseñas no coinciden.");
-      return;
-    }
-    setPassLoading(true);
-    setPassError(null);
-    const err = await updatePassword(currentPass, newPass);
-    setPassLoading(false);
-    if (err) { setPassError(err); return; }
-    setPassDone(true);
-    setTimeout(() => { setPassOpen(false); resetPassModal(); }, 1800);
-  }
 
   useEffect(() => {
     closeSidebar();
@@ -177,27 +138,13 @@ export function Sidebar() {
         {/* Footer: acciones + usuario */}
         <div className="shrink-0 pt-3 mt-3">
           {/* Fila de acciones */}
-          <div className="flex items-center justify-around px-2 pb-3">
+          <div className="flex items-center justify-center px-2 pb-3">
             <button
               onClick={toggleTheme}
               title={isDark ? "Modo claro" : "Modo oscuro"}
               className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
             >
               {isDark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
-            </button>
-            <button
-              onClick={() => { resetPassModal(); setPassOpen(true); }}
-              title="Cambiar contraseña"
-              className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-            >
-              <KeyRound className="size-[18px]" />
-            </button>
-            <button
-              onClick={signOut}
-              title="Cerrar sesión"
-              className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-            >
-              <LogOut className="size-[18px]" />
             </button>
           </div>
           {/* Fila de usuario */}
@@ -214,90 +161,6 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Modal: cambiar contraseña */}
-      {passOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPassOpen(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-base">Cambiar contraseña</h2>
-              <button onClick={() => setPassOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground transition-colors">
-                <X className="size-4" />
-              </button>
-            </div>
-
-            {passDone ? (
-              <div className="py-6 text-center space-y-2">
-                <div className="text-3xl">✓</div>
-                <p className="text-sm font-medium text-[#1F8A5B]">Contraseña actualizada</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contraseña actual</label>
-                  <div className="relative">
-                    <input
-                      type={showCurrent ? "text" : "password"}
-                      value={currentPass}
-                      onChange={e => setCurrentPass(e.target.value)}
-                      placeholder="Tu contraseña actual"
-                      className="w-full rounded-pill border border-border bg-card px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <button type="button" onClick={() => setShowCurrent(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      {showCurrent ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Nueva contraseña</label>
-                  <div className="relative">
-                    <input
-                      type={showNew ? "text" : "password"}
-                      value={newPass}
-                      onChange={e => setNewPass(e.target.value)}
-                      placeholder="Mínimo 8 caracteres"
-                      className="w-full rounded-pill border border-border bg-card px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <button type="button" onClick={() => setShowNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Confirmar contraseña</label>
-                  <div className="relative">
-                    <input
-                      type={showConf ? "text" : "password"}
-                      value={confirmPass}
-                      onChange={e => setConfirmPass(e.target.value)}
-                      placeholder="Repite la contraseña"
-                      onKeyDown={e => e.key === "Enter" && handleChangePassword()}
-                      className="w-full rounded-pill border border-border bg-card px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <button type="button" onClick={() => setShowConf(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      {showConf ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {passError && (
-                  <p className="text-xs text-destructive">{passError}</p>
-                )}
-
-                <button
-                  onClick={handleChangePassword}
-                  disabled={passLoading}
-                  className="w-full rounded-pill bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-                >
-                  {passLoading ? "Guardando…" : "Actualizar contraseña"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </>
   );
 }

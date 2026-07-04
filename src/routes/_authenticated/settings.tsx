@@ -4,7 +4,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
 import {
-  adminListUsers, adminCreateUser, adminUpdateUser, adminResetPassword, adminDeleteUser,
+  adminListUsers, adminCreateUser, adminUpdateUser, adminDeleteUser,
   adminLoadRoles, adminUpdateRole, adminCreateRole, adminDeleteRole,
   adminListOrgMembers, adminUpdateOrg, adminCreateOrg, adminAddOrgMember, adminRemoveOrgMember,
   type AppUser, type DbRole, type OrgMember,
@@ -13,7 +13,7 @@ import {
   RefreshCw, Shield, Trash2, Check, X,
   CalendarDays, UserCog, FileX, BarChart3, Settings2,
   Clock, LayoutDashboard, Building2, CalendarCheck,
-  Search, Key, Users, Plus, UserPlus, PencilLine, Palette, ChevronDown,
+  Search, Users, Plus, UserPlus, PencilLine, Palette, ChevronDown,
   MessageSquare, Eye, EyeOff,
 } from "lucide-react";
 import {
@@ -349,10 +349,6 @@ function SettingsPage() {
   const [createUserError, setCreateUserError]   = useState<string | null>(null);
 
   // Password reset modal state
-  const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
-  const [newPass, setNewPass]         = useState("");
-  const [passError, setPassError]     = useState<string | null>(null);
-  const [passLoading, setPassLoading] = useState(false);
 
   // Roles tab state
   const [menuRole, setMenuRole] = useState<MatrixRole>("admin");
@@ -655,27 +651,6 @@ function SettingsPage() {
     }
   }
 
-  async function handleResetPassword() {
-    if (!resetTarget || !newPass || newPass.length < 8) return;
-    setPassLoading(true);
-    setPassError(null);
-    try {
-      await adminResetPassword({ data: { id: resetTarget.id, newPassword: newPass } });
-      setResetTarget(null);
-      setNewPass("");
-    } catch (e: any) {
-      setPassError(e.message ?? "Error al restablecer contraseña");
-    } finally {
-      setPassLoading(false);
-    }
-  }
-
-  function closeResetModal() {
-    setResetTarget(null);
-    setNewPass("");
-    setPassError(null);
-  }
-
   async function handleReset() {
     if (!window.confirm("¿Borrar TODOS los datos? Esta acción no se puede deshacer.")) return;
     setResetting(true);
@@ -864,13 +839,6 @@ function SettingsPage() {
                                 className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                               >
                                 <PencilLine className="size-4" />
-                              </button>
-                              <button
-                                onClick={() => { setResetTarget(u); setNewPass(""); setPassError(null); }}
-                                title="Restablecer contraseña"
-                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                              >
-                                <Key className="size-4" />
                               </button>
                               {u.id !== user?.id && (
                                 <button
@@ -1752,55 +1720,6 @@ function SettingsPage() {
                 className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
                 {createUserLoading ? "Creando…" : "Crear usuario"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Password reset modal ─────────────────────────────────────────── */}
-      {resetTarget && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-          onClick={closeResetModal}
-        >
-          <div
-            className="bg-card rounded-card shadow-card max-w-sm w-full p-5"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <Key className="size-5 text-primary" />
-              <h3 className="font-semibold">Restablecer contraseña</h3>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Nueva contraseña para <strong>{resetTarget.fullName || resetTarget.email}</strong>.
-            </p>
-            <input
-              type="password"
-              value={newPass}
-              onChange={e => setNewPass(e.target.value)}
-              placeholder="Nueva contraseña (mín. 8 caracteres)"
-              className="w-full rounded-pill border border-border bg-secondary px-3 py-2 text-sm mb-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              autoFocus
-            />
-            {passError && (
-              <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive mb-3">
-                {passError}
-              </div>
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={closeResetModal}
-                className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleResetPassword}
-                disabled={passLoading || newPass.length < 8}
-                className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                {passLoading ? "Guardando…" : "Guardar"}
               </button>
             </div>
           </div>
