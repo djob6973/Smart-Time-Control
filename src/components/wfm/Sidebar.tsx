@@ -161,14 +161,16 @@ export function Sidebar() {
               <button
                 onClick={() => setLangOpen(v => !v)}
                 title={t("language")}
-                className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+                className="size-9 flex items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+                style={{ borderRadius: 999 }}
               >
                 <Languages className="size-[18px]" />
               </button>
 
               {langOpen && (
                 <div
-                  className="absolute bottom-full mb-2 left-0 rounded-2xl shadow-xl overflow-hidden"
+                  className="absolute bottom-full mb-2 left-0 shadow-xl overflow-hidden"
+                  style={{ borderRadius: 12 }}
                   style={{
                     minWidth: 172, zIndex: 200,
                     background: "#1f1f1f",
@@ -183,8 +185,9 @@ export function Sidebar() {
                       <button
                         key={code}
                         onClick={() => { setLang(code); setLangOpen(false); }}
-                        className="w-full flex items-center gap-2.5 rounded-xl transition-colors"
+                        className="w-full flex items-center gap-2.5 transition-colors"
                         style={{
+                          borderRadius: 8,
                           padding: "11px 10px",
                           background: selected ? "rgba(255,255,255,0.06)" : "transparent",
                         }}
