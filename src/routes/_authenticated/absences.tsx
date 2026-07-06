@@ -620,7 +620,7 @@ function AbsencesPage() {
         event: status === "aprobada" ? "absence_approved" : "absence_rejected",
         employeeId: a.employeeId,
         employeeName: emp?.fullName ?? "",
-        absenceType: TYPE_META[a.type]?.label ?? a.type,
+        absenceType: a.type,
         startDate: a.startDate,
         endDate: a.endDate,
         ...(note ? { note } : {}),
@@ -876,7 +876,7 @@ function AbsencesPage() {
                             className="size-2 rounded-full flex-shrink-0"
                             style={{ background: tm.color }}
                           />
-                          <span className="text-muted-foreground">{tm.label}</span>
+                          <span className="text-muted-foreground">{t(TYPE_LABEL_KEYS[a.type])}</span>
                         </div>
                       </td>
 
@@ -988,7 +988,7 @@ function AbsencesPage() {
               event: "absence_created",
               employeeId: a.employeeId,
               employeeName: emp?.fullName ?? "",
-              absenceType: TYPE_META[a.type as AbsenceType]?.label ?? a.type,
+              absenceType: a.type,
               startDate: a.startDate,
               endDate: a.endDate,
               areaId: emp?.areaId ?? null,
@@ -1030,7 +1030,7 @@ function AbsencesPage() {
                 <div>
                   <p className="font-semibold text-sm">Eliminar ausencia</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {emp?.fullName ?? "Empleado"} · {TYPE_META[deleteAbsence.type].label} · {fmtPeriod(deleteAbsence)}
+                    {emp?.fullName ?? "Empleado"} · {t(TYPE_LABEL_KEYS[deleteAbsence.type])} · {fmtPeriod(deleteAbsence)}
                   </p>
                 </div>
               </div>

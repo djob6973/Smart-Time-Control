@@ -159,18 +159,19 @@ function KPI({ icon: Icon, label, value, hint, alert }: { icon: any; label: stri
 }
 
 function CupoBar({ label, enUso, max }: { label: string; enUso: number; max: number }) {
+  const { t } = useI18n();
   const pct   = Math.min(100, Math.round((enUso / max) * 100));
   const color = pct >= 100 ? "var(--color-primary)" : pct >= 75 ? "#C98A00" : "#1F8A5B";
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
-        <span>{enUso} en {label.toLowerCase()}</span>
-        <span className="text-muted-foreground">{enUso}/{max} cupos</span>
+        <span>{enUso} {t("jornada_cupos_in")} {label.toLowerCase()}</span>
+        <span className="text-muted-foreground">{enUso}/{max}</span>
       </div>
       <div className="h-3 rounded-full bg-secondary overflow-hidden">
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
-      <p className="text-xs text-muted-foreground">{Math.max(0, max - enUso)} cupos disponibles</p>
+      <p className="text-xs text-muted-foreground">{Math.max(0, max - enUso)} {t("jornada_cupos_available")}</p>
     </div>
   );
 }
@@ -262,6 +263,7 @@ function JornadaPage() {
 // ── TAB: Dashboard ─────────────────────────────────────────
 
 function TabDashboard() {
+  const { t } = useI18n();
   const { employees, areas, shifts } = useWFM();
   const { profile } = useAuth();
   const { registros, fechaActiva, getEstadoEmpleado, getCuposDisponibles, setFechaActiva, reloadRegistros, getShiftProgramado, configuracion, horarios, horariosEmpleado } = useJornada();
@@ -377,7 +379,7 @@ function TabDashboard() {
           onClick={() => reloadRegistros(fechaActiva)}
           className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary"
         >
-          <RefreshCw className="size-4" /> Actualizar
+          <RefreshCw className="size-4" /> {t("jornada_update")}
         </button>
 
         <div className="h-5 w-px bg-border hidden sm:block" />
@@ -386,7 +388,7 @@ function TabDashboard() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <input
             type="text"
-            placeholder="Buscar empleado…"
+            placeholder={t("jornada_search")}
             value={filterEmpleado}
             onChange={(e) => setFilterEmpleado(e.target.value)}
             className="text-sm rounded-pill border border-border bg-card pl-8 pr-3 py-2 w-64"
@@ -399,7 +401,7 @@ function TabDashboard() {
             onChange={(e) => setFilterArea(e.target.value)}
             className="text-sm rounded-pill border border-border bg-card px-3 py-2"
           >
-            <option value="">Todas las áreas</option>
+            <option value="">{t("jornada_all_areas")}</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         )}
@@ -409,7 +411,7 @@ function TabDashboard() {
           onChange={(e) => setFilterEstado(e.target.value)}
           className="text-sm rounded-pill border border-border bg-card px-3 py-2"
         >
-          <option value="">Todos los estados</option>
+          <option value="">{t("jornada_filter_all")}</option>
           {(Object.entries(ESTADO_LABELS) as [string, string][]).map(([key, label]) => (
             <option key={key} value={key}>{label}</option>
           ))}
@@ -420,19 +422,19 @@ function TabDashboard() {
             onClick={() => { setFilterEmpleado(""); setFilterArea(""); setFilterEstado(""); }}
             className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-pill border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
-            <X className="size-3" /> Limpiar
+            <X className="size-3" /> {t("jornada_clear_filter")}
           </button>
         )}
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <KPI icon={Users}          label="En jornada" value={counts.enJornada}  hint="Marcando ahora" />
-        <KPI icon={Coffee}         label="En break"   value={counts.enBreak}    hint="En pausa" />
-        <KPI icon={UtensilsCrossed} label="En almuerzo" value={counts.enAlmuerzo} hint="Fuera a almorzar" />
-        <KPI icon={LogOut}         label="Fuera"      value={counts.fuera}      hint="Jornada finalizada" />
-        <KPI icon={AlertTriangle}  label="Tardíos"    value={counts.tardios}    hint="Llegaron tarde" alert />
-        <KPI icon={Clock}          label="Pendientes" value={counts.pendientes} hint="Sin ingresar" />
+        <KPI icon={Users}           label={t("jornada_kpi_en_jornada")} value={counts.enJornada}  hint={t("jornada_hint_marcando")} />
+        <KPI icon={Coffee}          label={t("jornada_kpi_en_break")}   value={counts.enBreak}    hint={t("jornada_hint_en_pausa")} />
+        <KPI icon={UtensilsCrossed} label={t("jornada_kpi_en_almuerzo")} value={counts.enAlmuerzo} hint={t("jornada_hint_fuera_almorzar")} />
+        <KPI icon={LogOut}          label={t("jornada_kpi_fuera")}      value={counts.fuera}      hint={t("jornada_hint_finalizada")} />
+        <KPI icon={AlertTriangle}   label={t("jornada_kpi_tardios")}    value={counts.tardios}    hint={t("jornada_hint_tarde")} alert />
+        <KPI icon={Clock}           label={t("jornada_kpi_pendientes")} value={counts.pendientes} hint={t("jornada_hint_sin_ingresar")} />
       </div>
 
       {/* Cupos */}
@@ -441,17 +443,17 @@ function TabDashboard() {
           {breakCupo.max > 0 && (
             <div className="rounded-card bg-card p-5 shadow-card">
               <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
-                <Coffee className="size-4 text-primary" /> Cupos de Break
+                <Coffee className="size-4 text-primary" /> {t("jornada_cupos_break")}
               </h3>
-              <CupoBar label="Break" enUso={breakCupo.enUso} max={breakCupo.max} />
+              <CupoBar label={t("jornada_kpi_en_break")} enUso={breakCupo.enUso} max={breakCupo.max} />
             </div>
           )}
           {almCupo.max > 0 && (
             <div className="rounded-card bg-card p-5 shadow-card">
               <h3 className="font-semibold text-sm flex items-center gap-2 mb-4">
-                <UtensilsCrossed className="size-4 text-primary" /> Cupos de Almuerzo
+                <UtensilsCrossed className="size-4 text-primary" /> {t("jornada_cupos_almuerzo")}
               </h3>
-              <CupoBar label="Almuerzo" enUso={almCupo.enUso} max={almCupo.max} />
+              <CupoBar label={t("jornada_kpi_en_almuerzo")} enUso={almCupo.enUso} max={almCupo.max} />
             </div>
           )}
         </div>
@@ -460,18 +462,18 @@ function TabDashboard() {
       {/* Real-time status table */}
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="font-semibold text-sm">Estado en tiempo real</h3>
+          <h3 className="font-semibold text-sm">{t("jornada_realtime_status")}</h3>
           <span className="text-xs text-muted-foreground">
             {filteredEstados.length !== activeEmployees.length
-              ? `${filteredEstados.length} de ${activeEmployees.length} empleados`
-              : `${activeEmployees.length} empleados activos`}
+              ? `${filteredEstados.length} ${t("jornada_of_employees")} ${activeEmployees.length}`
+              : `${activeEmployees.length} ${t("jornada_active_employees")}`}
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {["Empleado","Área","Horario prog.","Estado","Último mov.","Hora","Break","Almuerzo","En jornada"].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_col_horario"),t("jornada_col_status"),t("jornada_col_ultimo_mov"),t("jornada_col_entry"),t("jornada_col_break"),t("jornada_col_almuerzo"),t("jornada_col_en_jornada")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -552,7 +554,7 @@ function TabDashboard() {
               {filteredEstados.length === 0 && (
                 <tr>
                   <td colSpan={9} className="text-center py-12 text-muted-foreground">
-                    {estados.length === 0 ? "Sin empleados activos" : "Sin resultados para los filtros aplicados"}
+                    {estados.length === 0 ? t("jornada_no_active") : t("jornada_no_filter_results")}
                   </td>
                 </tr>
               )}
@@ -563,25 +565,25 @@ function TabDashboard() {
 
       {/* Punctuality summary */}
       <div className="rounded-card bg-card p-5 shadow-card">
-        <h3 className="font-display font-medium text-[1.125rem] mb-4">Puntualidad del día</h3>
+        <h3 className="font-display font-medium text-[1.125rem] mb-4">{t("jornada_col_puntualidad")}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-secondary rounded-xl p-3 text-center">
             <div className="font-display text-[2rem] font-medium tabular-nums leading-none">{conEntrada.length}</div>
-            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Con registro</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("jornada_col_con_registro")}</div>
           </div>
           <div className="bg-secondary rounded-xl p-3 text-center">
             <div className="font-display text-[2rem] font-medium tabular-nums leading-none text-[#1F8A5B]">{conEntrada.length - tardiosConEntrada}</div>
-            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">A tiempo</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("jornada_col_a_tiempo")}</div>
           </div>
           <div className="bg-secondary rounded-xl p-3 text-center">
             <div className="font-display text-[2rem] font-medium tabular-nums leading-none text-primary">{tardiosConEntrada}</div>
-            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Tardíos</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("jornada_tardios_label")}</div>
           </div>
           <div className="bg-secondary rounded-xl p-3 text-center">
             <div className="font-display text-[2rem] font-medium tabular-nums leading-none">
               {pctPuntual}<span className="text-lg font-normal text-muted-foreground">%</span>
             </div>
-            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Puntualidad</div>
+            <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("jornada_col_puntualidad")}</div>
           </div>
         </div>
         <div className="mt-4 h-2 rounded-full bg-secondary overflow-hidden">
@@ -615,6 +617,7 @@ function TabDashboard() {
 // ── TAB: Registro ──────────────────────────────────────────
 
 function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
+  const { t } = useI18n();
   const { employees, areas, shifts } = useWFM();
   const { user, profile } = useAuth();
   const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado, configuracion } = useJornada();
@@ -850,15 +853,15 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3 text-center">
             <div className="rounded-lg bg-secondary p-3">
-              <div className="text-xs text-muted-foreground mb-1">Break acum.</div>
+              <div className="text-xs text-muted-foreground mb-1">{t("mi_horario_break_accum")}</div>
               <div className="font-semibold">{selfEst.tiempoEnBreakMin ? fmtMins(selfEst.tiempoEnBreakMin) : "—"}</div>
             </div>
             <div className="rounded-lg bg-secondary p-3">
-              <div className="text-xs text-muted-foreground mb-1">Almuerzo acum.</div>
+              <div className="text-xs text-muted-foreground mb-1">{t("mi_horario_lunch_accum")}</div>
               <div className="font-semibold">{selfEst.tiempoEnAlmuerzoMin ? fmtMins(selfEst.tiempoEnAlmuerzoMin) : "—"}</div>
             </div>
             <div className="rounded-lg bg-secondary p-3">
-              <div className="text-xs text-muted-foreground mb-1">En jornada</div>
+              <div className="text-xs text-muted-foreground mb-1">{t("jornada_col_en_jornada")}</div>
               <div className="font-semibold">{selfEst.minutosEnJornada ? fmtMins(selfEst.minutosEnJornada) : "—"}</div>
             </div>
           </div>
@@ -1003,7 +1006,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
             onChange={(e) => setAreaFilter(e.target.value)}
             className="text-sm rounded-pill border border-border bg-card px-3.5 py-2 outline-none"
           >
-            <option value="all">Todas las áreas</option>
+            <option value="all">{t("jornada_all_areas")}</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         )}
@@ -1230,6 +1233,7 @@ function RegistrarModal({
 // ── TAB: Historial ─────────────────────────────────────────
 
 function TabHistorial() {
+  const { t } = useI18n();
   const { employees, areas } = useWFM();
   const { user, profile } = useAuth();
   const { registros, modificaciones, editarRegistro, eliminarRegistro, agregarRegistroManual, fechaActiva, setFechaActiva, reloadRegistros } = useJornada();
@@ -1272,21 +1276,21 @@ function TabHistorial() {
           </span>
         ) : (
           <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
-            <option value="all">Todas las áreas</option>
+            <option value="all">{t("jornada_all_areas")}</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         )}
         <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
-          <option value="all">Todos los movimientos</option>
+          <option value="all">{t("jornada_all_movements")}</option>
           {(Object.entries(TIPO_MOVIMIENTO_LABELS) as [TipoMovimiento, string][]).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
         <button onClick={() => reloadRegistros(fechaActiva)} className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">
-          <RefreshCw className="size-4" /> Actualizar
+          <RefreshCw className="size-4" /> {t("jornada_update")}
         </button>
         <button onClick={() => setShowAddManual(true)} className="ml-auto inline-flex items-center gap-2 rounded-pill bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
-          <Plus className="size-4" /> Agregar manual
+          <Plus className="size-4" /> {t("jornada_add_manual")}
         </button>
       </div>
 
@@ -1295,7 +1299,7 @@ function TabHistorial() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {["Empleado","Área","Movimiento","Hora","Estado","Observaciones","Modificación",""].map((h, i) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_col_movement"),t("jornada_col_time"),t("jornada_col_status"),t("jornada_col_notes"),t("jornada_col_modification"),""].map((h, i) => (
                   <th key={i} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
                 ))}
               </tr>
@@ -1512,6 +1516,7 @@ function AgregarManualModal({ employees, areas, fecha, onClose, onSave }: any) {
 // ── TAB: Reportes ──────────────────────────────────────────
 
 function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
+  const { t } = useI18n();
   const { employees } = useWFM();
   const { profile } = useAuth();
   const { registros, loadRango } = useJornada();
@@ -1640,7 +1645,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
         <table className="w-full text-sm">
           <thead className="bg-secondary/30 text-left">
             <tr>
-              {["Fecha","Entrada","Salida","Break","Almuerzo","Jornada","Efectivo","Estado"].map((h) => (
+              {[t("jornada_historial_col_date"),t("jornada_historial_col_entry"),t("jornada_historial_col_exit"),t("jornada_col_break"),t("jornada_col_almuerzo"),t("jornada_historial_col_time"),t("jornada_historial_col_effective"),t("jornada_col_status")].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -1686,6 +1691,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 // ── TAB: Reporte de jornada ─────────────────────────────────
 
 function TabReporteGeneral() {
+  const { t } = useI18n();
   const { employees, areas } = useWFM();
   const { profile } = useAuth();
   const { registros, configuracion, loadRango } = useJornada();
@@ -1758,25 +1764,25 @@ function TabReporteGeneral() {
           </span>
         ) : (
           <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
-            <option value="all">Todas las áreas</option>
+            <option value="all">{t("jornada_all_areas")}</option>
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         )}
         <button onClick={exportCSV} className="ml-auto inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
-          <Download className="size-4" /> Exportar CSV
+          <Download className="size-4" /> {t("reports_download")}
         </button>
       </div>
 
       {/* Tiempos por trabajador */}
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border bg-secondary/40">
-          <h3 className="font-semibold text-sm">Tiempos por trabajador</h3>
+          <h3 className="font-semibold text-sm">{t("jornada_col_worker")}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {["Empleado","Área","Días","Tiempo jornada","Break","Almuerzo","Efectivo"].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_historial_col_time"),t("jornada_col_break"),t("jornada_col_almuerzo"),t("jornada_historial_col_effective")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -1817,7 +1823,7 @@ function TabReporteGeneral() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {["Empleado","Área","Con registro","A tiempo","Tardíos","Puntualidad","Retraso prom."].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_col_con_registro"),t("jornada_col_a_tiempo"),t("jornada_col_tardios"),t("jornada_col_puntualidad"),t("jornada_col_retraso_prom")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -1865,6 +1871,7 @@ function TabReporteGeneral() {
 // ── TAB: Configuración ─────────────────────────────────────
 
 function TabConfiguracion() {
+  const { t } = useI18n();
   const { areas } = useWFM();
   const { profile } = useAuth();
   const { configuracion, upsertConfiguracion, cupos, upsertCupo, removeCupo } = useJornada();
@@ -2011,8 +2018,8 @@ function TabConfiguracion() {
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-sm">Control de cupos simultáneos</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Límites de empleados en break o almuerzo al mismo tiempo</p>
+            <h3 className="font-semibold text-sm">{t("jornada_cupos_config")}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("jornada_cupos_limit_hint")}</p>
           </div>
           <button
             onClick={() => setCupoEditing("new")}
@@ -2047,7 +2054,7 @@ function TabConfiguracion() {
                 </tr>
               ))}
               {visibleCupos.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Sin cupos configurados</td></tr>
+                <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">{t("jornada_cupos_none")}</td></tr>
               )}
             </tbody>
           </table>

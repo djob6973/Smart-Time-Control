@@ -205,11 +205,11 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
         {isWork && (
           <div>
             <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
-              <span className="font-mono">{fmtHour(shift.start)}</span>
+              <span className="font-mono">{fmtHour(shift!.start)}</span>
               <span className="text-xs text-muted-foreground">
-                {shift.end - shift.start}{t("mi_horario_net_hours")} · {shift.breakMinutes} {t("mi_horario_break_min")}
+                {shift!.end - shift!.start}{t("mi_horario_net_hours")} · {shift!.breakMinutes} {t("mi_horario_break_min")}
               </span>
-              <span className="font-mono">{fmtHour(shift.end)}</span>
+              <span className="font-mono">{fmtHour(shift!.end)}</span>
             </div>
             <div className="relative h-3 rounded-full overflow-hidden" style={{ background: "color-mix(in srgb,var(--color-primary) 15%,transparent)" }}>
               <div

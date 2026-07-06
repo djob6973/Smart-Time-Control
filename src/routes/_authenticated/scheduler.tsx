@@ -420,7 +420,7 @@ function Scheduler() {
             }}
             className="h-10 px-3.5 rounded-full border border-border bg-card flex items-center gap-2 text-sm font-medium hover:bg-secondary transition-colors shrink-0"
           >
-            Hoy
+            {t("scheduler_today")}
           </button>
 
           {/* Filtro de área */}
@@ -433,7 +433,7 @@ function Scheduler() {
             <div className="relative flex items-center shrink-0">
               <Filter className="absolute left-3.5 size-4 text-muted-foreground pointer-events-none shrink-0" />
               <select value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)} className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm font-medium">
-                <option value="all">Todas las áreas</option>
+                <option value="all">{t("scheduler_all_areas")}</option>
                 {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
@@ -444,7 +444,7 @@ function Scheduler() {
             <>
               <button
                 onClick={toggleWeekLock}
-                title={weekLockState === "full" ? "Desbloquear semana" : weekLockState === "partial" ? "Semana parcialmente bloqueada" : "Bloquear semana"}
+                title={weekLockState === "full" ? t("scheduler_unlock_week") : weekLockState === "partial" ? t("scheduler_partial_lock") : t("scheduler_lock_week")}
                 className={cn(
                   "h-10 px-3.5 rounded-full border flex items-center gap-2 text-sm font-medium transition-colors shrink-0",
                   weekLockState === "full"
@@ -453,13 +453,13 @@ function Scheduler() {
                 )}
               >
                 {weekLockState === "full" ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-                {weekLockState === "full" ? "Desbloquear" : "Bloquear"}
+                {weekLockState === "full" ? t("scheduler_unlock") : t("scheduler_lock")}
               </button>
 
               <button
                 onClick={() => setShowClearConfirm(true)}
                 disabled={!canClearWeek || clearing}
-                title={!canClearWeek ? "No hay turnos desbloqueados para limpiar" : "Limpiar turnos no bloqueados de la semana"}
+                title={!canClearWeek ? t("scheduler_no_unlocked") : t("scheduler_clear_hint")}
                 className={cn(
                   "h-10 px-3.5 rounded-full border border-border bg-card flex items-center gap-2 text-sm font-medium transition-colors shrink-0",
                   canClearWeek && !clearing
@@ -468,7 +468,7 @@ function Scheduler() {
                 )}
               >
                 <Eraser className="size-4" />
-                Limpiar
+                {t("scheduler_clear")}
               </button>
             </>
           )}
@@ -487,9 +487,9 @@ function Scheduler() {
               </button>
               {showMore && (
                 <div className="absolute left-0 top-[calc(100%+6px)] bg-card border border-border rounded-xl shadow-lg p-3 z-20 min-w-[200px]">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Opciones</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("scheduler_options")}</p>
                   <div className="mb-3">
-                    <label className="text-xs text-muted-foreground block mb-1">Semanas visibles</label>
+                    <label className="text-xs text-muted-foreground block mb-1">{t("scheduler_visible_weeks")}</label>
                     <select
                       value={numWeeks}
                       onChange={(e) => setNumWeeks(Number(e.target.value))}
@@ -547,7 +547,7 @@ function Scheduler() {
                 className="text-xs font-medium px-2.5 py-1 rounded-pill transition hover:bg-primary/10"
                 style={{ color: "#ED5650", border: "1px solid color-mix(in srgb,#ED5650 30%,transparent)" }}
               >
-                Cancelar (ESC)
+                {t("scheduler_cancel_esc")}
               </button>
             </div>
           );
@@ -788,8 +788,8 @@ function Scheduler() {
                   <Eraser className="size-5 text-destructive" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-destructive">Limpiar semana</p>
-                  <p className="text-xs text-destructive/70">Esta acción no se puede deshacer</p>
+                  <p className="text-sm font-bold text-destructive">{t("scheduler_clear_week")}</p>
+                  <p className="text-xs text-destructive/70">{t("action_irreversible")}</p>
                 </div>
                 <button onClick={() => setShowClearConfirm(false)} className="p-1 rounded hover:bg-destructive/10 shrink-0">
                   <X className="size-4 text-destructive/60" />
@@ -822,13 +822,13 @@ function Scheduler() {
                   onClick={() => setShowClearConfirm(false)}
                   className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary"
                 >
-                  Cancelar
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={confirmClearWeek}
                   className="text-sm px-4 py-2 rounded-pill bg-destructive text-white hover:opacity-90 font-medium inline-flex items-center gap-2"
                 >
-                  <Eraser className="size-3.5" /> Limpiar semana
+                  <Eraser className="size-3.5" /> {t("scheduler_clear_week")}
                 </button>
               </div>
             </div>
@@ -1328,6 +1328,7 @@ function SwapConfirmModal({ empA, empB, shiftA, shiftB, date, onConfirm, onCance
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const isBlocked = shiftA?.locked || shiftB?.locked || shiftA?.code === "ABS" || shiftB?.code === "ABS";
 
   function shiftLabel(s?: Shift) {
@@ -1365,7 +1366,7 @@ function SwapConfirmModal({ empA, empB, shiftA, shiftB, date, onConfirm, onCance
           <div className="p-5 space-y-4">
             <p className="text-sm text-destructive">No se puede intercambiar: uno de los turnos está bloqueado o es una ausencia.</p>
             <div className="flex justify-end">
-              <button onClick={onCancel} className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary">Cerrar</button>
+              <button onClick={onCancel} className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary">{t("close")}</button>
             </div>
           </div>
         ) : (
@@ -1386,7 +1387,7 @@ function SwapConfirmModal({ empA, empB, shiftA, shiftB, date, onConfirm, onCance
               ))}
             </div>
             <div className="p-4 border-t border-border flex justify-end gap-2">
-              <button onClick={onCancel} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">Cancelar</button>
+              <button onClick={onCancel} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">{t("cancel")}</button>
               <button
                 onClick={onConfirm}
                 className="text-sm px-4 py-2 rounded-pill bg-indigo-600 text-white hover:bg-indigo-700 font-medium inline-flex items-center gap-2"
@@ -2093,7 +2094,7 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
 
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={locked} onChange={(e) => setLocked(e.target.checked)} />
-                Bloquear (no reasignar al regenerar)
+                {t("scheduler_lock_shift")}
               </label>
 
               {/* Summary panel */}
@@ -2154,7 +2155,7 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                 {code === "ABS" && existingAbsence ? (
                   confirmDeleteAbs ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-red-600 font-medium">¿Eliminar ausencia?</span>
+                      <span className="text-xs text-red-600 font-medium">{t("absences_new_title")}?</span>
                       <button
                         onClick={() => {
                           (removeAbsence as any)(existingAbsence.id);
@@ -2162,13 +2163,13 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                         }}
                         className="text-xs px-2.5 py-1 rounded-pill bg-red-600 text-white hover:bg-red-700 transition-colors"
                       >
-                        Sí, eliminar
+                        {t("delete")}
                       </button>
                       <button
                         onClick={() => setConfirmDeleteAbs(false)}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
-                        Cancelar
+                        {t("cancel")}
                       </button>
                     </div>
                   ) : (
@@ -2176,11 +2177,11 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                       onClick={() => setConfirmDeleteAbs(true)}
                       className="text-sm text-red-500 hover:text-red-700 inline-flex items-center gap-1.5 transition-colors"
                     >
-                      <Trash2 className="size-3.5" /> Eliminar ausencia
+                      <Trash2 className="size-3.5" /> {t("absences_new_title")}
                     </button>
                   )
                 ) : (
-                  <button onClick={onClear} className="text-sm text-muted-foreground hover:text-primary">Limpiar turno</button>
+                  <button onClick={onClear} className="text-sm text-muted-foreground hover:text-primary">{t("scheduler_clear_shift")}</button>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -2189,9 +2190,9 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                   className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1 px-2 py-1.5"
                   title="Ver historial de cambios"
                 >
-                  <History className="size-3.5" /> Historial
+                  <History className="size-3.5" /> {t("jornada_tab_historial")}
                 </button>
-                <button onClick={onClose} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">Cancelar</button>
+                <button onClick={onClose} className="text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">{t("cancel")}</button>
                 <button
                   onClick={handleSave}
                   className={cn(
@@ -2202,10 +2203,10 @@ function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistor
                   )}
                 >
                   {code === "OFF"
-                    ? <><Unlock className="size-3"/> Guardar descanso</>
+                    ? <><Unlock className="size-3"/> {t("scheduler_save_rest")}</>
                     : anyOvertime
-                    ? <><Zap className="size-3.5" /> Guardar con extras →</>
-                    : <>{locked ? <Lock className="size-3"/> : <Unlock className="size-3"/>} Guardar</>
+                    ? <><Zap className="size-3.5" /> {t("scheduler_save_with_extras")}</>
+                    : <>{locked ? <Lock className="size-3"/> : <Unlock className="size-3"/>} {t("save")}</>
                   }
                 </button>
               </div>
@@ -2528,6 +2529,7 @@ function ShiftHistoryModal({ employeeId, date, employeeName, onClose }: {
   employeeName: string;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [rows, setRows] = useState<ShiftHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -2612,7 +2614,7 @@ function ShiftHistoryModal({ employeeId, date, employeeName, onClose }: {
 
         <div className="p-4 border-t border-border flex justify-end shrink-0">
           <button onClick={onClose} className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary">
-            Cerrar
+            {t("close")}
           </button>
         </div>
       </div>
