@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
-import { parseAbsNote, computePartialAbsWorkHours } from "@/lib/wfm/calc";
+import { parseAbsNote, computePartialAbsWorkHours, isHoliday } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
 import type { Shift } from "@/lib/wfm/types";
@@ -109,6 +109,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
   const isOff  = shift?.code === "OFF";
   const isAbs  = shift?.code === "ABS" && !(isPartialAbs && workHours != null);
   const isWork = (shift && !isOff && !isAbs) || (isPartialAbs && workHours != null);
+  const holiday = isHoliday(date);
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
@@ -117,11 +118,13 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
       <div
         className="rounded-card border p-5 shadow-card"
         style={{
-          background: isOff ? "var(--color-secondary)" :
+          background: holiday ? "color-mix(in srgb,#D97706 6%,var(--color-card))" :
+                      isOff ? "var(--color-secondary)" :
                       isAbs ? "color-mix(in srgb,#C98A00 8%,var(--color-card))" :
                       shift  ? "color-mix(in srgb,var(--color-primary) 6%,var(--color-card))" :
                       "var(--color-card)",
-          borderColor: isOff ? "var(--color-border)" :
+          borderColor: holiday ? "color-mix(in srgb,#D97706 35%,transparent)" :
+                       isOff ? "var(--color-border)" :
                        isAbs ? "color-mix(in srgb,#C98A00 35%,transparent)" :
                        shift  ? "color-mix(in srgb,var(--color-primary) 25%,transparent)" :
                        "var(--color-border)",
@@ -183,6 +186,14 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
           </div>
 
           <div className="flex flex-col items-end gap-2 shrink-0">
+            {holiday && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-pill uppercase tracking-wide"
+                style={{ background: "color-mix(in srgb,#D97706 15%,transparent)", color: "#D97706" }}
+              >
+                Festivo
+              </span>
+            )}
             {isWork && !workHours && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Coffee className="size-3.5" />
@@ -384,6 +395,7 @@ function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: st
           const isOff   = shift?.code === "OFF";
           const isAbs   = shift?.code === "ABS";
           const isWork  = shift && !isOff && !isAbs;
+          const holiday = isHoliday(day);
           const estado  = getEstadoEmpleado(
             employeeId,
             day,
@@ -396,24 +408,33 @@ function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: st
               key={day}
               className="rounded-card border flex items-center gap-4 px-4 py-3.5 shadow-card"
               style={{
-                borderColor: isToday ? "var(--color-primary)" : "var(--color-border)",
+                borderColor: isToday ? "var(--color-primary)" : holiday ? "color-mix(in srgb,#D97706 30%,transparent)" : "var(--color-border)",
                 background: isToday
                   ? "color-mix(in srgb,var(--color-primary) 4%,var(--color-card))"
+                  : holiday
+                  ? "color-mix(in srgb,#D97706 5%,var(--color-card))"
                   : "var(--color-card)",
               }}
             >
               {/* Day badge */}
-              <div
-                className="shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center"
-                style={{
-                  background: isToday ? "var(--color-primary)" : "var(--color-secondary)",
-                  color: isToday ? "var(--color-primary-foreground)" : "var(--color-foreground)",
-                }}
-              >
-                <span className="text-[10px] font-semibold uppercase tracking-wide opacity-75">
-                  {DOW_SHORT[d.getDay()]}
-                </span>
-                <span className="text-lg font-bold leading-none">{d.getDate()}</span>
+              <div className="shrink-0 flex flex-col items-center gap-1">
+                <div
+                  className="w-12 h-12 rounded-xl flex flex-col items-center justify-center"
+                  style={{
+                    background: isToday ? "var(--color-primary)" : holiday ? "color-mix(in srgb,#D97706 15%,transparent)" : "var(--color-secondary)",
+                    color: isToday ? "var(--color-primary-foreground)" : holiday ? "#D97706" : "var(--color-foreground)",
+                  }}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wide opacity-75">
+                    {DOW_SHORT[d.getDay()]}
+                  </span>
+                  <span className="text-lg font-bold leading-none">{d.getDate()}</span>
+                </div>
+                {holiday && (
+                  <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "#D97706" }}>
+                    Festivo
+                  </span>
+                )}
               </div>
 
               {/* Shift info */}
@@ -549,6 +570,7 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
             const isOff  = shift?.code === "OFF";
             const isAbs  = shift?.code === "ABS";
             const isWork = shift && !isOff && !isAbs;
+            const holiday = isHoliday(day);
 
             return (
               <div
@@ -559,18 +581,30 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
                   borderBottom: isLastRow ? "none" : undefined,
                   background: isToday
                     ? "color-mix(in srgb,var(--color-primary) 6%,var(--color-card))"
+                    : holiday
+                    ? "color-mix(in srgb,#D97706 5%,var(--color-card))"
                     : undefined,
                 }}
               >
-                <span
-                  className="text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full shrink-0"
-                  style={isToday ? {
-                    background: "var(--color-primary)",
-                    color: "var(--color-primary-foreground)",
-                  } : {}}
-                >
-                  {d.getDate()}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full shrink-0"
+                    style={isToday ? {
+                      background: "var(--color-primary)",
+                      color: "var(--color-primary-foreground)",
+                    } : holiday ? { color: "#D97706" } : {}}
+                  >
+                    {d.getDate()}
+                  </span>
+                  {holiday && (
+                    <span
+                      className="text-[8px] font-bold uppercase tracking-wide leading-none px-1 py-0.5 rounded"
+                      style={{ background: "color-mix(in srgb,#D97706 15%,transparent)", color: "#D97706" }}
+                    >
+                      Fest.
+                    </span>
+                  )}
+                </div>
                 {shift && (
                   <span
                     className="text-[10px] font-medium px-1.5 py-0.5 rounded leading-tight truncate"
