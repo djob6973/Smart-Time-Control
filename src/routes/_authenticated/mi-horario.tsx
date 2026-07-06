@@ -34,7 +34,7 @@ function addDays(dateStr: string, n: number) {
 function startOfWeek(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
   const day = d.getDay();
-  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  d.setDate(d.getDate() - day);
   return isoDate(d);
 }
 
@@ -499,7 +499,7 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
   const today = isoDate(new Date());
 
   const firstDow   = new Date(monthStart + "T00:00:00").getDay();
-  const pad        = firstDow === 0 ? 6 : firstDow - 1;
+  const pad        = firstDow; // domingo = columna 0
   const monthShifts = days.map(d => shifts.find(s => s.employeeId === employeeId && s.date === d) ?? null);
   const trabajados  = monthShifts.filter(s => s && s.code !== "OFF" && s.code !== "ABS").length;
   const horasEst    = monthShifts

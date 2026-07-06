@@ -200,7 +200,7 @@ export const useWFM = create<WFMState>()((set, get) => ({
 
       for (let d = 0; d < 7; d++) {
         const date = toISO(addDays(ws, d));
-        const dow = (d + 1) % 7;
+        const dow = d % 7;
 
         const locked = shifts.find((sh) => sh.employeeId === e.id && sh.date === date && sh.locked);
         if (locked) {

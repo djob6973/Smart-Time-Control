@@ -8,14 +8,14 @@ export function toISO(d: Date): string {
 export function startOfWeek(d: Date): Date {
   const n = new Date(d);
   const day = n.getDay(); // 0 sun .. 6 sat
-  const diff = day === 0 ? -6 : 1 - day; // monday
+  const diff = -day; // sunday
   n.setDate(n.getDate() + diff);
   n.setHours(0, 0, 0, 0);
   return n;
 }
 
 export function weekDays(weekStart: Date): Date[] {
-  return Array.from({ length: 7 }, (_, i) => { // L-D
+  return Array.from({ length: 7 }, (_, i) => { // D-S
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
     return d;
@@ -28,8 +28,8 @@ export function addDays(d: Date, n: number): Date {
   return x;
 }
 
-export const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-export const DAY_FULL = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+export const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+export const DAY_FULL = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 
 export function fmtDate(iso: string): string {
   const [y,m,d] = iso.split("-");

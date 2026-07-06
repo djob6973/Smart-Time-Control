@@ -30,7 +30,7 @@ export function generateShiftSlots(
   
   for (let d = 0; d < 7; d++) {
     const date = toISO(addDays(weekStart, d));
-    const dow = (d + 1) % 7;
+    const dow = d % 7;
     
     // Buscar requisitos de cobertura para este día
     const dayReqs = area.coverageRequirements.filter(r => r.dayOfWeek === dow);

@@ -537,7 +537,7 @@ function Scheduler() {
         {view === "week" && swapSource && (() => {
           const srcEmp = employees.find(e => e.id === swapSource.employeeId);
           const d = new Date(swapSource.date + "T00:00:00");
-          const dateLabel = `${DAY_LABELS[(d.getDay() + 6) % 7]} ${d.getDate()}/${d.getMonth() + 1}`;
+          const dateLabel = `${DAY_LABELS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
           return (
             <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm"
               style={{ background: "color-mix(in srgb,#ED5650 10%,transparent)", border: "1px solid color-mix(in srgb,#ED5650 30%,transparent)" }}>

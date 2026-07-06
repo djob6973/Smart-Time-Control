@@ -15,13 +15,13 @@ export const Route = createFileRoute("/_authenticated/employees")({
 });
 
 const DAY_LABELS = [
+  { day: 0, label: "D",  full: "Domingo" },
   { day: 1, label: "L",  full: "Lunes" },
   { day: 2, label: "M",  full: "Martes" },
   { day: 3, label: "Mi", full: "Miércoles" },
   { day: 4, label: "J",  full: "Jueves" },
   { day: 5, label: "V",  full: "Viernes" },
   { day: 6, label: "S",  full: "Sábado" },
-  { day: 0, label: "D",  full: "Domingo" },
 ];
 
 const HOUR_OPTIONS = Array.from({ length: 25 }, (_, i) => i);

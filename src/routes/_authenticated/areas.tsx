@@ -15,13 +15,13 @@ export const Route = createFileRoute("/_authenticated/areas")({
 });
 
 const DAYS = [
+  { day: 0, label: "D" },
   { day: 1, label: "L" },
   { day: 2, label: "M" },
   { day: 3, label: "Mi" },
   { day: 4, label: "J" },
   { day: 5, label: "V" },
   { day: 6, label: "S" },
-  { day: 0, label: "D" },
 ];
 
 const DAY_SHORT: Record<number, string> = { 0: "Dom", 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb" };
