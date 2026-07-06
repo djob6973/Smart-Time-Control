@@ -62,17 +62,21 @@ function Scheduler() {
   const days = weekDays(ws);
   const isoDays = days.map(toISO);
 
+  // effectiveAreaFilter: if the user has an assigned area, always restrict to it regardless of
+  // the areaFilter state (which may be "all" if profile loaded after component mount).
+  const effectiveAreaFilter = ownArea ?? areaFilter;
+
   const visibleEmployees = useMemo(() => {
     // Para la vista de semana: ocultar empleados cuya inactiveDate sea anterior al lunes visible.
     // Para la vista de mes: usar el primer día del mes como referencia.
     const viewStart = view === "week" ? weekISO : toISO(monthDate);
     return employees.filter(e => {
-      if (areaFilter !== "all" && e.areaId !== areaFilter) return false;
+      if (effectiveAreaFilter !== "all" && e.areaId !== effectiveAreaFilter) return false;
       if (e.status === "active") return true;
       // Inactivo: mostrar solo si su fecha de inactivación es dentro del período visible o posterior
       return !!e.inactiveDate && e.inactiveDate >= viewStart;
     });
-  }, [employees, areaFilter, weekISO, view, monthDate]);
+  }, [employees, effectiveAreaFilter, weekISO, view, monthDate]);
 
   const shiftMap = useMemo(() => {
     const m = new Map<string, Shift>();
@@ -152,7 +156,7 @@ function Scheduler() {
     if (!prevWeekLocked) { setShowBaseWeekWarning(true); return; }
 
     // Detectar turnos en la semana ancla que no están bloqueados
-    const relevantAreas = areaFilter === "all" ? areas : areas.filter(a => a.id === areaFilter);
+    const relevantAreas = effectiveAreaFilter === "all" ? areas : areas.filter(a => a.id === effectiveAreaFilter);
     let count = 0;
     for (const area of relevantAreas) {
       const empIds = new Set(employees.filter(e => e.areaId === area.id).map(e => e.id));
@@ -176,7 +180,7 @@ function Scheduler() {
 
   function confirmGenerate() {
     setShowGenerateConfirm(false);
-    generateWeeks(weekISO, areaFilter === "all" ? undefined : areaFilter, numWeeks);
+    generateWeeks(weekISO, effectiveAreaFilter === "all" ? undefined : effectiveAreaFilter, numWeeks);
     if (anchorUnlockedCount > 0) {
       toast.warning(
         `${anchorUnlockedCount} ${t("scheduler_anchor_warn")}`,
@@ -186,7 +190,7 @@ function Scheduler() {
   }
 
   function toggleWeekLock() {
-    const af = areaFilter === "all" ? undefined : areaFilter;
+    const af = effectiveAreaFilter === "all" ? undefined : effectiveAreaFilter;
     if (weekLockState === "full") unlockWeek(weekISO, af);
     else lockWeek(weekISO, af);
   }
@@ -204,7 +208,7 @@ function Scheduler() {
     setShowClearConfirm(false);
     setClearing(true);
     try {
-      await clearWeek(weekISO, areaFilter === "all" ? undefined : areaFilter);
+      await clearWeek(weekISO, effectiveAreaFilter === "all" ? undefined : effectiveAreaFilter);
     } finally {
       setClearing(false);
     }
@@ -233,7 +237,7 @@ function Scheduler() {
   }
 
   const coverageAreas = useMemo(() => {
-    const relevant = (areaFilter === "all" ? areas : areas.filter(a => a.id === areaFilter))
+    const relevant = (effectiveAreaFilter === "all" ? areas : areas.filter(a => a.id === effectiveAreaFilter))
       .filter(a => a.enableCoverageMode && a.coverageRequirements.length > 0);
 
     return relevant.map(area => {
@@ -257,7 +261,7 @@ function Scheduler() {
       });
       return { area, daySlots };
     });
-  }, [areas, areaFilter, visibleEmployees, days, shiftMap]);
+  }, [areas, effectiveAreaFilter, visibleEmployees, days, shiftMap]);
 
   const monthSummary = useMemo(() => {
     const year = monthDate.getFullYear();
@@ -697,7 +701,7 @@ function Scheduler() {
       </div>
 
       {showGenerateConfirm && (() => {
-        const areaLabel = areaFilter === "all" ? t("scheduler_all_areas_lower") : areas.find(a => a.id === areaFilter)?.name ?? t("scheduler_all_areas_lower");
+        const areaLabel = effectiveAreaFilter === "all" ? t("scheduler_all_areas_lower") : areas.find(a => a.id === effectiveAreaFilter)?.name ?? t("scheduler_all_areas_lower");
         const weekLabel = `${days[0].getDate()}/${days[0].getMonth() + 1} – ${days[6].getDate()}/${days[6].getMonth() + 1}`;
         const endWs = addDays(ws, (numWeeks - 1) * 7);
         const endDays = weekDays(endWs);
@@ -774,7 +778,7 @@ function Scheduler() {
       })()}
 
       {showClearConfirm && (() => {
-        const areaLabel = areaFilter === "all" ? t("scheduler_all_areas_lower") : areas.find(a => a.id === areaFilter)?.name ?? t("scheduler_all_areas_lower");
+        const areaLabel = effectiveAreaFilter === "all" ? t("scheduler_all_areas_lower") : areas.find(a => a.id === effectiveAreaFilter)?.name ?? t("scheduler_all_areas_lower");
         const weekLabel = `${days[0].getDate()}/${days[0].getMonth() + 1} – ${days[6].getDate()}/${days[6].getMonth() + 1}`;
         return (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={() => setShowClearConfirm(false)}>
