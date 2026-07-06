@@ -744,9 +744,12 @@ function MiHorarioPage() {
     <>
       <Topbar title="Mi Horario" subtitle="Programación personal" />
 
+      {/* Header card */}
+      <div className="mx-4 md:mx-6 mt-4 rounded-card bg-card shadow-card overflow-hidden">
+
       {/* Identity strip */}
       {employee && (
-        <div className="border-b border-border bg-card px-4 md:px-6 py-3.5 flex items-center gap-4">
+        <div className="border-b border-border px-4 md:px-6 py-3.5 flex items-center gap-4">
           <div
             className="size-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
             style={{
@@ -775,7 +778,7 @@ function MiHorarioPage() {
       )}
 
       {/* Controls bar */}
-      <div className="border-b border-border bg-card px-4 md:px-6 py-2.5 flex items-center gap-3 flex-wrap">
+      <div className="px-4 md:px-6 py-2.5 flex items-center gap-3 flex-wrap">
         {/* View switcher */}
         <div
           className="flex items-center rounded-pill border border-border p-0.5 text-xs"
@@ -828,6 +831,7 @@ function MiHorarioPage() {
           Hoy
         </button>
       </div>
+      </div>{/* /Header card */}
 
       {/* View content */}
       <div className="flex-1 overflow-auto">
