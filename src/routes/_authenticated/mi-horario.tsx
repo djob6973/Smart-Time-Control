@@ -529,7 +529,7 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         {/* Day-of-week header */}
         <div className="grid grid-cols-7 border-b border-border bg-secondary/40">
-          {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+          {["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"].map(d => (
             <div key={d} className="py-2.5 text-center text-[11px] font-semibold text-muted-foreground">
               {d}
             </div>
