@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, Clock, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { selfAssignGestorRole } from "@/lib/api/user-profile";
 
 export const Route = createFileRoute("/pending-approval")({
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/pending-approval")({
 
 function PendingApprovalPage() {
   const { user, role, profile, loading, reloadRole } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [assigning, setAssigning] = useState(false);
   const [assigned, setAssigned]   = useState(false);
@@ -81,21 +83,21 @@ function PendingApprovalPage() {
         {/* Título y descripción */}
         <div className="flex flex-col items-center gap-3 text-center">
           <p style={{ color: "#fff", fontSize: 16, fontWeight: 600 }}>
-            Cuenta pendiente de aprobación
+            {t("pending_title")}
           </p>
           <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13.5, lineHeight: 1.7 }}>
-            Un administrador revisará tu acceso y te asignará un rol en breve.
+            {t("pending_subtitle")}
           </p>
           {!assigned && (
             <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13.5, lineHeight: 1.7 }}>
-              Si deseas puedes continuar con el rol{" "}
+              {t("pending_role_msg")}{" "}
               <strong style={{ color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Gestor</strong>
-              , por favor haz clic en continuar.
+              {", "}{t("pending_role_cta")}
             </p>
           )}
           {user?.email && (
             <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12.5 }}>
-              Sesión iniciada como{" "}
+              {t("pending_session")}{" "}
               <span style={{ color: "rgba(255,255,255,0.55)" }}>{user.email}</span>
             </p>
           )}
@@ -129,7 +131,7 @@ function PendingApprovalPage() {
             }}
           >
             <CheckCircle2 size={16} />
-            Rol asignado — redirigiendo…
+            {t("pending_assigned")}
           </div>
         ) : (
           <button
@@ -146,7 +148,7 @@ function PendingApprovalPage() {
             }}
           >
             {assigning && <Loader2 size={15} className="animate-spin" />}
-            {assigning ? "Asignando rol…" : "Continuar como Gestor"}
+            {assigning ? t("pending_assigning") : t("pending_continue")}
           </button>
         )}
       </div>

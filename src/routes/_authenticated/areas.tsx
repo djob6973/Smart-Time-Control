@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import React, { useState } from "react";
 import { Building2, ChevronRight, Info, Plus, Settings, Trash2 } from "lucide-react";
 import type { Area, CoverageRequirement } from "@/lib/wfm/types";
@@ -50,6 +51,7 @@ function coverageColor(pct: number) {
 function AreasPage() {
   const { areas, employees, upsertArea, removeArea } = useWFM();
   const { hasPermission, hasLimit, profile } = useAuth();
+  const { t } = useI18n();
   const canEdit   = hasPermission("areas", "edit");
   const canDelete = hasLimit("canDeleteData");
 
@@ -63,8 +65,8 @@ function AreasPage() {
   return (
     <>
       <Topbar
-        title="Áreas y configuración"
-        subtitle="Reglas operativas por área"
+        title={t("areas_title")}
+        subtitle=""
         right={
           canEdit && !ownArea ? (
             <button
@@ -72,7 +74,7 @@ function AreasPage() {
               className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
               <Plus className="size-4" />
-              <span className="hidden sm:inline">Nueva área</span>
+              <span className="hidden sm:inline">{t("areas_new")}</span>
             </button>
           ) : undefined
         }
@@ -124,7 +126,7 @@ function AreasPage() {
                 <div className="bg-secondary rounded-xl p-3 text-center">
                   <div className="font-display text-[2rem] font-medium tabular-nums leading-none">{active}</div>
                   <div className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Activos{inactive > 0 && <span className="opacity-60"> /{areaEmps.length}</span>}
+                    {t("active")}{inactive > 0 && <span className="opacity-60"> /{areaEmps.length}</span>}
                   </div>
                 </div>
                 <div className="bg-secondary rounded-xl p-3 text-center">
@@ -145,7 +147,7 @@ function AreasPage() {
               {/* Coverage bar */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">Cobertura actual de hoy</span>
+                  <span className="text-xs text-muted-foreground">{t("areas_coverage")}</span>
                   {cc ? (
                     <span className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-[11px] font-medium ${cc.pill}`}>
                       {cc.label}
@@ -169,16 +171,16 @@ function AreasPage() {
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
                   <span>Horas extras: </span>
-                  <span className="text-foreground font-medium">{area.allowOvertime ? "Sí" : "No"}</span>
+                  <span className="text-foreground font-medium">{area.allowOvertime ? t("yes") : t("no")}</span>
                   <span className="mx-1.5">·</span>
-                  <span>Descanso: </span>
+                  <span>{t("areas_field_rest")}: </span>
                   <span className="text-foreground font-medium">{area.minRestHours}h</span>
                 </p>
                 <button
                   onClick={() => setEditing(area.id)}
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
-                  Ver detalle
+                  {t("view")}
                   <ChevronRight className="size-3.5" />
                 </button>
               </div>
@@ -188,7 +190,7 @@ function AreasPage() {
 
         {visibleAreas.length === 0 && (
           <div className="col-span-full py-16 text-center text-sm text-muted-foreground">
-            Sin áreas configuradas
+            {t("areas_no_areas")}
           </div>
         )}
       </div>
@@ -219,6 +221,7 @@ function AreaModal({
   onSave: (a: Area) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingSave, setConfirmingSave] = useState(false);
   const [form, setForm] = useState<Area>(() => area ?? {
@@ -298,30 +301,30 @@ function AreaModal({
         {/* Header */}
         <div className="p-5 border-b border-border">
           <h3 className="font-semibold text-base">
-            {area ? "Configurar área" : "Nueva área"}
+            {area ? t("areas_modal_edit") : t("areas_modal_new")}
           </h3>
         </div>
 
         {/* Body */}
         <div className="p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "68vh" }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Nombre del área">
+            <Field label={t("areas_field_name")}>
               <input
                 className="fi"
                 value={form.name}
                 onChange={e => set("name", e.target.value)}
-                placeholder="Ej. Cocina, Servicio..."
+                placeholder={t("areas_ph_name")}
               />
             </Field>
-            <Field label="Líder">
+            <Field label={t("areas_field_leader")}>
               <input
                 className="fi"
                 value={form.leader}
                 onChange={e => set("leader", e.target.value)}
-                placeholder="Nombre del responsable"
+                placeholder={t("areas_ph_leader")}
               />
             </Field>
-            <Field label="Hora inicio">
+            <Field label={t("areas_field_start")}>
               <input
                 type="number"
                 className="fi"
@@ -331,7 +334,7 @@ function AreaModal({
                 onChange={e => set("startHour", Number(e.target.value))}
               />
             </Field>
-            <Field label="Hora fin">
+            <Field label={t("areas_field_end")}>
               <input
                 type="number"
                 className="fi"
@@ -341,7 +344,7 @@ function AreaModal({
                 onChange={e => set("endHour", Number(e.target.value))}
               />
             </Field>
-            <Field label="Máx. horas / día">
+            <Field label={t("areas_field_max_day")}>
               <input
                 type="number"
                 className="fi"
@@ -349,7 +352,7 @@ function AreaModal({
                 onChange={e => set("maxHoursDay", Number(e.target.value))}
               />
             </Field>
-            <Field label="Máx. horas / semana">
+            <Field label={t("areas_field_max_week")}>
               <input
                 type="number"
                 className="fi"
@@ -357,7 +360,7 @@ function AreaModal({
                 onChange={e => set("maxHoursWeek", Number(e.target.value))}
               />
             </Field>
-            <Field label="Máx. horas / mes">
+            <Field label={t("areas_field_max_month")}>
               <input
                 type="number"
                 className="fi"
@@ -365,7 +368,7 @@ function AreaModal({
                 onChange={e => set("maxHoursMonth", Number(e.target.value))}
               />
             </Field>
-            <Field label="Descanso mínimo (h)">
+            <Field label={t("areas_field_rest")}>
               <input
                 type="number"
                 className="fi"
@@ -378,7 +381,7 @@ function AreaModal({
           {/* Working days */}
           <div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Días laborales
+              {t("areas_field_working_days")}
             </span>
             <div className="mt-2 flex gap-2 flex-wrap">
               {DAYS.map(({ day, label }) => {
@@ -628,13 +631,13 @@ function AreaModal({
                   onClick={() => onDelete(area.id)}
                   className="text-sm px-3 py-1.5 rounded-pill bg-destructive text-white hover:opacity-90 transition-opacity"
                 >
-                  Sí, eliminar
+                  {t("yes")}
                 </button>
                 <button
                   onClick={() => setConfirmingDelete(false)}
                   className="text-sm px-3 py-1.5 rounded-pill border border-border hover:bg-secondary"
                 >
-                  Cancelar
+                  {t("cancel")}
                 </button>
               </div>
             ) : (
@@ -642,7 +645,7 @@ function AreaModal({
                 onClick={() => setConfirmingDelete(true)}
                 className="text-sm px-4 py-2 rounded-pill border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
               >
-                Eliminar
+                {t("delete")}
               </button>
             )
           )}
@@ -651,19 +654,19 @@ function AreaModal({
               {confirmingSave ? (
                 <>
                   <span className="text-sm text-foreground font-medium self-center">
-                    {area ? "¿Guardar cambios?" : "¿Crear el área?"}
+                    {area ? t("save") : t("create")}?
                   </span>
                   <button
                     onClick={() => onSave(form)}
                     className="text-sm px-3 py-1.5 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
                   >
-                    {area ? "Sí, guardar" : "Sí, crear"}
+                    {t("yes")}
                   </button>
                   <button
                     onClick={() => setConfirmingSave(false)}
                     className="text-sm px-3 py-1.5 rounded-pill border border-border hover:bg-secondary"
                   >
-                    Cancelar
+                    {t("cancel")}
                   </button>
                 </>
               ) : (
@@ -672,13 +675,13 @@ function AreaModal({
                     onClick={onClose}
                     className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary"
                   >
-                    Cancelar
+                    {t("cancel")}
                   </button>
                   <button
                     onClick={() => setConfirmingSave(true)}
                     className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90"
                   >
-                    {area ? "Guardar cambios" : "Crear área"}
+                    {area ? t("save") : t("create")}
                   </button>
                 </>
               )}

@@ -1,6 +1,7 @@
 ﻿import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Topbar } from "@/components/wfm/Topbar";
+import { useI18n } from "@/lib/i18n";
 import { useWFM, currentWeekISO } from "@/lib/wfm/store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/scheduler")({
 function Scheduler() {
   const { employees, areas, shifts, absences, setShift, clearShift, clearWeek, generateWeeks, lockWeek, unlockWeek, swapShifts, setCurrentUser } = useWFM();
   const { hasLimit, hasPermission, profile, user } = useAuth();
+  const { t } = useI18n();
 
   useEffect(() => { setCurrentUser(user?.id ?? null); }, [user?.id]);
   const canEdit    = hasPermission("scheduler", "edit");
@@ -364,8 +366,8 @@ function Scheduler() {
   return (
     <>
       <Topbar
-        title="Programación de turnos"
-        subtitle="Vista grilla semanal · Lunes a Domingo"
+        title={t("scheduler_title")}
+        subtitle={t("scheduler_subtitle")}
       />
 
       <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, useMemo } from "react";
+import { useI18n } from "@/lib/i18n";
 import {
   Clock, Users, Coffee, UtensilsCrossed, LogIn, LogOut,
   LayoutDashboard, History, FileText, Settings, BarChart2,
@@ -186,6 +187,7 @@ function ModalField({ label, children }: { label: string; children: React.ReactN
 
 function JornadaPage() {
   const { hasPermission, profile } = useAuth();
+  const { t } = useI18n();
   const isLinkedEmployee = !!profile?.employeeId;
 
   const visibleTabs = TABS.filter((t) => {
@@ -209,7 +211,7 @@ function JornadaPage() {
 
   return (
     <>
-      <Topbar title="Control de Jornada" subtitle={`Fecha activa: ${fechaActiva}`} />
+      <Topbar title={t("jornada_title")} subtitle={`Fecha activa: ${fechaActiva}`} />
 
       <div className="border-b border-border/60 px-4 md:px-6">
         <nav className="flex gap-1 overflow-x-auto">

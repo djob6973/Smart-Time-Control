@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
+import { useI18n } from "@/lib/i18n";
 import {
   ChevronLeft, ChevronRight, CalendarCheck,
   Coffee, UtensilsCrossed, LogIn, LogOut,
@@ -633,6 +634,7 @@ function MonthView({ employeeId, monthStart }: { employeeId: string; monthStart:
 
 function MiHorarioPage() {
   const { profile } = useAuth();
+  const { t } = useI18n();
   const { employees } = useWFM();
   const { initialized: jornadaInit, initFromDB: jornadaInitDB } = useJornada();
 
@@ -686,7 +688,7 @@ function MiHorarioPage() {
   if (!employeeId) {
     return (
       <>
-        <Topbar title="Mi Horario" subtitle="Programación personal" />
+        <Topbar title={t("mi_horario")} subtitle="" />
         <div className="flex-1 flex items-center justify-center p-10">
           <div className="max-w-sm w-full">
             <div className="rounded-card bg-card p-8 text-center shadow-card space-y-4">

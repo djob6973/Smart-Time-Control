@@ -10,35 +10,28 @@ import { useAuth } from "@/lib/auth";
 import { useAppContext } from "@/lib/app-context";
 import { useTheme } from "@/lib/theme";
 import { useI18n, LANGUAGES } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
 import type { Resource } from "@/lib/permissions";
-
-const ROLE_LABELS: Record<string, string> = {
-  admin:      "Administrador",
-  supervisor: "Supervisor",
-  lider:      "Líder",
-  gestor:     "Gestor",
-  consulta:   "Consulta",
-};
 
 type NavItem = {
   to: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: React.ComponentType<{ className?: string }>;
   resource?: Resource;
   onlyLinkedEmployee?: boolean;
-  section?: string;
+  sectionKey?: string;
 };
 
 const NAV: NavItem[] = [
-  { to: "/",           label: "Dashboard",         icon: LayoutDashboard, resource: "dashboard" },
-  { to: "/scheduler",  label: "Programación",       icon: CalendarDays,    resource: "scheduler" },
-  { to: "/mi-horario", label: "Mi Horario",         icon: CalendarCheck,   resource: "mi_horario" },
-  { to: "/jornada",    label: "Control de Jornada", icon: Clock,           resource: "jornada" },
-  { to: "/employees",  label: "Trabajadores",       icon: Users,           resource: "employees" },
-  { to: "/areas",      label: "Áreas",              icon: Building2,       resource: "areas" },
-  { to: "/absences",   label: "Ausencias",          icon: CalendarOff,     resource: "absences" },
-  { to: "/reports",    label: "Reportes",           icon: FileText,        resource: "reports" },
-  { to: "/settings",   label: "Configuración",      icon: Settings,        resource: "settings", section: "Administración" },
+  { to: "/",           labelKey: "dashboard",  icon: LayoutDashboard, resource: "dashboard" },
+  { to: "/scheduler",  labelKey: "scheduler",  icon: CalendarDays,    resource: "scheduler" },
+  { to: "/mi-horario", labelKey: "mi_horario", icon: CalendarCheck,   resource: "mi_horario" },
+  { to: "/jornada",    labelKey: "jornada",    icon: Clock,           resource: "jornada" },
+  { to: "/employees",  labelKey: "employees",  icon: Users,           resource: "employees" },
+  { to: "/areas",      labelKey: "areas",      icon: Building2,       resource: "areas" },
+  { to: "/absences",   labelKey: "absences",   icon: CalendarOff,     resource: "absences" },
+  { to: "/reports",    labelKey: "reports",    icon: FileText,        resource: "reports" },
+  { to: "/settings",   labelKey: "settings",   icon: Settings,        resource: "settings", sectionKey: "Administración" },
 ];
 
 export function Sidebar() {
@@ -55,7 +48,6 @@ export function Sidebar() {
     closeSidebar();
   }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cierra el picker de idioma al hacer clic fuera
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (langRef.current && !langRef.current.contains(e.target as Node)) {
@@ -78,7 +70,7 @@ export function Sidebar() {
     ? profile.nombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()
     : profile?.email?.slice(0, 2).toUpperCase() ?? "??";
 
-  const roleLabel = ROLE_LABELS[role ?? ""] ?? role ?? "";
+  const roleLabel = t((role as TranslationKey) ?? "gestor");
 
   return (
     <>
@@ -98,7 +90,6 @@ export function Sidebar() {
           "flex flex-col bg-sidebar text-sidebar-foreground",
           "fixed inset-y-0 left-0 z-40 w-64",
           "transition-transform duration-300 ease-in-out",
-          // Desktop: in-flow, sticky, floating card
           "lg:relative lg:inset-y-auto lg:left-auto lg:z-auto lg:w-[240px] lg:shrink-0 lg:translate-x-0",
           "lg:rounded-card lg:shadow-card lg:border lg:border-border lg:h-[calc(100vh-2rem)] lg:sticky lg:top-4 lg:pt-5 lg:px-4 lg:pb-4",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
@@ -126,12 +117,12 @@ export function Sidebar() {
           {visibleNav.map((it, index) => {
             const active = it.to === "/" ? path === "/" : path.startsWith(it.to);
             const Icon = it.icon;
-            const showSection = it.section && (index === 0 || visibleNav[index - 1].section !== it.section);
+            const showSection = it.sectionKey && (index === 0 || visibleNav[index - 1].sectionKey !== it.sectionKey);
             return (
               <Fragment key={it.to}>
                 {showSection && (
                   <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    {it.section}
+                    {it.sectionKey}
                   </p>
                 )}
                 <Link
@@ -144,7 +135,7 @@ export function Sidebar() {
                   )}
                 >
                   <Icon className="size-5 shrink-0" />
-                  {it.label}
+                  {t(it.labelKey)}
                 </Link>
               </Fragment>
             );
@@ -194,7 +185,6 @@ export function Sidebar() {
                         onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = selected ? "rgba(255,255,255,0.06)" : "transparent"; }}
                       >
-                        {/* Badge código */}
                         <span
                           style={{
                             width: 28, height: 20, borderRadius: 5,
@@ -208,7 +198,6 @@ export function Sidebar() {
                         >
                           {countryCode}
                         </span>
-                        {/* Nombre */}
                         <span style={{
                           flex: 1, textAlign: "left",
                           fontSize: 13.5,
@@ -217,7 +206,6 @@ export function Sidebar() {
                         }}>
                           {label}
                         </span>
-                        {/* Check */}
                         {selected && (
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M2.5 7L5.5 10L11.5 4" stroke="#ED5650" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>

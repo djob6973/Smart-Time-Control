@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import type { Resource } from "@/lib/permissions";
 
 type Period = "dia" | "semana" | "mes";
@@ -97,6 +98,7 @@ function HoursTooltip({ active, payload, label }: any) {
 
 function Dashboard() {
   const { hasPermission, profile } = useAuth();
+  const { t } = useI18n();
   const ownArea = profile?.areaId ?? null;
   const navigate = useNavigate();
   const { employees, shifts, areas, absences } = useWFM();
@@ -364,7 +366,7 @@ function Dashboard() {
 
   return (
     <>
-      <Topbar title="Dashboard" subtitle="Lo que necesitas atender hoy" />
+      <Topbar title={t("dashboard")} subtitle={t("dashboard_subtitle")} />
 
       <div className="px-4 md:px-6 py-5 max-w-[1280px] mx-auto space-y-5">
 
@@ -383,7 +385,7 @@ function Dashboard() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {p === "dia" ? "Hoy" : p === "semana" ? "Semana" : "Mes"}
+                {p === "dia" ? t("dashboard_period_today") : p === "semana" ? t("dashboard_period_week") : t("dashboard_period_month")}
               </button>
             ))}
           </div>
@@ -418,7 +420,7 @@ function Dashboard() {
               onChange={e => setSelectedArea(e.target.value)}
               className="h-10 text-sm border border-border rounded-full px-3.5 bg-card text-foreground focus:outline-none appearance-none"
             >
-              <option value="all">Todas las áreas</option>
+              <option value="all">{t("dashboard_all_areas")}</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
@@ -430,11 +432,11 @@ function Dashboard() {
 
         {/* ── 5 KPIs ───────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <Kpi icon={Users}       label="Empleados activos" value={activeCount}          hint={areaLabel} />
-          <Kpi icon={CalendarOff} label="Ausencias"         value={approvedAbsences}     hint={`${pendingAbsences} pendientes`} valueAlert={pendingAbsences > 0} />
-          <Kpi icon={Clock}       label="Horas programadas" value={fmtHours(sum.total)}  hint={dateLabelText} delta={horasDelta?.text} deltaUp={horasDelta?.up} />
-          <Kpi icon={TrendingUp}  label="Horas extras"      value={fmtHours(overtime)}   hint="HED · HEN · HEDF · HENF" delta={extrasDelta?.text} deltaUp={extrasDelta ? !extrasDelta.up : undefined} alert />
-          <Kpi icon={Timer}       label="Recargos"          value={fmtHours(surcharges)} hint="RN · RDF" />
+          <Kpi icon={Users}       label={t("dashboard_kpi_employees")} value={activeCount}          hint={areaLabel} />
+          <Kpi icon={CalendarOff} label={t("dashboard_kpi_absences")} value={approvedAbsences}     hint={`${pendingAbsences} ${t("dashboard_kpi_pending")}`} valueAlert={pendingAbsences > 0} />
+          <Kpi icon={Clock}       label={t("dashboard_kpi_hours")}    value={fmtHours(sum.total)}  hint={dateLabelText} delta={horasDelta?.text} deltaUp={horasDelta?.up} />
+          <Kpi icon={TrendingUp}  label={t("dashboard_kpi_overtime")} value={fmtHours(overtime)}   hint="HED · HEN · HEDF · HENF" delta={extrasDelta?.text} deltaUp={extrasDelta ? !extrasDelta.up : undefined} alert />
+          <Kpi icon={Timer}       label={t("dashboard_kpi_surcharges")} value={fmtHours(surcharges)} hint="RN · RDF" />
         </div>
 
         {/* ── Gráfico + Riel ────────────────────────────────────── */}
@@ -447,10 +449,10 @@ function Dashboard() {
                 <h3 className="font-semibold text-sm">Horas programadas</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {period === "dia"
-                    ? "Total por bloque horario · hoy"
+                    ? t("dashboard_chart_day")
                     : period === "semana"
-                    ? "Total por día · esta semana"
-                    : "Total por semana · este mes"}
+                    ? t("dashboard_chart_week")
+                    : t("dashboard_chart_month")}
                 </p>
               </div>
               {/* Chart type toggle — in sync with main period */}
@@ -465,7 +467,7 @@ function Dashboard() {
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {p === "dia" ? "Día" : p === "semana" ? "Semana" : "Mes"}
+                    {p === "dia" ? t("dashboard_period_day") : p === "semana" ? t("dashboard_period_week") : t("dashboard_period_month")}
                   </button>
                 ))}
               </div>
@@ -502,12 +504,12 @@ function Dashboard() {
             {/* Legend */}
             <div className="px-5 pt-3 pb-5 border-t border-border flex flex-wrap gap-x-4 gap-y-1.5">
               {[
-                { code: "STD",  label: "Estándar",    color: COLORS.STD  },
-                { code: "HED",  label: "Extra diur.", color: COLORS.HED  },
-                { code: "HEN",  label: "Extra noct.", color: COLORS.HEN  },
-                { code: "RN",   label: "Rec. noct.",  color: COLORS.RN   },
-                { code: "RDF",  label: "Rec. dom.",   color: COLORS.RDF  },
-                { code: "HEDF", label: "Extra dom.",  color: COLORS.HEDF },
+                { code: "STD",  label: t("dashboard_legend_std"),     color: COLORS.STD  },
+                { code: "HED",  label: t("dashboard_legend_extra_d"),  color: COLORS.HED  },
+                { code: "HEN",  label: t("dashboard_legend_extra_n"),  color: COLORS.HEN  },
+                { code: "RN",   label: t("dashboard_legend_rec_n"),    color: COLORS.RN   },
+                { code: "RDF",  label: t("dashboard_legend_rec_d"),    color: COLORS.RDF  },
+                { code: "HEDF", label: t("dashboard_legend_extra_d2"), color: COLORS.HEDF },
               ].map(l => (
                 <span key={l.code} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <span className="size-2 rounded-sm shrink-0" style={{ background: l.color }} />

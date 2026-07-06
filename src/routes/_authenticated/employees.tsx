@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, Pencil, Trash2, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ type StatusFilter = "all" | "active" | "inactive";
 function EmployeesPage() {
   const { employees, areas, removeEmployee, upsertEmployee } = useWFM();
   const { hasPermission, hasLimit, profile } = useAuth();
+  const { t } = useI18n();
   const canEdit   = hasPermission("employees", "edit");
   const canDelete = hasLimit("canDeleteData");
   const ownArea   = profile?.areaId ?? null;
@@ -69,8 +71,8 @@ function EmployeesPage() {
   return (
     <>
       <Topbar
-        title="Trabajadores"
-        subtitle={`${activeCount} activos`}
+        title={t("employees_title")}
+        subtitle={`${activeCount} ${t("employees_filter_active").toLowerCase()}`}
         right={
           canEdit ? (
             <button
@@ -78,7 +80,7 @@ function EmployeesPage() {
               className="h-10 inline-flex items-center gap-2 rounded-full bg-primary px-[18px] text-sm font-bold text-primary-foreground hover:opacity-90 shrink-0"
             >
               <Plus className="size-4" />
-              <span className="hidden sm:inline">Nuevo trabajador</span>
+              <span className="hidden sm:inline">{t("employees_new")}</span>
             </button>
           ) : undefined
         }
@@ -92,7 +94,7 @@ function EmployeesPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por nombre o documento..."
+              placeholder={t("employees_search")}
               className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm outline-none w-80 focus:border-primary/40 transition-colors"
             />
           </div>
@@ -107,7 +109,7 @@ function EmployeesPage() {
               onChange={(e) => setAreaFilter(e.target.value)}
               className="h-10 pl-3.5 pr-8 rounded-full border border-border bg-card text-sm outline-none shrink-0"
             >
-              <option value="all">Todas las áreas</option>
+              <option value="all">{t("dashboard_all_areas")}</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
@@ -123,7 +125,7 @@ function EmployeesPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s === "all" ? "Todos" : s === "active" ? "Activos" : "Inactivos"}
+                {s === "all" ? t("employees_filter_all") : s === "active" ? t("employees_filter_active") : t("employees_filter_inactive")}
               </button>
             ))}
           </div>
@@ -139,12 +141,12 @@ function EmployeesPage() {
             <table className="w-full text-sm">
               <thead className="bg-secondary text-left">
                 <tr>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Trabajador</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Documento</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Área</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Contrato</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Acceso</th>
-                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">Estado</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{t("employees_col_worker")}</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{t("employees_col_document")}</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{t("employees_col_area")}</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{t("employees_col_contract")}</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{t("employees_col_access")}</th>
+                  <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{t("employees_col_status")}</th>
                   {(canEdit || canDelete) && <th className="px-4 py-3" />}
                 </tr>
               </thead>
@@ -181,7 +183,7 @@ function EmployeesPage() {
                           ) : (
                             <div className="flex items-center gap-1.5 text-muted-foreground">
                               <Unlink className="size-3 shrink-0" />
-                              <span className="text-[11px]">Sin vincular</span>
+                              <span className="text-[11px]">{t("employees_not_linked")}</span>
                             </div>
                           );
                         })()}
@@ -192,7 +194,7 @@ function EmployeesPage() {
                             ? "bg-[color-mix(in_srgb,#1F8A5B_14%,transparent)] text-[#1F8A5B]"
                             : "bg-secondary text-muted-foreground"
                         }`}>
-                          {e.status === "active" ? "Activo" : "Inactivo"}
+                          {e.status === "active" ? t("employees_status_active") : t("employees_status_inactive")}
                         </span>
                       </td>
                       {(canEdit || canDelete) && (
@@ -223,7 +225,7 @@ function EmployeesPage() {
                 {list.length === 0 && (
                   <tr>
                     <td colSpan={(canEdit || canDelete) ? 8 : 7} className="text-center py-12 text-muted-foreground">
-                      Sin resultados
+                      {t("no_results")}
                     </td>
                   </tr>
                 )}
@@ -262,6 +264,7 @@ function EmployeesPage() {
 
 function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
   const { employees } = useWFM();
+  const { t } = useI18n();
   const currentLinkedUser: AppUser | undefined = users.find((u: AppUser) => u.employeeId === employee?.id);
 
   const [form, setForm] = useState(() => ({
@@ -302,22 +305,22 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
 
   async function handleSave() {
     if (!form.fullName.trim()) {
-      toast.error("El nombre del trabajador es obligatorio.");
+      toast.error(t("employees_err_name"));
       return;
     }
     if (!form.documentId.trim()) {
-      toast.error("El número de documento es obligatorio.");
+      toast.error(t("employees_err_document"));
       return;
     }
     const isDuplicate = (employees as any[]).some(
       (e: any) => e.id !== form.id && e.documentId === form.documentId.trim()
     );
     if (isDuplicate) {
-      toast.error("Ya existe un trabajador con ese número de documento.");
+      toast.error(t("employees_err_duplicate"));
       return;
     }
     if (form.status === "inactive" && !form.inactiveDate) {
-      toast.error("Debes indicar la fecha de inactivación del trabajador.");
+      toast.error(t("employees_err_inactive_date"));
       return;
     }
     const { linkedUserId, ...emp } = form;
@@ -355,60 +358,60 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
         {/* Header */}
         <div className="p-5 border-b border-border">
           <h3 className="font-semibold text-base">
-            {employee ? "Editar trabajador" : "Nuevo trabajador"}
+            {employee ? t("employees_modal_edit") : t("employees_modal_new")}
           </h3>
         </div>
 
         {/* Body */}
         <div className="p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "68vh" }}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Nombre completo">
+            <Field label={t("employees_field_name")}>
               <input
                 className="fi"
                 value={form.fullName}
                 onChange={e => update("fullName", e.target.value)}
-                placeholder="Nombre completo"
+                placeholder={t("employees_ph_name")}
               />
             </Field>
-            <Field label="Documento">
+            <Field label={t("employees_field_document")}>
               <input
                 className="fi"
                 value={form.documentId}
                 onChange={e => update("documentId", e.target.value)}
-                placeholder="Número de identificación"
+                placeholder={t("employees_ph_document")}
               />
             </Field>
-            <Field label="Cargo">
+            <Field label={t("employees_field_position")}>
               <input
                 className="fi"
                 value={form.position}
                 onChange={e => update("position", e.target.value)}
-                placeholder="Cargo o rol"
+                placeholder={t("employees_ph_position")}
               />
             </Field>
-            <Field label="Área">
+            <Field label={t("employees_field_area")}>
               <select className="fi" value={form.areaId} onChange={e => update("areaId", e.target.value)}>
                 {areas.map((a: any) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Tipo de contrato">
+            <Field label={t("employees_field_contract")}>
               <select className="fi" value={form.contractType} onChange={e => update("contractType", e.target.value)}>
-                <option value="indefinido">Término indefinido</option>
-                <option value="fijo">Término fijo</option>
-                <option value="obra">Por prestación</option>
-                <option value="aprendiz">Aprendiz SENA</option>
+                <option value="indefinido">{t("employees_contract_indef")}</option>
+                <option value="fijo">{t("employees_contract_fixed")}</option>
+                <option value="obra">{t("employees_contract_service")}</option>
+                <option value="aprendiz">{t("employees_contract_intern")}</option>
               </select>
             </Field>
-            <Field label="Estado">
+            <Field label={t("employees_field_status")}>
               <select className="fi" value={form.status} onChange={e => update("status", e.target.value)}>
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
+                <option value="active">{t("employees_status_active")}</option>
+                <option value="inactive">{t("employees_status_inactive")}</option>
               </select>
             </Field>
             {form.status === "inactive" && (
-              <Field label="Fecha de inactivación *">
+              <Field label={t("employees_field_inactive_date")}>
                 <input
                   type="date"
                   className="fi"
@@ -418,13 +421,13 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
                 />
               </Field>
             )}
-            <Field label="Acceso (usuario vinculado)">
+            <Field label={t("employees_field_access")}>
               <select
                 className="fi"
                 value={form.linkedUserId}
                 onChange={e => update("linkedUserId", e.target.value)}
               >
-                <option value="">— Sin vincular —</option>
+                <option value="">— {t("employees_not_linked")} —</option>
                 {(users as AppUser[])
                   .filter(u => !u.employeeId || u.id === currentLinkedUser?.id)
                   .map(u => (
@@ -440,7 +443,7 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
           {/* Disponibilidad semanal */}
           <div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Disponibilidad semanal
+              {t("employees_availability")}
             </span>
             <div className="mt-2 divide-y divide-border rounded-xl border border-border overflow-hidden">
               {DAY_LABELS.map(({ day, label, full }) => {
@@ -516,13 +519,13 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
             onClick={onClose}
             className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary"
           >
-            Cancelar
+            {t("cancel")}
           </button>
           <button
             onClick={handleSave}
             className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90"
           >
-            Guardar trabajador
+            {t("save")}
           </button>
         </div>
 

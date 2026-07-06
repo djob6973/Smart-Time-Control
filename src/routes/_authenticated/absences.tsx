@@ -4,6 +4,7 @@ import { useWFM } from "@/lib/wfm/store";
 import { parseAbsNote } from "@/lib/wfm/calc";
 import { startOfWeek, toISO } from "@/lib/wfm/date";
 import { useAuth } from "@/lib/auth";
+import { useI18n } from "@/lib/i18n";
 import { useState, useMemo, useEffect, type ElementType } from "react";
 import { dispatchAbsenceEvent } from "@/lib/notifications/dispatch";
 import { Plus, CalendarX2, Clock, CheckCircle2, Calendar, PencilLine, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -489,6 +490,7 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
 function AbsencesPage() {
   const { absences, employees, areas, shifts, upsertAbsence, removeAbsence, clearShift, setShift } = useWFM();
   const { hasPermission, hasLimit, profile } = useAuth();
+  const { t } = useI18n();
 
   const canCreate  = hasPermission("absences", "edit");
   const canApprove = hasLimit("canApproveAbsences");
@@ -649,7 +651,7 @@ function AbsencesPage() {
   if (!profile?.employeeId && !canApprove) {
     return (
       <>
-        <Topbar title="Ausencias" subtitle="Solicitudes y aprobaciones" />
+        <Topbar title={t("absences_title")} subtitle="" />
         <div className="flex-1 flex items-center justify-center p-10">
           <div className="max-w-sm w-full">
             <div className="rounded-card bg-card p-8 text-center shadow-card space-y-4">
@@ -698,8 +700,8 @@ function AbsencesPage() {
   return (
     <>
       <Topbar
-        title="Ausencias"
-        subtitle="Solicitudes y aprobaciones"
+        title={t("absences_title")}
+        subtitle=""
         right={
           canCreate ? (
             <button
@@ -707,7 +709,7 @@ function AbsencesPage() {
               className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
             >
               <Plus className="size-4" />
-              <span className="hidden sm:inline">Nueva solicitud</span>
+              <span className="hidden sm:inline">{t("absences_new")}</span>
             </button>
           ) : undefined
         }
@@ -725,7 +727,7 @@ function AbsencesPage() {
             onClick={() => setStatusFilter(null)}
           />
           <KpiCard
-            label="Pendientes"
+            label={t("absences_filter_pending")}
             value={pendingCount}
             foot="Requieren revisión"
             icon={Clock}
@@ -734,7 +736,7 @@ function AbsencesPage() {
             onClick={() => setStatusFilter(f => f === "pendiente" ? null : "pendiente")}
           />
           <KpiCard
-            label="Aprobadas"
+            label={t("absences_filter_approved")}
             value={approvedCount}
             foot={dateLabelText}
             icon={CheckCircle2}

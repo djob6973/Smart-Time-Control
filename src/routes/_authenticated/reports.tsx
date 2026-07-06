@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Topbar } from "@/components/wfm/Topbar";
+import { useI18n } from "@/lib/i18n";
 import { useWFM } from "@/lib/wfm/store";
 import { shiftBreakdown, codeColor } from "@/lib/wfm/calc";
 import { fmtDate } from "@/lib/wfm/date";
@@ -217,6 +218,7 @@ function DownloadMenu({
 function ReportsPage() {
   const { shifts, employees, areas, absences } = useWFM();
   const { hasLimit, profile } = useAuth();
+  const { t } = useI18n();
   const { registros: jornadaRegistros, configuracion: jornadaConfig, loadRango } = useJornada();
   const canExport = hasLimit("canExportReports");
   const ownArea   = profile?.areaId ?? null;
@@ -473,7 +475,7 @@ function ReportsPage() {
   /* ================================================================ */
   return (
     <>
-      <Topbar title="Reportes y analítica" subtitle="Horas, novedades y tendencias" />
+      <Topbar title={t("reports_title")} subtitle="" />
       <div className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto space-y-4">
 
         {/* ---- Toolbar ---- */}

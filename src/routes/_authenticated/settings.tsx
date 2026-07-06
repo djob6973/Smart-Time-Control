@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
 import { Topbar } from "@/components/wfm/Topbar";
+import { useI18n } from "@/lib/i18n";
 import { useWFM } from "@/lib/wfm/store";
 import { useAuth } from "@/lib/auth";
 import {
@@ -286,6 +287,7 @@ function pickLimitsFromDB(p: Record<string, any>): Partial<AccessLimits> {
 function SettingsPage() {
   const { resetAll, areas, employees } = useWFM();
   const { role: authRole, user, organization, organizations, switchOrg } = useAuth();
+  const { t } = useI18n();
   const isAdmin = authRole === "admin";
 
   const [tab, setTab] = useState<"users" | "roles" | "org" | "marca" | "slack" | "festivos">("users");
@@ -706,7 +708,7 @@ function SettingsPage() {
 
   return (
     <>
-      <Topbar title="Configuración" subtitle="Usuarios, roles y organización" />
+      <Topbar title={t("settings_title")} subtitle="" />
 
       {/* Tab bar */}
       <div className="border-b border-border px-6">
