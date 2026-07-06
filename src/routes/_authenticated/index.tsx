@@ -307,14 +307,14 @@ function Dashboard() {
       };
     };
 
-    if (period === "dia") return [{ day: "Hoy", ...bdFor(dateRange[0], dateRange[1]) }];
+    if (period === "dia") return [{ day: t("dashboard_period_today"), ...bdFor(dateRange[0], dateRange[1]) }];
     if (period === "semana") {
       const now = new Date();
       const wsCur = startOfWeek(now);
       wsCur.setDate(wsCur.getDate() + dateOffset * 7);
       const dys = weekDays(wsCur);
-      const LABELS = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
-      return dys.map(d => ({ day: LABELS[d.getDay()], ...bdFor(toISO(d), toISO(d)) }));
+      const dow = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+      return dys.map(d => ({ day: dow.format(d).slice(0, 2), ...bdFor(toISO(d), toISO(d)) }));
     }
     const now = new Date();
     const first = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
@@ -325,29 +325,29 @@ function Dashboard() {
       const wStart = toISO(cur);
       const next6  = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 6);
       const wEnd   = toISO(next6 > last ? last : next6);
-      result.push({ day: `Sem ${wn}`, ...bdFor(wStart, wEnd) });
+      result.push({ day: `${t("scheduler_week")} ${wn}`, ...bdFor(wStart, wEnd) });
       cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
       wn++;
     }
     return result;
-  }, [period, dateOffset, periodShifts, filteredEmployees, areas, dateRange]);
+  }, [period, dateOffset, periodShifts, filteredEmployees, areas, dateRange, t]);
 
   const alertItems = useMemo(() => {
     const items: { level: AlertLevel; title: string; meta: string; to?: string; btn?: string }[] = [];
     if (heavyCount > 0)
-      items.push({ level: "critical", title: `${heavyCount} empleado${heavyCount > 1 ? "s" : ""} con exceso de carga`, meta: "Semana actual > 46 h", to: "/scheduler", btn: "Resolver" });
+      items.push({ level: "critical", title: `${heavyCount} ${t("dashboard_overload_title")}`, meta: t("dashboard_overload_meta"), to: "/scheduler", btn: t("dashboard_btn_resolve") });
     if (missingCheckins > 0)
-      items.push({ level: "critical", title: `${missingCheckins} sin registrar entrada`, meta: "Turno activo sin check-in hoy", to: "/jornada", btn: "Resolver" });
+      items.push({ level: "critical", title: `${missingCheckins} ${t("dashboard_checkin_title")}`, meta: t("dashboard_checkin_meta"), to: "/jornada", btn: t("dashboard_btn_resolve") });
     if (tardinessToday > 0)
-      items.push({ level: "warning",  title: `${tardinessToday} llegaron tarde`, meta: "Superaron la tolerancia hoy", to: "/jornada", btn: "Revisar" });
+      items.push({ level: "warning",  title: `${tardinessToday} ${t("dashboard_late_title")}`, meta: t("dashboard_tardiness_meta"), to: "/jornada", btn: t("dashboard_btn_review") });
     if (pendingAbsences > 0)
-      items.push({ level: "warning",  title: `${pendingAbsences} ausencia${pendingAbsences > 1 ? "s" : ""} pendiente${pendingAbsences > 1 ? "s" : ""}`, meta: "Esperando aprobación", to: "/absences", btn: "Revisar" });
+      items.push({ level: "warning",  title: `${pendingAbsences} ${pendingAbsences > 1 ? t("dashboard_absences_title") : t("dashboard_absence_title")}`, meta: t("dashboard_absence_meta"), to: "/absences", btn: t("dashboard_btn_review") });
     if (pendingNoveltyCount > 0)
-      items.push({ level: "warning",  title: `${pendingNoveltyCount} novedad${pendingNoveltyCount > 1 ? "es" : ""} sin aprobar`, meta: "Revisar en Reportes", to: "/reports", btn: "Revisar" });
+      items.push({ level: "warning",  title: `${pendingNoveltyCount} ${pendingNoveltyCount > 1 ? t("dashboard_novelties_title") : t("dashboard_novelty_title")}`, meta: t("dashboard_novelty_meta"), to: "/reports", btn: t("dashboard_btn_review") });
     if (items.length === 0)
-      items.push({ level: "ok", title: "Sin alertas activas", meta: "Todo en orden operativo" });
+      items.push({ level: "ok", title: t("dashboard_no_alerts"), meta: t("dashboard_no_alerts_sub") });
     return items;
-  }, [heavyCount, missingCheckins, tardinessToday, pendingAbsences, pendingNoveltyCount]);
+  }, [heavyCount, missingCheckins, tardinessToday, pendingAbsences, pendingNoveltyCount, t]);
 
   const hasCritical  = alertItems.some(a => a.level === "critical");
   const activeCount  = filteredEmployees.filter(e => e.status === "active").length;
@@ -426,7 +426,7 @@ function Dashboard() {
           )}
 
           <span className="ml-auto hidden md:inline text-[11px] text-muted-foreground">
-            Actualizado hace 2 min
+            {t("dashboard_updated")}
           </span>
         </div>
 
@@ -446,7 +446,7 @@ function Dashboard() {
           <div className="lg:col-span-2 rounded-card bg-card shadow-card flex flex-col">
             <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-4 border-b border-border/60">
               <div>
-                <h3 className="font-semibold text-sm">Horas programadas</h3>
+                <h3 className="font-semibold text-sm">{t("dashboard_chart_title")}</h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
                   {period === "dia"
                     ? t("dashboard_chart_day")
@@ -536,8 +536,8 @@ function Dashboard() {
                 <AlertTriangle className="size-5" style={{ color: PRIMARY }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold" style={{ color: "#fff" }}>Alertas operativas</p>
-                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.55)" }}>Requieren tu atención</p>
+                <p className="text-sm font-semibold" style={{ color: "#fff" }}>{t("dashboard_alerts_title")}</p>
+                <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.55)" }}>{t("dashboard_alerts_sub")}</p>
               </div>
               <span
                 className="min-w-[30px] h-[30px] px-2 rounded-pill flex items-center justify-center text-sm font-bold tabular-nums"
@@ -605,7 +605,7 @@ function Dashboard() {
               style={{ borderTop: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)" }}
             >
               <UserCheck className="size-3.5 shrink-0" style={{ color: "#4ade80" }} />
-              Aprobaciones y ausencias al día
+              {t("dashboard_approvals_ok")}
             </div>
           </div>
 

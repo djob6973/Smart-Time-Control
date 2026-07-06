@@ -179,7 +179,7 @@ function Scheduler() {
     generateWeeks(weekISO, areaFilter === "all" ? undefined : areaFilter, numWeeks);
     if (anchorUnlockedCount > 0) {
       toast.warning(
-        `${anchorUnlockedCount} turno${anchorUnlockedCount > 1 ? "s" : ""} en la semana ancla no ${anchorUnlockedCount > 1 ? "están bloqueados" : "está bloqueado"} y no ${anchorUnlockedCount > 1 ? "entrarán" : "entrará"} en la rotación.`,
+        `${anchorUnlockedCount} ${t("scheduler_anchor_warn")}`,
         { duration: 6000 }
       );
     }
@@ -523,7 +523,7 @@ function Scheduler() {
               className="ml-auto h-10 px-[18px] rounded-full bg-primary flex items-center gap-2 text-sm font-bold text-primary-foreground hover:opacity-90 shrink-0"
             >
               <Sparkles className="size-4" />
-              <span className="hidden sm:inline">Generar inteligente</span>
+              <span className="hidden sm:inline">{t("scheduler_smart_generate")}</span>
             </button>
           )}
         </div>
@@ -697,7 +697,7 @@ function Scheduler() {
       </div>
 
       {showGenerateConfirm && (() => {
-        const areaLabel = areaFilter === "all" ? "todas las áreas" : areas.find(a => a.id === areaFilter)?.name ?? "el área";
+        const areaLabel = areaFilter === "all" ? t("scheduler_all_areas_lower") : areas.find(a => a.id === areaFilter)?.name ?? t("scheduler_all_areas_lower");
         const weekLabel = `${days[0].getDate()}/${days[0].getMonth() + 1} – ${days[6].getDate()}/${days[6].getMonth() + 1}`;
         const endWs = addDays(ws, (numWeeks - 1) * 7);
         const endDays = weekDays(endWs);
@@ -713,8 +713,8 @@ function Scheduler() {
                   <Sparkles className="size-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-primary">Generar programación inteligente</p>
-                  <p className="text-xs text-primary/70">Los turnos no bloqueados serán reemplazados</p>
+                  <p className="text-sm font-bold text-primary">{t("scheduler_smart_gen_title")}</p>
+                  <p className="text-xs text-primary/70">{t("scheduler_smart_gen_sub")}</p>
                 </div>
                 <button onClick={() => setShowGenerateConfirm(false)} className="p-1 rounded hover:bg-primary/10 shrink-0">
                   <X className="size-4 text-primary/60" />
@@ -724,19 +724,19 @@ function Scheduler() {
               {/* Body */}
               <div className="p-5 space-y-3">
                 <p className="text-sm text-foreground leading-relaxed">
-                  Se generará automáticamente la rotación de turnos para:
+                  {t("scheduler_smart_gen_body")}
                 </p>
                 <div className="rounded-xl bg-secondary/60 border border-border px-4 py-3 space-y-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground text-xs">Período</span>
+                    <span className="text-muted-foreground text-xs">{t("scheduler_period_label")}</span>
                     <span className="font-semibold">{rangeLabel}</span>
                   </div>
                   <div className="flex items-center justify-between border-t border-border pt-2">
-                    <span className="text-muted-foreground text-xs">Semanas</span>
-                    <span className="font-semibold">{numWeeks} {numWeeks === 1 ? "semana" : "semanas"}</span>
+                    <span className="text-muted-foreground text-xs">{t("scheduler_weeks_label")}</span>
+                    <span className="font-semibold">{numWeeks} {numWeeks === 1 ? t("scheduler_week") : t("scheduler_week")}</span>
                   </div>
                   <div className="flex items-center justify-between border-t border-border pt-2">
-                    <span className="text-muted-foreground text-xs">Área</span>
+                    <span className="text-muted-foreground text-xs">{t("scheduler_area_label")}</span>
                     <span className="font-semibold">{areaLabel}</span>
                   </div>
                 </div>
@@ -744,15 +744,12 @@ function Scheduler() {
                   <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
                     <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-800 leading-relaxed">
-                      <strong>{anchorUnlockedCount} turno{anchorUnlockedCount > 1 ? "s" : ""}</strong> en la semana
-                      ancla no {anchorUnlockedCount > 1 ? "están bloqueados" : "está bloqueado"} y no{" "}
-                      {anchorUnlockedCount > 1 ? "entrarán" : "entrará"} en la rotación.
-                      Cierra este diálogo y bloquéalos primero si quieres incluirlos.
+                      <strong>{anchorUnlockedCount}</strong> {t("scheduler_anchor_warn")}
                     </p>
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Los turnos bloqueados <span className="inline-flex items-center gap-0.5 font-medium text-foreground"><Lock className="size-3" /> no se verán afectados.</span>
+                  <span className="inline-flex items-center gap-0.5 font-medium text-foreground"><Lock className="size-3" /> {t("scheduler_locked_unaffected")}</span>
                 </p>
               </div>
 
@@ -768,7 +765,7 @@ function Scheduler() {
                   onClick={confirmGenerate}
                   className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 font-medium inline-flex items-center gap-2"
                 >
-                  <Sparkles className="size-3.5" /> {anchorUnlockedCount > 0 ? "Generar igualmente" : "Generar"}
+                  <Sparkles className="size-3.5" /> {anchorUnlockedCount > 0 ? t("scheduler_smart_gen_anyway") : t("scheduler_smart_gen_btn")}
                 </button>
               </div>
             </div>
@@ -777,7 +774,7 @@ function Scheduler() {
       })()}
 
       {showClearConfirm && (() => {
-        const areaLabel = areaFilter === "all" ? "todas las áreas" : areas.find(a => a.id === areaFilter)?.name ?? "el área";
+        const areaLabel = areaFilter === "all" ? t("scheduler_all_areas_lower") : areas.find(a => a.id === areaFilter)?.name ?? t("scheduler_all_areas_lower");
         const weekLabel = `${days[0].getDate()}/${days[0].getMonth() + 1} – ${days[6].getDate()}/${days[6].getMonth() + 1}`;
         return (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={() => setShowClearConfirm(false)}>
@@ -812,7 +809,7 @@ function Scheduler() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Los turnos bloqueados <span className="inline-flex items-center gap-0.5 font-medium text-foreground"><Lock className="size-3" /> no se verán afectados.</span>
+                  <span className="inline-flex items-center gap-0.5 font-medium text-foreground"><Lock className="size-3" /> {t("scheduler_locked_unaffected")}</span>
                 </p>
               </div>
 
@@ -844,8 +841,8 @@ function Scheduler() {
                 <AlertTriangle className="size-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm font-bold text-amber-800">Semana base sin bloquear</p>
-                <p className="text-xs text-amber-700">No se puede generar la programación inteligente</p>
+                <p className="text-sm font-bold text-amber-800">{t("scheduler_base_week_title")}</p>
+                <p className="text-xs text-amber-700">{t("scheduler_base_week_sub")}</p>
               </div>
               <button onClick={() => setShowBaseWeekWarning(false)} className="ml-auto p-1 rounded hover:bg-amber-100">
                 <X className="size-4 text-amber-600" />
@@ -853,19 +850,18 @@ function Scheduler() {
             </div>
             <div className="p-5 space-y-4">
               <p className="text-sm text-foreground leading-relaxed">
-                Para generar la programación inteligente de la semana actual, primero debes <strong>bloquear la semana anterior</strong> (semana base).
+                {t("scheduler_base_week_body")}
               </p>
               <div className="rounded-xl bg-secondary/60 border border-border px-4 py-3 space-y-2 text-sm">
-                <p className="font-medium text-foreground">Pasos a seguir:</p>
+                <p className="font-medium text-foreground">{t("scheduler_base_week_steps")}</p>
                 <ol className="list-decimal list-inside space-y-1 text-muted-foreground text-xs leading-relaxed">
-                  <li>Navega a la semana anterior <span className="font-medium text-foreground">({prevWeekLabel})</span> usando la flecha ←</li>
-                  <li>Verifica que los turnos estén correctos</li>
-                  <li>Presiona <span className="inline-flex items-center gap-1 font-medium text-foreground"><Lock className="size-3" /> Bloquear semana</span></li>
-                  <li>Regresa a esta semana y presiona <span className="inline-flex items-center gap-1 font-medium text-foreground"><Sparkles className="size-3" /> Generar inteligente</span></li>
+                  <li>{t("scheduler_prev_week")} <span className="font-medium text-foreground">({prevWeekLabel})</span></li>
+                  <li><span className="inline-flex items-center gap-1 font-medium text-foreground"><Lock className="size-3" /> {t("scheduler_lock_week")}</span></li>
+                  <li><span className="inline-flex items-center gap-1 font-medium text-foreground"><Sparkles className="size-3" /> {t("scheduler_smart_generate")}</span></li>
                 </ol>
               </div>
               <p className="text-xs text-muted-foreground">
-                El bloqueo evita que la generación modifique turnos ya confirmados y sirve como punto de referencia para calcular la rotación.
+                {t("scheduler_locked_unaffected")}
               </p>
             </div>
             <div className="p-4 border-t border-border flex justify-end">
@@ -873,7 +869,7 @@ function Scheduler() {
                 onClick={() => setShowBaseWeekWarning(false)}
                 className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 font-medium"
               >
-                Entendido
+                {t("scheduler_base_week_got_it")}
               </button>
             </div>
           </div>
