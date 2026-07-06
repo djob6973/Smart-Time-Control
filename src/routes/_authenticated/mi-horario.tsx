@@ -79,6 +79,7 @@ const CODE_LABEL: Record<string, string> = {
 // ── Day View ───────────────────────────────────────────────────────────────
 
 function DayView({ employeeId, date }: { employeeId: string; date: string }) {
+  const { t } = useI18n();
   const { shifts, employees, areas } = useWFM();
   const { registros, getEstadoEmpleado } = useJornada();
 
@@ -135,20 +136,20 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
                                isAbs ? "#C98A00" :
                                "var(--color-primary)" }}
             >
-              Turno programado
+              {t("mi_horario_scheduled")}
             </p>
             {!shift && (
-              <p className="text-sm text-muted-foreground italic">Sin programación</p>
+              <p className="text-sm text-muted-foreground italic">{t("mi_horario_no_programming")}</p>
             )}
             {isOff && (
               <div className="flex items-center gap-2">
                 <Umbrella className="size-4 text-muted-foreground" />
-                <span className="font-semibold">Día de descanso</span>
+                <span className="font-semibold">{t("mi_horario_day_off")}</span>
               </div>
             )}
             {isAbs && (
               <div className="flex items-center gap-2">
-                <span style={{ color: "#C98A00" }} className="font-semibold">Ausencia programada</span>
+                <span style={{ color: "#C98A00" }} className="font-semibold">{t("mi_horario_absence")}</span>
               </div>
             )}
             {isWork && (
@@ -160,7 +161,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
                     <Moon className="size-4" style={{ color: "var(--color-primary)" }} />
                   )}
                   <span className="font-semibold text-base" style={{ color: "var(--color-primary)" }}>
-                    {workHours ? "Turno parcial" : (CODE_LABEL[shift!.code] ?? shift!.code)}
+                    {workHours ? t("mi_horario_partial_shift") : (CODE_LABEL[shift!.code] ?? shift!.code)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
@@ -194,7 +195,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
                 style={{ background: "var(--color-secondary)", color: "var(--color-muted-foreground)" }}
               >
                 <Lock className="size-3" />
-                Bloqueado
+                {t("mi_horario_locked")}
               </span>
             )}
           </div>
@@ -206,7 +207,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
             <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
               <span className="font-mono">{fmtHour(shift.start)}</span>
               <span className="text-xs text-muted-foreground">
-                {shift.end - shift.start}h netas · {shift.breakMinutes} min break
+                {shift.end - shift.start}{t("mi_horario_net_hours")} · {shift.breakMinutes} {t("mi_horario_break_min")}
               </span>
               <span className="font-mono">{fmtHour(shift.end)}</span>
             </div>
@@ -223,7 +224,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
       {/* Estado actual */}
       <div className="rounded-card bg-card p-5 shadow-card">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-          Estado actual
+          {t("mi_horario_current_status")}
         </p>
         <div className="flex items-center gap-3 flex-wrap">
           <span className={`px-3 py-1.5 rounded-pill text-sm font-semibold ${ESTADO_COLORS[estado.estado]}`}>
@@ -243,7 +244,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
               <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-2">
                 <Coffee className="size-3.5 text-amber-500 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Break acum.</p>
+                  <p className="text-[10px] text-muted-foreground">{t("mi_horario_break_accum")}</p>
                   <p className="text-xs font-semibold">{estado.tiempoEnBreakMin} min</p>
                 </div>
               </div>
@@ -252,7 +253,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
               <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-2">
                 <UtensilsCrossed className="size-3.5 text-blue-500 shrink-0" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Almuerzo acum.</p>
+                  <p className="text-[10px] text-muted-foreground">{t("mi_horario_lunch_accum")}</p>
                   <p className="text-xs font-semibold">{estado.tiempoEnAlmuerzoMin} min</p>
                 </div>
               </div>
@@ -265,7 +266,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
       <div className="rounded-card bg-card p-5 shadow-card">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Registros del día
+            {t("mi_horario_day_records")}
           </p>
           <span
             className="text-xs font-semibold px-2 py-0.5 rounded-pill"
@@ -278,7 +279,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
         {registrosHoy.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
             <Clock className="size-8 opacity-25" />
-            <p className="text-sm">Sin registros para este día</p>
+            <p className="text-sm">{t("mi_horario_no_day_records")}</p>
           </div>
         ) : (
           <div className="relative">
@@ -343,6 +344,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
 // ── Week View ──────────────────────────────────────────────────────────────
 
 function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: string }) {
+  const { t } = useI18n();
   const { shifts } = useWFM();
   const { registros, getEstadoEmpleado } = useJornada();
   const days  = weekDays(weekStart);
@@ -417,16 +419,16 @@ function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: st
               {/* Shift info */}
               <div className="flex-1 min-w-0">
                 {!shift && (
-                  <span className="text-sm text-muted-foreground italic">Sin programar</span>
+                  <span className="text-sm text-muted-foreground italic">{t("mi_horario_no_programming")}</span>
                 )}
                 {isOff && (
                   <div className="flex items-center gap-2">
                     <Umbrella className="size-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-medium text-muted-foreground">Día de descanso</span>
+                    <span className="text-sm font-medium text-muted-foreground">{t("mi_horario_day_off")}</span>
                   </div>
                 )}
                 {isAbs && (
-                  <span className="text-sm font-medium" style={{ color: "#C98A00" }}>Ausencia programada</span>
+                  <span className="text-sm font-medium" style={{ color: "#C98A00" }}>{t("mi_horario_absence")}</span>
                 )}
                 {isWork && (
                   <div className="space-y-1">

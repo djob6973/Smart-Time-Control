@@ -5,6 +5,7 @@ import { parseAbsNote } from "@/lib/wfm/calc";
 import { startOfWeek, toISO } from "@/lib/wfm/date";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
 import { useState, useMemo, useEffect, type ElementType } from "react";
 import { dispatchAbsenceEvent } from "@/lib/notifications/dispatch";
 import { Plus, CalendarX2, Clock, CheckCircle2, Calendar, PencilLine, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -20,19 +21,34 @@ export const Route = createFileRoute("/_authenticated/absences")({
 /* ------------------------------------------------------------------ */
 /*  Constants                                                           */
 /* ------------------------------------------------------------------ */
-const TYPE_META: Record<AbsenceType, { label: string; color: string }> = {
-  vacaciones:    { label: "Vacaciones",    color: "#1d6e85" },
-  incapacidad:   { label: "Incapacidad",   color: "#ED5650" },
-  licencia:      { label: "Licencia",      color: "#8b5cf6" },
-  permiso:       { label: "Permiso",       color: "#1F8A5B" },
-  no_remunerada: { label: "No remunerada", color: "#C98A00" },
-  compensatorio: { label: "Compensatorio", color: "#6366f1" },
+const TYPE_META: Record<AbsenceType, { color: string }> = {
+  vacaciones:    { color: "#1d6e85" },
+  incapacidad:   { color: "#ED5650" },
+  licencia:      { color: "#8b5cf6" },
+  permiso:       { color: "#1F8A5B" },
+  no_remunerada: { color: "#C98A00" },
+  compensatorio: { color: "#6366f1" },
 };
 
-const STATUS_META: Record<AbsenceStatus, { label: string; bg: string; text: string }> = {
-  pendiente: { label: "Pendiente", bg: "bg-[color-mix(in_srgb,#C98A00_15%,transparent)]", text: "text-[#9a6b00]" },
-  aprobada:  { label: "Aprobada",  bg: "bg-[color-mix(in_srgb,#1F8A5B_14%,transparent)]", text: "text-[#1F8A5B]" },
-  rechazada: { label: "Rechazada", bg: "bg-primary/10",                                    text: "text-[var(--brand-coral)]" },
+const TYPE_LABEL_KEYS: Record<AbsenceType, TranslationKey> = {
+  vacaciones:    "abs_type_vacaciones",
+  incapacidad:   "abs_type_incapacidad",
+  licencia:      "abs_type_licencia",
+  permiso:       "abs_type_permiso",
+  no_remunerada: "abs_type_no_remunerada",
+  compensatorio: "abs_type_compensatorio",
+};
+
+const STATUS_META: Record<AbsenceStatus, { bg: string; text: string }> = {
+  pendiente: { bg: "bg-[color-mix(in_srgb,#C98A00_15%,transparent)]", text: "text-[#9a6b00]" },
+  aprobada:  { bg: "bg-[color-mix(in_srgb,#1F8A5B_14%,transparent)]", text: "text-[#1F8A5B]" },
+  rechazada: { bg: "bg-primary/10",                                    text: "text-[var(--brand-coral)]" },
+};
+
+const STATUS_LABEL_KEYS: Record<AbsenceStatus, TranslationKey> = {
+  pendiente: "absences_status_pending",
+  aprobada:  "absences_status_approved",
+  rechazada: "absences_status_rejected",
 };
 
 /* ------------------------------------------------------------------ */
@@ -114,11 +130,12 @@ function KpiCard({
 }
 
 function StatusPill({ status }: { status: AbsenceStatus }) {
+  const { t } = useI18n();
   const m = STATUS_META[status];
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-0.5 text-[11px] font-medium ${m.bg} ${m.text}`}>
       <span className="size-1.5 rounded-full bg-current opacity-70" />
-      {m.label}
+      {t(STATUS_LABEL_KEYS[status])}
     </span>
   );
 }
@@ -139,6 +156,7 @@ function DetailModal({
   canApprove: boolean;
   initialStep?: DetailStep;
 }) {
+  const { t } = useI18n();
   const [step, setStep] = useState<DetailStep>(initialStep ?? "view");
   const [rejectNote, setRejectNote] = useState("");
   const status: AbsenceStatus = absence.status ?? "pendiente";
@@ -167,7 +185,7 @@ function DetailModal({
                 className="size-2 rounded-full flex-shrink-0"
                 style={{ background: tm.color }}
               />
-              <span className="text-xs text-muted-foreground">{tm.label}</span>
+              <span className="text-xs text-muted-foreground">{t(TYPE_LABEL_KEYS[absence.type])}</span>
             </div>
           </div>
           <button
@@ -183,9 +201,9 @@ function DetailModal({
           {/* KV list */}
           <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
             {[
-              ["Período",  fmtPeriod(absence)],
-              ["Días",     `${days % 1 === 0 ? days : days.toFixed(1)} ${days === 1 ? "día" : "días"}`],
-              ["Estado",   null as null],
+              [t("absences_detail_period"), fmtPeriod(absence)],
+              [t("absences_col_days"),      `${days % 1 === 0 ? days : days.toFixed(1)} ${days === 1 ? t("absences_detail_day") : t("absences_detail_days")}`],
+              [t("absences_col_status"),    null as null],
             ].map(([k, v]) => (
               <div key={k as string} className="flex items-center justify-between px-3 py-2.5 text-sm">
                 <span className="text-muted-foreground text-xs">{k}</span>
@@ -200,7 +218,7 @@ function DetailModal({
           {/* Reason */}
           {absence.reason && (
             <div>
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Motivo de la solicitud</div>
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">{t("absences_detail_notes")}</div>
               <div className="rounded-lg bg-secondary/60 px-3 py-2.5 text-sm text-foreground leading-relaxed">
                 {absence.reason}
               </div>
@@ -213,20 +231,20 @@ function DetailModal({
               <div className={`text-xs font-medium uppercase tracking-wider mb-1.5 ${
                 status === "aprobada" ? "text-[#1F8A5B]" : "text-[var(--brand-coral)]"
               }`}>
-                {status === "aprobada" ? "Aprobación" : "Rechazo"}
+                {status === "aprobada" ? t("absences_detail_approval") : t("absences_detail_rejection")}
               </div>
               <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
                 {absence.decidedBy && (
                   <div className="flex items-center justify-between px-3 py-2.5 text-sm">
                     <span className="text-muted-foreground text-xs">
-                      {status === "aprobada" ? "Aprobado por" : "Rechazado por"}
+                      {status === "aprobada" ? t("absences_detail_approved_by") : t("absences_detail_rejected_by")}
                     </span>
                     <span className="font-medium text-xs">{absence.decidedBy}</span>
                   </div>
                 )}
                 {absence.decidedAt && (
                   <div className="flex items-center justify-between px-3 py-2.5 text-sm">
-                    <span className="text-muted-foreground text-xs">Fecha de decisión</span>
+                    <span className="text-muted-foreground text-xs">{t("absences_detail_decision_date")}</span>
                     <span className="font-medium text-xs">{fmtDatetime(absence.decidedAt)}</span>
                   </div>
                 )}
@@ -238,7 +256,7 @@ function DetailModal({
                     : "bg-primary/5 text-foreground"
                 }`}>
                   <span className="text-[11px] font-medium uppercase tracking-wider block mb-1 opacity-70">
-                    {status === "aprobada" ? "Nota" : "Motivo del rechazo"}
+                    {status === "aprobada" ? t("absences_detail_note_label") : t("absences_detail_reject_note")}
                   </span>
                   {absence.decisionNote}
                 </div>
@@ -249,9 +267,9 @@ function DetailModal({
           {/* Confirm approve */}
           {step === "approving" && (
             <div className="rounded-lg border border-[#1F8A5B]/30 bg-[color-mix(in_srgb,#1F8A5B_8%,transparent)] px-4 py-3">
-              <p className="text-sm font-medium text-[#1F8A5B]">¿Confirmas que deseas aprobar esta solicitud?</p>
+              <p className="text-sm font-medium text-[#1F8A5B]">{t("absences_confirm_approve_msg")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                El trabajador recibirá una notificación con la decisión.
+                {t("absences_confirm_approve_hint")}
               </p>
             </div>
           )}
@@ -260,18 +278,18 @@ function DetailModal({
           {step === "rejecting" && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                Motivo del rechazo <span className="normal-case font-normal text-[var(--brand-coral)]">*&nbsp;obligatorio</span>
+                {t("absences_detail_reject_note")} <span className="normal-case font-normal text-[var(--brand-coral)]">*&nbsp;{t("required")}</span>
               </label>
               <textarea
                 className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
                 rows={3}
-                placeholder="Indica el motivo por el que se rechaza la solicitud…"
+                placeholder={t("absences_reject_placeholder")}
                 value={rejectNote}
                 onChange={e => setRejectNote(e.target.value)}
                 autoFocus
               />
               {rejectNote.trim() === "" && (
-                <p className="text-xs text-[var(--brand-coral)] mt-1">Debes ingresar un motivo para rechazar.</p>
+                <p className="text-xs text-[var(--brand-coral)] mt-1">{t("absences_reject_required")}</p>
               )}
             </div>
           )}
@@ -286,7 +304,7 @@ function DetailModal({
                 className="inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary text-muted-foreground transition-colors"
               >
                 <PencilLine className="size-3.5" />
-                Editar
+                {t("edit")}
               </button>
             )}
           </div>
@@ -297,13 +315,13 @@ function DetailModal({
                   onClick={() => setStep("rejecting")}
                   className="text-sm px-4 py-2 rounded-pill border border-[var(--brand-coral)] text-[var(--brand-coral)] hover:bg-primary/8 transition-colors"
                 >
-                  Rechazar
+                  {t("absences_btn_reject")}
                 </button>
                 <button
                   onClick={() => setStep("approving")}
                   className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
                 >
-                  Aprobar solicitud
+                  {t("absences_btn_approve_request")}
                 </button>
               </>
             ) : step === "approving" ? (
@@ -312,13 +330,13 @@ function DetailModal({
                   onClick={() => setStep("view")}
                   className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
                 >
-                  Cancelar
+                  {t("cancel")}
                 </button>
                 <button
                   onClick={() => { onDecide(absence.id, "aprobada"); onClose(); }}
                   className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
                 >
-                  Confirmar aprobación
+                  {t("absences_btn_confirm_approve")}
                 </button>
               </>
             ) : step === "rejecting" ? (
@@ -327,14 +345,14 @@ function DetailModal({
                   onClick={() => { setStep("view"); setRejectNote(""); }}
                   className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
                 >
-                  Cancelar
+                  {t("cancel")}
                 </button>
                 <button
                   disabled={rejectNote.trim() === ""}
                   onClick={() => { onDecide(absence.id, "rechazada", rejectNote.trim()); onClose(); }}
                   className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Confirmar rechazo
+                  {t("absences_btn_confirm_reject")}
                 </button>
               </>
             ) : (
@@ -342,7 +360,7 @@ function DetailModal({
                 onClick={onClose}
                 className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary transition-colors"
               >
-                Cerrar
+                {t("close")}
               </button>
             )}
           </div>
@@ -361,6 +379,7 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
   onClose: () => void;
   onSave: (a: Absence) => void;
 }) {
+  const { t } = useI18n();
   const today = new Date().toISOString().slice(0, 10);
   const isEdit = !!initial;
   const [form, setForm] = useState({
@@ -405,36 +424,36 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
       <div className="bg-card rounded-card shadow-card max-w-lg w-full my-4" onClick={e => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-border">
           <h3 className="font-semibold text-sm">
-            {isEdit ? "Editar ausencia" : "Nueva solicitud de ausencia"}
+            {isEdit ? t("absences_modal_edit") : t("absences_new_title")}
           </h3>
         </div>
         <div className="p-5 space-y-3 overflow-y-auto" style={{ maxHeight: "68vh" }}>
           <label className="block">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Empleado</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("absences_field_employee")}</span>
             <select className={`${field} mt-1`} value={form.employeeId} onChange={e => setForm({ ...form, employeeId: e.target.value })}>
               {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
             </select>
           </label>
 
           <label className="block">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("absences_field_type_label")}</span>
             <select className={`${field} mt-1`} value={form.type} onChange={e => setForm({ ...form, type: e.target.value as AbsenceType })}>
               {(Object.keys(TYPE_META) as AbsenceType[]).map(k => (
-                <option key={k} value={k}>{TYPE_META[k].label}</option>
+                <option key={k} value={k}>{t(TYPE_LABEL_KEYS[k])}</option>
               ))}
             </select>
           </label>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha inicio</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("absences_field_start_date")}</span>
               <input
                 type="date" className={`${field} mt-1`} value={form.startDate}
                 onChange={e => setForm({ ...form, startDate: e.target.value, endDate: e.target.value > form.endDate ? e.target.value : form.endDate })}
               />
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha fin</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("absences_field_end_date")}</span>
               <input
                 type="date" className={`${field} mt-1`} value={form.endDate} min={form.startDate}
                 onChange={e => setForm({ ...form, endDate: e.target.value })}
@@ -447,24 +466,24 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
               type="checkbox" className="rounded" checked={form.partial}
               onChange={e => setForm({ ...form, partial: e.target.checked })}
             />
-            <span className="text-sm font-medium">Ausencia parcial (por horas)</span>
+            <span className="text-sm font-medium">{t("absences_partial")}</span>
           </label>
 
           {form.partial && (
             <div className="grid grid-cols-2 gap-3 pl-5 border-l-2 border-amber-300">
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Hora inicio</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("absences_field_start_time")}</span>
                 <input type="time" step="3600" className={`${field} mt-1`} value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} />
               </label>
               <label className="block">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Hora fin</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("absences_field_end_time")}</span>
                 <input type="time" step="3600" className={`${field} mt-1`} value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} />
               </label>
             </div>
           )}
 
           <label className="block">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Motivo</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("absences_field_reason")}</span>
             <textarea
               className={`${field} mt-1 min-h-[80px] resize-none rounded-lg`}
               value={form.reason}
@@ -474,9 +493,9 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
         </div>
 
         <div className="px-5 py-4 border-t border-border flex justify-end gap-2">
-          <button onClick={onClose} className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary">Cancelar</button>
+          <button onClick={onClose} className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary">{t("cancel")}</button>
           <button onClick={handleSave} className="text-sm px-4 py-2 rounded-pill bg-primary text-primary-foreground hover:opacity-90">
-            {isEdit ? "Guardar cambios" : "Guardar"}
+            {isEdit ? t("absences_save_changes") : t("save")}
           </button>
         </div>
       </div>
@@ -719,7 +738,7 @@ function AbsencesPage() {
         {/* KPI cards — clickables como filtro de estado */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard
-            label="Todas"
+            label={t("absences_kpi_all")}
             value={periodAbsences.length}
             foot={dateLabelText}
             icon={CalendarX2}
@@ -729,7 +748,7 @@ function AbsencesPage() {
           <KpiCard
             label={t("absences_filter_pending")}
             value={pendingCount}
-            foot="Requieren revisión"
+            foot={t("absences_kpi_review")}
             icon={Clock}
             alert={pendingCount > 0}
             active={statusFilter === "pendiente"}
@@ -744,10 +763,10 @@ function AbsencesPage() {
             onClick={() => setStatusFilter(f => f === "aprobada" ? null : "aprobada")}
           />
           <KpiCard
-            label="Días de ausencia"
+            label={t("absences_kpi_days")}
             value={approvedDays}
             unit="d"
-            foot="Aprobados"
+            foot={t("absences_kpi_approved_days")}
             icon={Calendar}
           />
         </div>
@@ -766,7 +785,7 @@ function AbsencesPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {p === "dia" ? "Hoy" : p === "semana" ? "Semana" : "Mes"}
+                {p === "dia" ? t("absences_period_today") : p === "semana" ? t("absences_period_week") : t("absences_period_month")}
               </button>
             ))}
           </div>
@@ -796,9 +815,9 @@ function AbsencesPage() {
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value as "all" | AbsenceType)}
           >
-            <option value="all">Todos los tipos</option>
+            <option value="all">{t("absences_all_types")}</option>
             {(Object.keys(TYPE_META) as AbsenceType[]).map(k => (
-              <option key={k} value={k}>{TYPE_META[k].label}</option>
+              <option key={k} value={k}>{t(TYPE_LABEL_KEYS[k])}</option>
             ))}
           </select>
 

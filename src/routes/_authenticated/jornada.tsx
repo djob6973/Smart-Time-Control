@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useI18n } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
 import {
   Clock, Users, Coffee, UtensilsCrossed, LogIn, LogOut,
   LayoutDashboard, History, FileText, Settings, BarChart2,
@@ -35,13 +36,13 @@ export const Route = createFileRoute("/_authenticated/jornada")({
 
 type Tab = "dashboard" | "registro" | "historial" | "reportes" | "reporte_general" | "configuracion";
 
-const TABS: { id: Tab; label: string; icon: any }[] = [
-  { id: "dashboard",       label: "Dashboard",          icon: LayoutDashboard },
-  { id: "registro",        label: "Registro",           icon: Clock },
-  { id: "historial",       label: "Historial",          icon: History },
-  { id: "reportes",        label: "Reportes",           icon: FileText },
-  { id: "reporte_general", label: "Reporte de jornada", icon: BarChart2 },
-  { id: "configuracion",   label: "Configuración",      icon: Settings },
+const TABS: { id: Tab; labelKey: TranslationKey; icon: any }[] = [
+  { id: "dashboard",       labelKey: "jornada_tab_dashboard",       icon: LayoutDashboard },
+  { id: "registro",        labelKey: "jornada_tab_registro",        icon: Clock },
+  { id: "historial",       labelKey: "jornada_tab_historial",       icon: History },
+  { id: "reportes",        labelKey: "jornada_tab_reportes",        icon: FileText },
+  { id: "reporte_general", labelKey: "jornada_tab_reporte_general", icon: BarChart2 },
+  { id: "configuracion",   labelKey: "jornada_tab_configuracion",   icon: Settings },
 ];
 
 const TIPO_ICONS: Record<TipoMovimiento, any> = {
@@ -190,19 +191,19 @@ function JornadaPage() {
   const { t } = useI18n();
   const isLinkedEmployee = !!profile?.employeeId;
 
-  const visibleTabs = TABS.filter((t) => {
-    if (t.id === "registro" && isLinkedEmployee) return true;
-    if (t.id === "reportes") {
+  const visibleTabs = TABS.filter((tab) => {
+    if (tab.id === "registro" && isLinkedEmployee) return true;
+    if (tab.id === "reportes") {
       return (
         hasPermission("jornada_reportes" as any, "view") ||
         (isLinkedEmployee && hasPermission("mi_jornada_reportes" as any, "view"))
       );
     }
-    return hasPermission(`jornada_${t.id}` as any, "view");
+    return hasPermission(`jornada_${tab.id}` as any, "view");
   });
   const defaultTab = (visibleTabs[0]?.id ?? "registro") as Tab;
   const [tab, setTab] = useState<Tab>(defaultTab);
-  const activeTab = visibleTabs.some((t) => t.id === tab) ? tab : defaultTab;
+  const activeTab = visibleTabs.some((vt) => vt.id === tab) ? tab : defaultTab;
   const { initialized, initFromDB, loading, fechaActiva } = useJornada();
 
   useEffect(() => {
@@ -215,13 +216,13 @@ function JornadaPage() {
 
       <div className="border-b border-border/60 px-4 md:px-6">
         <nav className="flex gap-1 overflow-x-auto">
-          {visibleTabs.map((t) => {
-            const Icon = t.icon;
-            const isActive = activeTab === t.id;
+          {visibleTabs.map((vt) => {
+            const Icon = vt.icon;
+            const isActive = activeTab === vt.id;
             return (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
+                key={vt.id}
+                onClick={() => setTab(vt.id)}
                 className={cn(
                   "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
                   isActive
@@ -230,7 +231,7 @@ function JornadaPage() {
                 )}
               >
                 <Icon className="size-4" />
-                {t.label}
+                {t(vt.labelKey)}
               </button>
             );
           })}
@@ -240,7 +241,7 @@ function JornadaPage() {
       {loading && (
         <div className="flex items-center justify-center py-16 text-muted-foreground text-sm gap-2">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          Cargando datos de jornada…
+          {t("jornada_loading_data")}
         </div>
       )}
 

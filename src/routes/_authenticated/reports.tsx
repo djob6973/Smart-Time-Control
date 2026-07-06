@@ -166,6 +166,7 @@ function KpiCard({
 function DownloadMenu({
   onCSV, onExcel, onPDF,
 }: { onCSV: () => void; onExcel: () => void; onPDF: () => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -191,7 +192,7 @@ function DownloadMenu({
         className="h-10 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 text-sm font-medium hover:bg-secondary transition-colors"
       >
         <Download className="size-3.5" />
-        Descargar
+        {t("reports_download")}
         <ChevronDown className="size-3.5" />
       </button>
       {open && (
@@ -331,13 +332,13 @@ function ReportsPage() {
       HEN += bd.HEN + bd.HENF; RN += bd.RN + bd.RNF; RDF += bd.RDF;
     });
     return [
-      { label: "Estándar",    val: Math.round(std), color: CHART_COLORS.STD },
-      { label: "Extra diur.", val: Math.round(HED), color: CHART_COLORS.HED },
-      { label: "Extra noct.", val: Math.round(HEN), color: CHART_COLORS.HEN },
-      { label: "Rec. noct.",  val: Math.round(RN),  color: CHART_COLORS.RN  },
-      { label: "Rec. dom.",   val: Math.round(RDF), color: CHART_COLORS.RDF },
+      { label: t("reports_bd_std"), val: Math.round(std), color: CHART_COLORS.STD },
+      { label: t("reports_bd_hed"), val: Math.round(HED), color: CHART_COLORS.HED },
+      { label: t("reports_bd_hen"), val: Math.round(HEN), color: CHART_COLORS.HEN },
+      { label: t("reports_bd_rn"),  val: Math.round(RN),  color: CHART_COLORS.RN  },
+      { label: t("reports_bd_rdf"), val: Math.round(RDF), color: CHART_COLORS.RDF },
     ];
-  }, [shifts, employees, areas, from, to, filterAreaId]);
+  }, [shifts, employees, areas, from, to, filterAreaId, t]);
 
   const breakdownMax = Math.max(...breakdown.map(b => b.val), 1);
 
@@ -492,7 +493,7 @@ function ReportsPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {p}
+                {p === "Semana" ? t("reports_period_week") : p === "Mes" ? t("reports_period_month") : t("reports_period_quarter")}
               </button>
             ))}
           </div>
@@ -504,7 +505,7 @@ function ReportsPage() {
               onChange={e => setSelectedArea(e.target.value)}
               className="h-10 rounded-full border border-border bg-card px-3.5 text-sm outline-none focus:border-primary cursor-pointer"
             >
-              <option value="all">Todas las áreas</option>
+              <option value="all">{t("reports_area_all")}</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
@@ -528,14 +529,14 @@ function ReportsPage() {
         {/* ---- KPI cards ---- */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
-            label="Horas totales"
+            label={t("reports_kpi_total_hours")}
             value={totalHours.toLocaleString("es-CO")}
             unit="h"
             footer={`${periodLabel} · ${workerCount} trabajadores`}
             Icon={Clock}
           />
           <KpiCard
-            label="Horas extra"
+            label={t("reports_kpi_extra_hours")}
             value={String(extraHours)}
             unit="h"
             footer="HED + HEN + HEDF"
@@ -543,14 +544,14 @@ function ReportsPage() {
             alert
           />
           <KpiCard
-            label="Recargos"
+            label={t("reports_kpi_surcharges")}
             value={String(recargosHours)}
             unit="h"
             footer="RN + RDF"
             Icon={Banknote}
           />
           <KpiCard
-            label="Puntualidad media"
+            label={t("reports_kpi_punctuality")}
             value={puntualidadPct !== null ? String(puntualidadPct) : "—"}
             unit={puntualidadPct !== null ? "%" : ""}
             footer={turnosAnalizados > 0 ? `${turnosAnalizados} turnos con registro de entrada` : "Sin registros de entrada en el período"}
@@ -564,7 +565,7 @@ function ReportsPage() {
           {/* Stacked bar chart */}
           <div className="rounded-[20px] bg-card shadow-sm flex flex-col" style={{ paddingBottom: "1.25rem" }}>
             <div className="px-5 pt-5 pb-0">
-              <div className="font-display font-medium text-base">Composición de horas por área</div>
+              <div className="font-display font-medium text-base">{t("reports_chart_title")}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5">{periodLabel} · por tipo de hora</div>
             </div>
             <div className="px-5 pt-4 flex-1 min-h-0">

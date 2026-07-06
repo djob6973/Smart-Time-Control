@@ -698,12 +698,12 @@ function SettingsPage() {
   }
 
   const TABS = [
-    { key: "users" as const, label: "Usuarios",         Icon: Users },
-    { key: "roles" as const, label: "Roles y permisos", Icon: Shield },
-    { key: "org"   as const, label: "Organización",     Icon: Building2 },
-    { key: "marca" as const, label: "Marca",             Icon: Palette },
-    { key: "slack"     as const, label: "Slack",             Icon: MessageSquare },
-    { key: "festivos"  as const, label: "Festivos",          Icon: CalendarCheck },
+    { key: "users"    as const, label: t("settings_tab_users"),       Icon: Users },
+    { key: "roles"    as const, label: t("settings_tab_roles_perms"), Icon: Shield },
+    { key: "org"      as const, label: t("settings_tab_org"),         Icon: Building2 },
+    { key: "marca"    as const, label: t("settings_tab_brand"),       Icon: Palette },
+    { key: "slack"    as const, label: t("settings_tab_slack"),       Icon: MessageSquare },
+    { key: "festivos" as const, label: t("settings_tab_holidays"),    Icon: CalendarCheck },
   ];
 
   return (
@@ -741,18 +741,18 @@ function SettingsPage() {
                 <input
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
-                  placeholder="Buscar usuario…"
+                  placeholder={t("settings_search_user")}
                   className="w-full rounded-pill border border-border bg-card pl-8 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <span className="text-sm text-muted-foreground ml-auto">
-                <strong className="font-semibold text-foreground">{activeCount}</strong> usuarios activos
+                <strong className="font-semibold text-foreground">{activeCount}</strong> {t("settings_active_users_label")}
               </span>
               <button
                 onClick={fetchUsers}
                 disabled={usersLoading}
                 className="p-2 rounded-full border border-border bg-card hover:bg-secondary disabled:opacity-50 transition-colors"
-                title="Actualizar"
+                title={t("settings_update")}
               >
                 <RefreshCw className={`size-4 ${usersLoading ? "animate-spin" : ""}`} />
               </button>
@@ -762,7 +762,7 @@ function SettingsPage() {
                   className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
                 >
                   <UserPlus className="size-4" />
-                  Nuevo usuario
+                  {t("settings_new_user")}
                 </button>
               )}
             </div>
@@ -778,23 +778,23 @@ function SettingsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-secondary text-left">
                     <tr>
-                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Usuario</th>
-                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Rol</th>
-                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Área</th>
-                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Ingreso</th>
-                      <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">Acciones</th>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">{t("settings_col_user")}</th>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">{t("settings_col_role")}</th>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">{t("settings_col_area")}</th>
+                      <th className="px-5 py-3 text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">{t("settings_col_entry")}</th>
+                      <th className="px-5 py-3 text-right text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">{t("settings_col_actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {usersLoading && (
                       <tr>
-                        <td colSpan={5} className="py-12 text-center text-muted-foreground">Cargando usuarios…</td>
+                        <td colSpan={5} className="py-12 text-center text-muted-foreground">{t("settings_loading_users")}</td>
                       </tr>
                     )}
                     {!usersLoading && filteredUsers.length === 0 && (
                       <tr>
                         <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                          {userSearch ? "Sin resultados para la búsqueda" : "Sin usuarios registrados"}
+                          {userSearch ? t("settings_no_search_results") : t("settings_no_users")}
                         </td>
                       </tr>
                     )}
@@ -837,7 +837,7 @@ function SettingsPage() {
                             <div className="flex items-center justify-end gap-0.5">
                               <button
                                 onClick={() => { setEditTarget(u); setEditFullName(u.fullName || ""); setEditRoleId(u.roleId ?? ""); setEditAreaId(u.areaId ?? ""); setEditIsActive(u.isActive); setEditRoleDropOpen(false); }}
-                                title="Editar usuario"
+                                title={t("settings_edit_user")}
                                 className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                               >
                                 <PencilLine className="size-4" />
@@ -845,7 +845,7 @@ function SettingsPage() {
                               {u.id !== user?.id && (
                                 <button
                                   onClick={() => setDeleteTarget(u)}
-                                  title="Eliminar usuario"
+                                  title={t("settings_delete_user")}
                                   className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                 >
                                   <Trash2 className="size-4" />
@@ -876,7 +876,7 @@ function SettingsPage() {
             {saveSuccess && (
               <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
                 style={{ background: "color-mix(in srgb,#1F8A5B 8%,transparent)", color: "#1F8A5B", border: "1px solid color-mix(in srgb,#1F8A5B 25%,transparent)" }}>
-                <Check className="size-4 shrink-0" /> Cambios guardados correctamente
+                <Check className="size-4 shrink-0" /> {t("settings_save_success")}
               </div>
             )}
 
@@ -884,9 +884,9 @@ function SettingsPage() {
             <div className="rounded-card bg-card shadow-card overflow-hidden">
               <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-semibold text-sm">Matriz de permisos por módulo</h2>
+                  <h2 className="font-semibold text-sm">{t("settings_perms_matrix")}</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Clic en una celda para cambiar · <span className="tabular-nums">none → ver → editar → full</span>
+                    {t("settings_perms_hint")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
