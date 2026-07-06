@@ -1614,6 +1614,7 @@ const EDITOR_CODES: { code: string; label: string }[] = [
 ];
 
 function ShiftEditor({ employee, date, shift, onClose, onSave, onClear, onHistory }: any) {
+  const { t } = useI18n();
   const { shifts, areas, absences, upsertAbsence, removeAbsence } = useWFM();
   const area = areas.find((a: any) => a.id === employee.areaId);
 
