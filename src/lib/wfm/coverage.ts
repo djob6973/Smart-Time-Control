@@ -1,4 +1,4 @@
-import type { Area, Employee, Shift, CoverageRequirement, Absence } from "./types";
+import type { Area, Employee, Shift, Absence } from "./types";
 import { toISO, addDays, startOfWeek } from "./date";
 import { detectCode, isSundayOrHoliday } from "./calc";
 
@@ -9,14 +9,6 @@ interface ShiftSlot {
   endHour: number;
   required: number;
   preferred: number;
-}
-
-interface EmployeeScore {
-  employee: Employee;
-  score: number;
-  weekHours: number;
-  monthHours: number;
-  prevShiftEnd: number | null;
 }
 
 /**
@@ -51,154 +43,6 @@ export function generateShiftSlots(
 }
 
 /**
- * Calcula puntaje de empleado para un slot específico
- */
-function calculateEmployeeScore(
-  employee: Employee,
-  slot: ShiftSlot,
-  weekHours: number,
-  monthHours: number,
-  prevShiftEnd: number | null,
-  area: Area,
-  existingShifts: Shift[]
-): number {
-  let score = 0;
-  
-  // Disponibilidad
-  const avail = employee.availability[slot.dayOfWeek];
-  if (!avail) return -1000; // No disponible
-  if (avail.start > slot.startHour || avail.end < slot.endHour) return -1000;
-  
-  // Descanso mínimo
-  if (prevShiftEnd !== null) {
-    const minStart = prevShiftEnd + area.minRestHours - 24;
-    if (slot.startHour < minStart) return -500;
-  }
-  
-  // Límites de horas
-  const projectedHours = slot.endHour - slot.startHour - 1;
-  if (weekHours + projectedHours > area.maxHoursWeek) return -400;
-  if (monthHours + projectedHours > area.maxHoursMonth) return -400;
-  
-  // Ya tiene turno en este día
-  const existingToday = existingShifts.find(s => s.employeeId === employee.id && s.date === slot.date);
-  if (existingToday) return -1000;
-  
-  // Puntaje base: menor carga horaria = mejor
-  score -= weekHours * 10;
-  score -= monthHours * 5;
-  
-  // Preferencia por horarios cercanos a disponibilidad
-  const availCenter = (avail.start + avail.end) / 2;
-  const slotCenter = (slot.startHour + slot.endHour) / 2;
-  score -= Math.abs(availCenter - slotCenter) * 2;
-  
-  // Rotación: penalizar si trabajó horarios similares recientemente
-  const recentSimilar = existingShifts.filter(s => 
-    s.employeeId === employee.id && 
-    Math.abs(s.start - slot.startHour) < 2 &&
-    Math.abs(s.end - slot.endHour) < 2
-  ).length;
-  score -= recentSimilar * 20;
-  
-  return score;
-}
-
-/**
- * Asigna empleados a slots basado en puntaje
- */
-export function assignEmployeesToSlots(
-  slots: ShiftSlot[],
-  employees: Employee[],
-  area: Area,
-  existingShifts: Shift[],
-  weekHoursMap: Map<string, number>,
-  monthHoursMap: Map<string, number>,
-  prevShiftEndMap: Map<string, number | null>
-): Shift[] {
-  const assignedShifts: Shift[] = [];
-  const assignedEmployees = new Set<string>();
-  
-  // Ordenar slots por requerimiento (priorizar slots con mayor déficit)
-  const sortedSlots = [...slots].sort((a, b) => {
-    const aCoverage = existingShifts.filter(s => 
-      s.date === a.date && 
-      s.start >= a.startHour && 
-      s.end <= a.endHour
-    ).length;
-    const bCoverage = existingShifts.filter(s => 
-      s.date === b.date && 
-      s.start >= b.startHour && 
-      s.end <= b.endHour
-    ).length;
-    const aDeficit = a.required - aCoverage;
-    const bDeficit = b.required - bCoverage;
-    return bDeficit - aDeficit;
-  });
-  
-  for (const slot of sortedSlots) {
-    // Calcular cobertura actual
-    const currentCoverage = existingShifts.filter(s => 
-      s.date === slot.date && 
-      s.start >= slot.startHour && 
-      s.end <= slot.endHour
-    ).length + assignedShifts.filter(s => 
-      s.date === slot.date && 
-      s.start >= slot.startHour && 
-      s.end <= slot.endHour
-    ).length;
-    
-    if (currentCoverage >= slot.preferred) continue;
-    
-    // Calcular puntajes para cada empleado
-    const scores: EmployeeScore[] = employees.map(emp => ({
-      employee: emp,
-      score: calculateEmployeeScore(
-        emp,
-        slot,
-        weekHoursMap.get(emp.id) ?? 0,
-        monthHoursMap.get(emp.id) ?? 0,
-        prevShiftEndMap.get(emp.id) ?? null,
-        area,
-        [...existingShifts, ...assignedShifts]
-      ),
-      weekHours: weekHoursMap.get(emp.id) ?? 0,
-      monthHours: monthHoursMap.get(emp.id) ?? 0,
-      prevShiftEnd: prevShiftEndMap.get(emp.id) ?? null,
-    }));
-    
-    // Filtrar empleados válidos y ordenar por puntaje
-    const validEmployees = scores
-      .filter(s => s.score > -1000)
-      .sort((a, b) => b.score - a.score);
-    
-    // Asignar hasta alcanzar el requerimiento
-    const needed = Math.min(slot.preferred - currentCoverage, validEmployees.length);
-    for (let i = 0; i < needed; i++) {
-      const empScore = validEmployees[i];
-      const hours = slot.endHour - slot.startHour - 1;
-      
-      assignedShifts.push({
-        id: `${empScore.employee.id}-${slot.date}-${slot.startHour}`,
-        employeeId: empScore.employee.id,
-        date: slot.date,
-        start: slot.startHour,
-        end: slot.endHour,
-        breakMinutes: 60,
-        code: detectCode(slot.startHour, slot.endHour, slot.date, 60, area.maxHoursDay),
-      });
-      
-      // Actualizar contadores
-      weekHoursMap.set(empScore.employee.id, empScore.weekHours + hours);
-      monthHoursMap.set(empScore.employee.id, empScore.monthHours + hours);
-      prevShiftEndMap.set(empScore.employee.id, slot.endHour);
-    }
-  }
-  
-  return assignedShifts;
-}
-
-/**
  * Valida que la cobertura cumpla con los requisitos mínimos
  */
 export function validateCoverage(
@@ -208,10 +52,10 @@ export function validateCoverage(
   const gaps: ShiftSlot[] = [];
   
   for (const slot of slots) {
-    const coverage = shifts.filter(s => 
-      s.date === slot.date && 
-      s.start >= slot.startHour && 
-      s.end <= slot.endHour &&
+    const coverage = shifts.filter(s =>
+      s.date === slot.date &&
+      s.start <= slot.startHour &&
+      s.end >= slot.endHour &&
       s.code !== "OFF" && s.code !== "ABS"
     ).length;
     
@@ -221,37 +65,6 @@ export function validateCoverage(
   }
   
   return { valid: gaps.length === 0, gaps };
-}
-
-/**
- * Implementa rotación de horarios entre empleados
- */
-export function rotateShifts(
-  shifts: Shift[],
-  employees: Employee[],
-  weekOffset: number
-): Shift[] {
-  if (employees.length === 0) return shifts;
-  
-  // Crear mapa de rotación basado en hash del empleado y offset de semana
-  const rotationMap = new Map<string, string>();
-  employees.forEach((emp, idx) => {
-    const rotationOffset = (idx + weekOffset) % employees.length;
-    const rotatedEmp = employees[rotationOffset];
-    rotationMap.set(emp.id, rotatedEmp.id);
-  });
-  
-  // Aplicar rotación
-  return shifts.map(shift => {
-    const newEmployeeId = rotationMap.get(shift.employeeId);
-    if (!newEmployeeId) return shift;
-    
-    return {
-      ...shift,
-      id: shift.id.replace(shift.employeeId, newEmployeeId),
-      employeeId: newEmployeeId,
-    };
-  });
 }
 
 // ── Rotation-based scheduling (new core) ──────────────────────────────────────
@@ -505,7 +318,7 @@ export function buildRotatedWeek(
           break;
         }
 
-        // Absent employee → ABS, stop trying for this slot
+        // Absent employee → ABS, try the next employee in rotation for this slot
         const abs = absences.find(a => a.employeeId === emp.id && date >= a.startDate && date <= a.endDate);
         if (abs) {
           assignedKeys.add(key);
@@ -515,7 +328,7 @@ export function buildRotatedWeek(
             start: 0, end: 0, breakMinutes: 0, code: "ABS",
             note: partial ? `abs:${abs.type}:${abs.startHour}:${abs.endHour}` : `abs:${abs.type}`,
           });
-          break;
+          continue;
         }
 
         const avail = emp.availability?.[dow];

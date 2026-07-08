@@ -31,6 +31,7 @@ const AREA: Area = {
   workingDays: [1, 2, 3, 4, 5],
   maxHoursDay: 8, maxHoursWeek: 46, maxHoursMonth: 192,
   allowOvertime: false, allowSunday: false, minRestHours: 10,
+  holidaySchedule: { active: false, start: 8, end: 18 },
   enableCoverageMode: true,
   coverageRequirements: [
     { dayOfWeek: 1, startHour: 6, endHour: 14, minWorkers: 1, preferredWorkers: 1 },
@@ -46,7 +47,7 @@ const AREA: Area = {
   ],
 };
 
-// Semana Jun 8-14 2026 bloqueada: Ana en mañana, Beto en tarde (lun-vie)
+// Semana Jun 7-13 2026 (domingo-sábado) bloqueada: Ana en mañana, Beto en tarde (lun-vie)
 const WORKING_DAYS_JUN8 = ["2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12"];
 const LOCKED_SHIFTS: Shift[] = WORKING_DAYS_JUN8.flatMap(date => ([
   { id: `emp-a-${date}`, employeeId: "emp-a", date, start: 6,  end: 14, breakMinutes: 60, code: "STD" as const, locked: true },
@@ -71,25 +72,25 @@ function findAnchorISO(shifts: Shift[], weekStartISO: string): string {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("Anchor detection — última bloqueada antes del objetivo", () => {
-  it("solo Jun 8-14 bloqueado → ancla es Jun 8 cuando objetivo = Jun 15", () => {
+  it("solo Jun 7-13 bloqueado → ancla es Jun 7 (domingo) cuando objetivo = Jun 15", () => {
     const anchor = findAnchorISO(LOCKED_SHIFTS, "2026-06-15");
-    expect(anchor).toBe("2026-06-08");
+    expect(anchor).toBe("2026-06-07");
   });
 
-  it("NO apunta a Jun 1-7 cuando no hay turnos ahí", () => {
+  it("NO apunta a May 31-Jun 6 cuando no hay turnos ahí", () => {
     const anchor = findAnchorISO(LOCKED_SHIFTS, "2026-06-15");
-    expect(anchor).not.toBe("2026-06-01");
+    expect(anchor).not.toBe("2026-05-31");
   });
 
-  it("si Jun 1-7 Y Jun 8-14 están bloqueados, ancla = Jun 8 (la más reciente)", () => {
-    // Simula tener también Jun 1-5 bloqueados
+  it("si May 31-Jun 6 Y Jun 7-13 están bloqueados, ancla = Jun 7 (la más reciente)", () => {
+    // Simula tener también Jun 1-5 bloqueados (semana May 31-Jun 6)
     const jun1Week: Shift[] = ["2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05"]
       .flatMap(date => ([
         { id: `emp-a-${date}-old`, employeeId: "emp-a", date, start: 6,  end: 14, breakMinutes: 60, code: "STD" as const, locked: true },
         { id: `emp-b-${date}-old`, employeeId: "emp-b", date, start: 14, end: 22, breakMinutes: 60, code: "STD" as const, locked: true },
       ]));
     const anchor = findAnchorISO([...jun1Week, ...LOCKED_SHIFTS], "2026-06-15");
-    expect(anchor).toBe("2026-06-08"); // Jun 8-14 es la más reciente antes del 15
+    expect(anchor).toBe("2026-06-07"); // Jun 7-13 es la más reciente antes del 15
   });
 
   it("sin bloqueados anteriores → ancla = semana objetivo (se autogenera)", () => {
@@ -187,6 +188,32 @@ describe("buildRotatedWeek respeta turnos bloqueados individualmente", () => {
     expect(betoJun15!.start).toBe(8);
     expect(betoJun15!.end).toBe(16);
     expect(betoJun15!.locked).toBe(true);
+  });
+});
+
+describe("buildRotatedWeek reasigna el turno cuando el rotado está ausente", () => {
+  const pattern = extractBasePattern(LOCKED_SHIFTS, "2026-06-08");
+  // Con offset=1, Beto rota a la mañana (6-14) el lunes 15. Si Beto está ausente,
+  // el turno de mañana debe cubrirlo Ana (el siguiente en la rotación) en vez de
+  // quedar sin cubrir.
+  const absencesWithBeto: Absence[] = [
+    { id: "abs-1", employeeId: "emp-b", type: "vacaciones", startDate: "2026-06-15", endDate: "2026-06-15", reason: "Vacaciones" },
+  ];
+  const weekShifts = buildRotatedWeek(
+    "2026-06-15", pattern, SORTED_EMPLOYEES, 1, AREA, absencesWithBeto, LOCKED_SHIFTS
+  );
+  const jun15 = weekShifts.filter(s => s.date === "2026-06-15");
+
+  it("Beto queda registrado como ABS", () => {
+    const betoShift = jun15.find(s => s.employeeId === "emp-b");
+    expect(betoShift?.code).toBe("ABS");
+  });
+
+  it("Ana cubre el turno de mañana (6-14) en vez de quedar sin cubrir", () => {
+    const anaShift = jun15.find(s => s.employeeId === "emp-a" && s.code !== "OFF" && s.code !== "ABS");
+    expect(anaShift).toBeDefined();
+    expect(anaShift!.start).toBe(6);
+    expect(anaShift!.end).toBe(14);
   });
 });
 

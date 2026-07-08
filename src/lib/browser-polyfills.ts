@@ -4,7 +4,7 @@
 if (typeof globalThis.Buffer === "undefined") {
   (globalThis as Record<string, unknown>).Buffer = {
     isBuffer: () => false,
-    from: (v: unknown) => new Uint8Array(v instanceof ArrayBuffer ? v : 0),
+    from: (v: unknown) => (v instanceof ArrayBuffer ? new Uint8Array(v) : new Uint8Array(0)),
     alloc: (n: number) => new Uint8Array(n),
     concat: (bufs: Uint8Array[]) => {
       const total = bufs.reduce((s, b) => s + b.length, 0);

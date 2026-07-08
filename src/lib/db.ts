@@ -6,8 +6,10 @@ import { Pool, types } from "pg";
 // funciones de cálculo puedan llamar .slice() sin errores.
 types.setTypeParser(1082, (val: string) => val);           // DATE → string
 types.setTypeParser(1114, (val: string) => val);           // TIMESTAMP → string
-types.setTypeParser(1115, (val: string) => val);           // TIMESTAMP[] → string
-types.setTypeParser(1182, (val: string) => val);           // DATE[] → string
+// 1115 (_timestamp) y 1182 (_date) son OIDs válidos de Postgres pero el enum
+// TypeId de pg-types solo cubre tipos escalares, no sus variantes de array.
+types.setTypeParser(1115 as unknown as Parameters<typeof types.setTypeParser>[0], (val: string) => val); // TIMESTAMP[] → string
+types.setTypeParser(1182 as unknown as Parameters<typeof types.setTypeParser>[0], (val: string) => val); // DATE[] → string
 
 let _pool: Pool | undefined;
 
