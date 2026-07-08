@@ -3,7 +3,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { useJornada } from "@/lib/jornada/store";
 import { shiftBreakdown, sumBreakdowns, fmtHours } from "@/lib/wfm/calc";
-import { startOfWeek, weekDays, toISO } from "@/lib/wfm/date";
+import { startOfWeek, weekDays, toISO, getWeekNumber } from "@/lib/wfm/date";
 import { fetchApprovals } from "@/lib/wfm/db";
 import {
   Users, TrendingUp, CalendarOff, AlertTriangle,
@@ -320,14 +320,13 @@ function Dashboard() {
     const first = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
     const last  = new Date(now.getFullYear(), now.getMonth() + dateOffset + 1, 0);
     const result: any[] = [];
-    let cur = new Date(first), wn = 1;
+    let cur = new Date(first);
     while (cur <= last) {
       const wStart = toISO(cur);
       const next6  = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 6);
       const wEnd   = toISO(next6 > last ? last : next6);
-      result.push({ day: `${t("scheduler_week")} ${wn}`, ...bdFor(wStart, wEnd) });
+      result.push({ day: `S${getWeekNumber(cur)}`, ...bdFor(wStart, wEnd) });
       cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7);
-      wn++;
     }
     return result;
   }, [period, dateOffset, periodShifts, filteredEmployees, areas, dateRange, t]);
