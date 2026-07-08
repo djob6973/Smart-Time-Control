@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { useWFM, currentWeekISO } from "@/lib/wfm/store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
-import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday, detectCode } from "@/lib/wfm/calc";
+import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday, detectCode, getShiftWorkHours } from "@/lib/wfm/calc";
 import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
 import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info, Filter, MoreHorizontal } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -250,8 +250,9 @@ function Scheduler() {
           .map(req => {
             const actual = areaEmps.filter(emp => {
               const s = shiftMap.get(`${emp.id}|${isoDate}`);
-              return s && s.code !== "OFF" && s.code !== "ABS"
-                && s.start <= req.startHour && s.end >= req.endHour;
+              if (!s) return false;
+              const worked = getShiftWorkHours(s);
+              return worked != null && worked.start <= req.startHour && worked.end >= req.endHour;
             }).length;
             const preferred = req.preferredWorkers ?? req.minWorkers;
             const status = actual < req.minWorkers ? "critical" as const

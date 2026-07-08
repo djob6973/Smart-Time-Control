@@ -144,6 +144,24 @@ export function computePartialAbsWorkHours(
   return { start: absEnd, end: shiftEnd };
 }
 
+/**
+ * Returns the real worked interval for a shift, so coverage counting doesn't
+ * treat a partial absence (with extra work hours on top) as zero presence.
+ * Handles both encodings: work hours stored directly on shift.start/end
+ * (manual edits) or encoded in the note as abs:TYPE:ABSSTART:ABSEND:WORKSTART:WORKEND
+ * (auto-generated weeks). Returns null for OFF, full-day absences, or unparseable notes.
+ */
+export function getShiftWorkHours(shift: Pick<Shift, "code" | "start" | "end" | "note">): { start: number; end: number } | null {
+  if (shift.code === "OFF") return null;
+  if (shift.code !== "ABS") return { start: shift.start, end: shift.end };
+  if (shift.start > 0 || shift.end > 0) return { start: shift.start, end: shift.end };
+  const absNote = parseAbsNote(shift.note);
+  if (absNote?.workStart != null && absNote.workEnd != null) {
+    return { start: absNote.workStart, end: absNote.workEnd };
+  }
+  return null;
+}
+
 export function detectCode(start: number, end: number, dateISO: string, breakMinutes = 60, maxHoursDay = 8): NoveltyCode {
   if (end <= start) return "OFF";
   const duration = Math.max(0, end - start - breakMinutes / 60);

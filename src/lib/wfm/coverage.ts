@@ -1,6 +1,6 @@
 import type { Area, Employee, Shift, Absence } from "./types";
 import { toISO, addDays, startOfWeek } from "./date";
-import { detectCode, isSundayOrHoliday } from "./calc";
+import { detectCode, isSundayOrHoliday, getShiftWorkHours } from "./calc";
 
 interface ShiftSlot {
   date: string;
@@ -52,13 +52,12 @@ export function validateCoverage(
   const gaps: ShiftSlot[] = [];
   
   for (const slot of slots) {
-    const coverage = shifts.filter(s =>
-      s.date === slot.date &&
-      s.start <= slot.startHour &&
-      s.end >= slot.endHour &&
-      s.code !== "OFF" && s.code !== "ABS"
-    ).length;
-    
+    const coverage = shifts.filter(s => {
+      if (s.date !== slot.date) return false;
+      const worked = getShiftWorkHours(s);
+      return worked != null && worked.start <= slot.startHour && worked.end >= slot.endHour;
+    }).length;
+
     if (coverage < slot.required) {
       gaps.push(slot);
     }
