@@ -427,6 +427,13 @@ export const useJornada = create<JornadaState>()((set, get) => ({
       valorAnterior: undefined,
       valorNuevo: nuevo.horaExacta,
     });
+    const mods = await db.fetchModificaciones(nuevo.id);
+    set((s) => ({
+      modificaciones: [
+        ...s.modificaciones.filter((m) => m.registroId !== nuevo.id),
+        ...mods,
+      ],
+    }));
   },
 
   upsertHorario: (h) => {

@@ -20,6 +20,7 @@ import type {
   JornadaCupo,
   JornadaConfiguracion,
   JornadaRegistro,
+  JornadaModificacion,
 } from "@/lib/jornada/types";
 import {
   TIPO_MOVIMIENTO_LABELS,
@@ -1245,6 +1246,7 @@ function TabHistorial() {
   const [editingReg, setEditingReg] = useState<JornadaRegistro | null>(null);
   const [showAddManual,  setShowAddManual]  = useState(false);
   const [deleteConfirm,  setDeleteConfirm]  = useState<{ reg: JornadaRegistro; motivo: string } | null>(null);
+  const [detailReg, setDetailReg] = useState<JornadaRegistro | null>(null);
 
   const list = useMemo(() => {
     return registros
@@ -1340,7 +1342,13 @@ function TabHistorial() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="inline-flex gap-1">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={() => setDetailReg(r)}
+                          className="text-[12px] px-2.5 py-1 rounded-pill hover:bg-secondary text-muted-foreground transition-colors"
+                        >
+                          Ver detalle
+                        </button>
                         <button onClick={() => setEditingReg(r)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"><Edit3 className="size-4" /></button>
                         <button onClick={() => setDeleteConfirm({ reg: r, motivo: "" })} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button>
                       </div>
@@ -1411,6 +1419,93 @@ function TabHistorial() {
           }}
         />
       )}
+
+      {detailReg && (
+        <DetalleRegistroModal
+          registro={detailReg}
+          empName={employees.find((e) => e.id === detailReg.employeeId)?.fullName ?? detailReg.employeeId}
+          areaName={areas.find((a) => a.id === (employees.find((e) => e.id === detailReg.employeeId)?.areaId ?? detailReg.areaId))?.name}
+          modificaciones={modificaciones
+            .filter((m) => m.registroId === detailReg.id)
+            .sort((a, b) => new Date(b.fechaModificacion).getTime() - new Date(a.fechaModificacion).getTime())}
+          onClose={() => setDetailReg(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DetalleRegistroModal({ registro, empName, areaName, modificaciones, onClose }: {
+  registro: JornadaRegistro;
+  empName: string;
+  areaName?: string;
+  modificaciones: JornadaModificacion[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-card rounded-card shadow-card max-w-[440px] w-full my-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm truncate">{empName}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{TIPO_MOVIMIENTO_LABELS[registro.tipoMovimiento]}</div>
+          </div>
+          <button onClick={onClose} className="size-7 rounded-full flex items-center justify-center hover:bg-secondary text-muted-foreground">×</button>
+        </div>
+
+        <div className="p-5 space-y-4 overflow-y-auto" style={{ maxHeight: "68vh" }}>
+          <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+              <span className="text-muted-foreground text-xs">Área</span>
+              <span className="font-medium text-xs">{areaName ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+              <span className="text-muted-foreground text-xs">Fecha</span>
+              <span className="font-medium text-xs">{registro.fecha}</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+              <span className="text-muted-foreground text-xs">Hora</span>
+              <span className="font-medium text-xs">{fmtTime(registro.horaExacta)}</span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+              <span className="text-muted-foreground text-xs">Estado</span>
+              <span className="font-medium text-xs">{ESTADO_REGISTRO_LABELS[registro.estado]}</span>
+            </div>
+          </div>
+
+          {registro.observaciones && (
+            <div>
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Observaciones</div>
+              <div className="rounded-lg bg-secondary/60 px-3 py-2.5 text-sm text-foreground leading-relaxed">
+                {registro.observaciones}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Historial de modificaciones</div>
+            {modificaciones.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin modificaciones registradas.</p>
+            ) : (
+              <div className="space-y-2">
+                {modificaciones.map((m) => (
+                  <div key={m.id} className="rounded-lg border border-border px-3 py-2.5 text-sm space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{m.nombreUsuario ?? m.usuarioId.slice(0, 8)}</span>
+                      <span>{fmtTime(m.fechaModificacion)} · {new Date(m.fechaModificacion).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-foreground leading-relaxed">{m.motivo}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-5 py-4 border-t border-border flex justify-end">
+          <button onClick={onClose} className="text-sm px-4 py-2 rounded-pill border border-border hover:bg-secondary transition-colors">Cerrar</button>
+        </div>
+      </div>
     </div>
   );
 }
