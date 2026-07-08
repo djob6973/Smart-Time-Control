@@ -25,6 +25,7 @@ import {
   TIPO_MOVIMIENTO_LABELS,
   ESTADO_LABELS,
   ESTADO_COLORS,
+  ESTADO_REGISTRO_LABELS,
   SIGUIENTES_MOVIMIENTOS,
 } from "@/lib/jornada/types";
 import { cn } from "@/lib/utils";
@@ -1324,7 +1325,7 @@ function TabHistorial() {
                         r.estado === "irregular"  ? "bg-primary/12 text-primary" :
                         "bg-secondary text-muted-foreground"
                       )}>
-                        {r.estado}
+                        {ESTADO_REGISTRO_LABELS[r.estado]}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{r.observaciones ?? "—"}</td>

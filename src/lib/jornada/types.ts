@@ -8,6 +8,13 @@ export type TipoMovimiento =
 
 export type EstadoRegistro = "valido" | "modificado" | "pendiente" | "irregular";
 
+export const ESTADO_REGISTRO_LABELS: Record<EstadoRegistro, string> = {
+  valido: "Automático",
+  modificado: "Modificado",
+  pendiente: "Manual",
+  irregular: "Irregular",
+};
+
 export type TipoJornada =
   | "completa"
   | "media"
