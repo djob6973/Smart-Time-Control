@@ -6,7 +6,7 @@ import { useWFM, currentWeekISO } from "@/lib/wfm/store";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, startOfWeek, toISO, weekDays, DAY_LABELS } from "@/lib/wfm/date";
 import { shiftBreakdown, codeColor, fmtHours, sumBreakdowns, parseAbsNote, isHoliday, detectCode, getShiftWorkHours } from "@/lib/wfm/calc";
-import type { Shift, Area, Employee, NoveltyBreakdown } from "@/lib/wfm/types";
+import type { Shift, Area, Employee, NoveltyBreakdown, CoverageRequirement } from "@/lib/wfm/types";
 import { ArrowLeftRight, CalendarDays, ChevronLeft, ChevronRight, Sparkles, Lock, Unlock, X, Zap, Clock, Eraser, AlertTriangle, History, Trash2, Info, Filter, MoreHorizontal } from "lucide-react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import { dispatchShiftEvent } from "@/lib/notifications/dispatch";
 import type { ShiftHistory } from "@/lib/wfm/types";
 import { buildEquityMap } from "@/lib/wfm/coverage";
 import { isSundayOrHoliday } from "@/lib/wfm/calc";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/_authenticated/scheduler")({
   head: () => ({ meta: [{ title: "Programación · STC" }] }),
@@ -248,16 +249,18 @@ function Scheduler() {
         return area.coverageRequirements
           .filter(r => r.dayOfWeek === dow)
           .map(req => {
-            const actual = areaEmps.filter(emp => {
+            const covering = areaEmps.flatMap(emp => {
               const s = shiftMap.get(`${emp.id}|${isoDate}`);
-              if (!s) return false;
+              if (!s) return [];
               const worked = getShiftWorkHours(s);
-              return worked != null && worked.start <= req.startHour && worked.end >= req.endHour;
-            }).length;
+              if (worked == null || worked.start > req.startHour || worked.end < req.endHour) return [];
+              return [{ name: emp.fullName, start: worked.start, end: worked.end }];
+            }).sort((a, b) => a.start - b.start);
+            const actual = covering.length;
             const preferred = req.preferredWorkers ?? req.minWorkers;
             const status = actual < req.minWorkers ? "critical" as const
               : actual < preferred ? "warn" as const : "ok" as const;
-            return { req, actual, status };
+            return { req, actual, status, covering };
           });
       });
       return { area, daySlots };
@@ -664,20 +667,7 @@ function Scheduler() {
                             <div className="flex flex-col gap-0.5">
                               {slots.length === 0
                                 ? <span className="text-[10px] text-muted-foreground/40 leading-tight">—</span>
-                                : slots.map((slot, j) => (
-                                  <div key={j} className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-tight"
-                                    style={slot.status === "critical"
-                                      ? { background: "color-mix(in srgb,#ED5650 12%,transparent)", border: "1px solid color-mix(in srgb,#ED5650 30%,transparent)", color: "#ED5650" }
-                                      : slot.status === "warn"
-                                      ? { background: "color-mix(in srgb,#C98A00 12%,transparent)", border: "1px solid color-mix(in srgb,#C98A00 28%,transparent)", color: "#C98A00" }
-                                      : { background: "color-mix(in srgb,#1F8A5B 12%,transparent)", border: "1px solid color-mix(in srgb,#1F8A5B 28%,transparent)", color: "#1F8A5B" }
-                                    }>
-                                    <span className="size-1.5 rounded-full shrink-0"
-                                      style={{ background: slot.status === "critical" ? "#ED5650" : slot.status === "warn" ? "#C98A00" : "#1F8A5B" }} />
-                                    <span className="tabular-nums">{padH(slot.req.startHour)}–{padH(slot.req.endHour)}</span>
-                                    <span className="ml-auto font-bold tabular-nums">{slot.actual}/{slot.req.minWorkers}</span>
-                                  </div>
-                                ))
+                                : slots.map((slot, j) => <CoverageSlotBadge key={j} slot={slot} />)
                               }
                             </div>
                           </td>
@@ -1101,6 +1091,61 @@ function ShiftCell({ shift, area, onClick, onSwapClick, swapState, isHolidayDay 
 
 function pad(h: number) { return String(h).padStart(2,"0") + ":00"; }
 function padH(h: number) { return String(h).padStart(2,"0"); }
+
+interface CoverageSlot {
+  req: CoverageRequirement;
+  actual: number;
+  status: "critical" | "warn" | "ok";
+  covering: { name: string; start: number; end: number }[];
+}
+
+function CoverageSlotBadge({ slot }: { slot: CoverageSlot }) {
+  const colors = slot.status === "critical"
+    ? { bg: "color-mix(in srgb,#ED5650 12%,transparent)", border: "color-mix(in srgb,#ED5650 30%,transparent)", fg: "#ED5650" }
+    : slot.status === "warn"
+    ? { bg: "color-mix(in srgb,#C98A00 12%,transparent)", border: "color-mix(in srgb,#C98A00 28%,transparent)", fg: "#C98A00" }
+    : { bg: "color-mix(in srgb,#1F8A5B 12%,transparent)", border: "color-mix(in srgb,#1F8A5B 28%,transparent)", fg: "#1F8A5B" };
+  const preferred = slot.req.preferredWorkers ?? slot.req.minWorkers;
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className="flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-tight cursor-help"
+            style={{ background: colors.bg, border: `1px solid ${colors.border}`, color: colors.fg }}
+          >
+            <span className="size-1.5 rounded-full shrink-0" style={{ background: colors.fg }} />
+            <span className="tabular-nums">{padH(slot.req.startHour)}–{padH(slot.req.endHour)}</span>
+            <span className="ml-auto font-bold tabular-nums">{slot.actual}/{slot.req.minWorkers}</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-64 leading-relaxed whitespace-normal text-left bg-popover text-popover-foreground border border-border shadow-md space-y-1.5">
+          <div className="text-xs font-semibold">{padH(slot.req.startHour)}:00–{padH(slot.req.endHour)}:00</div>
+          <div className="flex gap-3 text-[11px] text-muted-foreground">
+            <span>Mín. <strong className="text-foreground">{slot.req.minWorkers}</strong></span>
+            <span>Pref. <strong className="text-foreground">{preferred}</strong></span>
+            <span>Actual <strong className="text-foreground">{slot.actual}</strong></span>
+          </div>
+          <div className="border-t border-border pt-1.5">
+            {slot.covering.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">Nadie cubre esta franja.</p>
+            ) : (
+              <ul className="text-[11px] space-y-0.5">
+                {slot.covering.map((c, k) => (
+                  <li key={k} className="flex justify-between gap-2">
+                    <span className="truncate">{c.name}</span>
+                    <span className="tabular-nums text-muted-foreground shrink-0">{padH(c.start)}–{padH(c.end)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
