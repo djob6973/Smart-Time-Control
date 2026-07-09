@@ -132,6 +132,8 @@ export interface EstadoJornadaEmpleado {
   minutosRetraso: number; // 0 si no llegó tarde
   tiempoEnBreak1Min?: number;
   tiempoEnBreak2Min?: number;
+  break1Excedido: boolean;
+  break2Excedido: boolean;
   breakExcedido: boolean;
   almuerzoExcedido: boolean;
   jornadaExcedida: boolean;

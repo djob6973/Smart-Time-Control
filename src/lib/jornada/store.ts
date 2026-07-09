@@ -87,7 +87,7 @@ function computeEstado(
   fecha: string,
   horario?: JornadaHorario,
   shiftHoraEntrada?: string, // hora de inicio del turno WFM ("HH:MM"), usado cuando no hay horario jornada
-): Pick<EstadoJornadaEmpleado, "estado" | "ultimoMovimiento" | "horaUltimoMovimiento" | "tiempoEnBreakMin" | "tiempoEnBreak1Min" | "tiempoEnBreak2Min" | "tiempoEnAlmuerzoMin" | "minutosEnJornada" | "esTarde" | "minutosRetraso" | "breakExcedido" | "almuerzoExcedido" | "jornadaExcedida"> {
+): Pick<EstadoJornadaEmpleado, "estado" | "ultimoMovimiento" | "horaUltimoMovimiento" | "tiempoEnBreakMin" | "tiempoEnBreak1Min" | "tiempoEnBreak2Min" | "tiempoEnAlmuerzoMin" | "minutosEnJornada" | "esTarde" | "minutosRetraso" | "break1Excedido" | "break2Excedido" | "breakExcedido" | "almuerzoExcedido" | "jornadaExcedida"> {
   const sorted = [...registros].sort(
     (a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime(),
   );
@@ -211,7 +211,9 @@ function computeEstado(
   const horaFinStr = toHHMM(horario?.horaSalida ?? config?.horaFinJornada ?? "22:00");
   const horaFinMs = new Date(`${fecha}T${horaFinStr}:00`).getTime();
 
-  const breakExcedido = tiempoEnBreak1Min > tiempoMaxBreakMin || tiempoEnBreak2Min > tiempoMaxBreakMin;
+  const break1Excedido = tiempoEnBreak1Min > tiempoMaxBreakMin;
+  const break2Excedido = tiempoEnBreak2Min > tiempoMaxBreakMin;
+  const breakExcedido = break1Excedido || break2Excedido;
   const almuerzoExcedido = tiempoEnAlmuerzoMin > tiempoMaxAlmuerzoMin;
   const jornadaExcedida =
     esFechaActual &&
@@ -229,6 +231,8 @@ function computeEstado(
     minutosEnJornada,
     esTarde,
     minutosRetraso,
+    break1Excedido,
+    break2Excedido,
     breakExcedido,
     almuerzoExcedido,
     jornadaExcedida,

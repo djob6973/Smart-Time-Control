@@ -492,7 +492,7 @@ function TabDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_col_horario"),t("jornada_col_status"),t("jornada_col_ultimo_mov"),t("jornada_col_entry"),t("jornada_col_break"),t("jornada_col_almuerzo"),t("jornada_col_en_jornada")].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_col_horario"),t("jornada_col_status"),t("jornada_col_ultimo_mov"),t("jornada_col_entry"),t("jornada_col_break1"),t("jornada_col_break2"),t("jornada_col_almuerzo"),t("jornada_col_en_jornada")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -546,10 +546,18 @@ function TabDashboard() {
                   </td>
                   <td className="px-4 py-3 tabular-nums">{fmtTime(est.horaUltimoMovimiento)}</td>
                   <td className="px-4 py-3">
-                    {est.tiempoEnBreakMin ? (
-                      <span className={cn("inline-flex items-center gap-1 text-xs", est.breakExcedido && "text-primary font-medium")}>
-                        {fmtMins(est.tiempoEnBreakMin)}
-                        {est.breakExcedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
+                    {est.tiempoEnBreak1Min ? (
+                      <span className={cn("inline-flex items-center gap-1 text-xs", est.break1Excedido && "text-primary font-medium")}>
+                        {fmtMins(est.tiempoEnBreak1Min)}
+                        {est.break1Excedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {est.tiempoEnBreak2Min ? (
+                      <span className={cn("inline-flex items-center gap-1 text-xs", est.break2Excedido && "text-primary font-medium")}>
+                        {fmtMins(est.tiempoEnBreak2Min)}
+                        {est.break2Excedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
                       </span>
                     ) : "—"}
                   </td>
@@ -572,7 +580,7 @@ function TabDashboard() {
               ))}
               {filteredEstados.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-12 text-muted-foreground">
+                  <td colSpan={10} className="text-center py-12 text-muted-foreground">
                     {estados.length === 0 ? t("jornada_no_active") : t("jornada_no_filter_results")}
                   </td>
                 </tr>
@@ -876,14 +884,27 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
               {ESTADO_LABELS[selfEst.estado]}
             </span>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="rounded-lg bg-secondary p-3">
-              <div className="text-xs text-muted-foreground mb-1">{t("mi_horario_break_accum")}</div>
-              <div className="font-semibold">{selfEst.tiempoEnBreakMin ? fmtMins(selfEst.tiempoEnBreakMin) : "—"}</div>
+              <div className="text-xs text-muted-foreground mb-1">{t("mi_horario_break1_accum")}</div>
+              <div className={cn("font-semibold flex items-center justify-center gap-1", selfEst.break1Excedido && "text-primary")}>
+                {selfEst.tiempoEnBreak1Min ? fmtMins(selfEst.tiempoEnBreak1Min) : "—"}
+                {selfEst.break1Excedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
+              </div>
+            </div>
+            <div className="rounded-lg bg-secondary p-3">
+              <div className="text-xs text-muted-foreground mb-1">{t("mi_horario_break2_accum")}</div>
+              <div className={cn("font-semibold flex items-center justify-center gap-1", selfEst.break2Excedido && "text-primary")}>
+                {selfEst.tiempoEnBreak2Min ? fmtMins(selfEst.tiempoEnBreak2Min) : "—"}
+                {selfEst.break2Excedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
+              </div>
             </div>
             <div className="rounded-lg bg-secondary p-3">
               <div className="text-xs text-muted-foreground mb-1">{t("mi_horario_lunch_accum")}</div>
-              <div className="font-semibold">{selfEst.tiempoEnAlmuerzoMin ? fmtMins(selfEst.tiempoEnAlmuerzoMin) : "—"}</div>
+              <div className={cn("font-semibold flex items-center justify-center gap-1", selfEst.almuerzoExcedido && "text-primary")}>
+                {selfEst.tiempoEnAlmuerzoMin ? fmtMins(selfEst.tiempoEnAlmuerzoMin) : "—"}
+                {selfEst.almuerzoExcedido && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">!</span>}
+              </div>
             </div>
             <div className="rounded-lg bg-secondary p-3">
               <div className="text-xs text-muted-foreground mb-1">{t("jornada_col_en_jornada")}</div>
@@ -1109,15 +1130,21 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <div className="text-center bg-secondary/40 rounded-lg py-1.5 px-1">
                   <div className="text-[10px] text-muted-foreground">Entrada</div>
                   <div className="text-xs font-semibold tabular-nums">{entradaReg ? fmtTime(entradaReg.horaExacta) : "—"}</div>
                 </div>
                 <div className="text-center bg-secondary/40 rounded-lg py-1.5 px-1">
-                  <div className="text-[10px] text-muted-foreground">Break</div>
-                  <div className={cn("text-xs font-semibold", est.breakExcedido && "text-primary")}>
-                    {est.tiempoEnBreakMin ? fmtMins(est.tiempoEnBreakMin) : "—"}
+                  <div className="text-[10px] text-muted-foreground">Break 1</div>
+                  <div className={cn("text-xs font-semibold", est.break1Excedido && "text-primary")}>
+                    {est.tiempoEnBreak1Min ? fmtMins(est.tiempoEnBreak1Min) : "—"}
+                  </div>
+                </div>
+                <div className="text-center bg-secondary/40 rounded-lg py-1.5 px-1">
+                  <div className="text-[10px] text-muted-foreground">Break 2</div>
+                  <div className={cn("text-xs font-semibold", est.break2Excedido && "text-primary")}>
+                    {est.tiempoEnBreak2Min ? fmtMins(est.tiempoEnBreak2Min) : "—"}
                   </div>
                 </div>
                 <div className="text-center bg-secondary/40 rounded-lg py-1.5 px-1">
