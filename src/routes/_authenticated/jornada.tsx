@@ -155,6 +155,26 @@ function calcPunctuality(regs: JornadaRegistro[], config: JornadaConfiguracion |
   };
 }
 
+// Puntualidad de Break 1 / Break 2 / Almuerzo: un día "cumple" si su duración
+// (calcDayStats) no supera el máximo configurado; si lo supera, cuenta el exceso.
+function calcCategoryPunctuality(regs: JornadaRegistro[], key: "breakMin1" | "breakMin2" | "almuerzoMin", maxMin: number) {
+  const fechas = [...new Set(regs.map((r) => r.fecha))];
+  let diasUsados = 0, diasCumplido = 0, excesoTotalMin = 0;
+  fechas.forEach((fecha) => {
+    const min = calcDayStats(regs.filter((r) => r.fecha === fecha))[key];
+    if (min <= 0) return;
+    diasUsados++;
+    if (min <= maxMin) diasCumplido++;
+    else excesoTotalMin += min - maxMin;
+  });
+  const diasExcedido = diasUsados - diasCumplido;
+  return {
+    diasUsados, diasCumplido, diasExcedido,
+    pct: diasUsados > 0 ? Math.round((diasCumplido / diasUsados) * 100) : 100,
+    avgExcesoMin: diasExcedido > 0 ? Math.round(excesoTotalMin / diasExcedido) : 0,
+  };
+}
+
 // ── Shared components ──────────────────────────────────────
 
 function KPI({ icon: Icon, label, value, hint, alert }: { icon: any; label: string; value: any; hint?: string; alert?: boolean }) {
@@ -201,6 +221,69 @@ function ModalField({ label, children }: { label: string; children: React.ReactN
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
       <div className="mt-1">{children}</div>
     </label>
+  );
+}
+
+function CategoryPunctualityTable({
+  title, rows,
+}: {
+  title: string;
+  rows: Array<{
+    emp: { id: string; fullName: string };
+    area: string;
+    p: { diasUsados: number; diasCumplido: number; diasExcedido: number; pct: number; avgExcesoMin: number };
+  }>;
+}) {
+  return (
+    <div>
+      <div className="px-5 py-2.5 bg-secondary/20">
+        <h4 className="font-medium text-xs uppercase tracking-wider text-muted-foreground">{title}</h4>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary text-left">
+            <tr>
+              {["Trabajador","Área","Días","Cumplido","Excedido","% Cumplimiento","Exceso prom."].map((h) => (
+                <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ emp, area, p }) => {
+              const pctColor = p.pct >= 90 ? "text-[#1F8A5B]" : p.pct >= 75 ? "text-[#9a6b00]" : "text-primary";
+              return (
+                <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-7 rounded-full bg-primary/15 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                        {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+                      </div>
+                      <span className="font-medium">{emp.fullName}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{area}</td>
+                  <td className="px-4 py-3 tabular-nums">{p.diasUsados}</td>
+                  <td className="px-4 py-3 tabular-nums text-[#1F8A5B] font-medium">{p.diasCumplido}</td>
+                  <td className="px-4 py-3 tabular-nums text-primary">{p.diasExcedido}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${p.pct}%`, backgroundColor: p.pct >= 90 ? "#1F8A5B" : p.pct >= 75 ? "#C98A00" : "var(--color-primary)" }} />
+                      </div>
+                      <span className={cn("tabular-nums font-medium text-xs", pctColor)}>{p.pct}%</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{p.avgExcesoMin > 0 ? fmtMins(p.avgExcesoMin) : "—"}</td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && (
+              <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -1896,7 +1979,7 @@ function TabReporteGeneral() {
   useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
 
   const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
-  const [openReport, setOpenReport] = useState<"trabajador" | "puntualidad" | null>(null);
+  const [openReport, setOpenReport] = useState<"trabajador" | "puntualidad" | "puntualidad_pausas" | null>(null);
 
   // General report mode
   const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
@@ -1921,7 +2004,12 @@ function TabReporteGeneral() {
       totalAdicionalMin += Math.max(0, s.efectivoMin - programadoMin);
     });
     const punct = calcPunctuality(regs, config);
-    return { emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalMin, punct };
+    const maxBreakMin    = config?.tiempoMaxBreakMin ?? 15;
+    const maxAlmuerzoMin = config?.tiempoMaxAlmuerzoMin ?? 60;
+    const punctBreak1    = calcCategoryPunctuality(regs, "breakMin1", maxBreakMin);
+    const punctBreak2    = calcCategoryPunctuality(regs, "breakMin2", maxBreakMin);
+    const punctAlmuerzo  = calcCategoryPunctuality(regs, "almuerzoMin", maxAlmuerzoMin);
+    return { emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalMin, punct, punctBreak1, punctBreak2, punctAlmuerzo };
   });
 
   function exportCSV() {
@@ -2043,7 +2131,7 @@ function TabReporteGeneral() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_col_con_registro"),t("jornada_col_a_tiempo"),t("jornada_col_tardios"),t("jornada_col_puntualidad"),t("jornada_col_retraso_prom")].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_col_a_tiempo"),t("jornada_col_tardios"),t("jornada_col_puntualidad"),t("jornada_col_retraso_prom")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -2083,6 +2171,36 @@ function TabReporteGeneral() {
             </tbody>
           </table>
         </div>
+        </div>
+        </div>
+      </div>
+
+      {/* Análisis de puntualidad de breaks y almuerzo */}
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
+        <button
+          onClick={() => setOpenReport(openReport === "puntualidad_pausas" ? null : "puntualidad_pausas")}
+          className="w-full flex items-center justify-between gap-4 px-5 py-3 border-b border-border bg-secondary/40 hover:bg-secondary/60 transition-colors text-left"
+        >
+          <div>
+            <h3 className="font-semibold text-sm">Análisis de puntualidad de breaks y almuerzo</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Días en que Break 1, Break 2 y Almuerzo se mantuvieron dentro del tiempo máximo configurado, por cada trabajador.</p>
+          </div>
+          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform shrink-0", openReport === "puntualidad_pausas" && "rotate-90")} />
+        </button>
+        <div className={cn("grid transition-[grid-template-rows] duration-300 ease-in-out", openReport === "puntualidad_pausas" ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+        <div className="overflow-hidden divide-y divide-border">
+          <CategoryPunctualityTable
+            title="Break 1"
+            rows={stats.map(({ emp, punctBreak1 }) => ({ emp, area: areas.find((a) => a.id === emp.areaId)?.name ?? "—", p: punctBreak1 }))}
+          />
+          <CategoryPunctualityTable
+            title="Break 2"
+            rows={stats.map(({ emp, punctBreak2 }) => ({ emp, area: areas.find((a) => a.id === emp.areaId)?.name ?? "—", p: punctBreak2 }))}
+          />
+          <CategoryPunctualityTable
+            title="Almuerzo"
+            rows={stats.map(({ emp, punctAlmuerzo }) => ({ emp, area: areas.find((a) => a.id === emp.areaId)?.name ?? "—", p: punctAlmuerzo }))}
+          />
         </div>
         </div>
       </div>
