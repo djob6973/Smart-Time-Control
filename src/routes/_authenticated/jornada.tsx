@@ -1967,19 +1967,20 @@ function TabReporteGeneral() {
         </button>
       </div>
 
-      {/* Tiempos por trabajador */}
+      {/* Análisis de jornada laboral */}
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         <button
           onClick={() => setOpenReport(openReport === "trabajador" ? null : "trabajador")}
-          className={cn(
-            "w-full flex items-center justify-between px-5 py-3 bg-secondary/40 hover:bg-secondary/60 transition-colors text-left",
-            openReport === "trabajador" && "border-b border-border",
-          )}
+          className="w-full flex items-center justify-between gap-4 px-5 py-3 border-b border-border bg-secondary/40 hover:bg-secondary/60 transition-colors text-left"
         >
-          <h3 className="font-semibold text-sm">{t("jornada_col_worker")}</h3>
-          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform", openReport === "trabajador" && "rotate-90")} />
+          <div>
+            <h3 className="font-semibold text-sm">Análisis de jornada laboral</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Días trabajados, breaks, almuerzo, tiempo efectivo y adicional por cada trabajador.</p>
+          </div>
+          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform shrink-0", openReport === "trabajador" && "rotate-90")} />
         </button>
-        {openReport === "trabajador" && (
+        <div className={cn("grid transition-[grid-template-rows] duration-300 ease-in-out", openReport === "trabajador" ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+        <div className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
@@ -2020,22 +2021,24 @@ function TabReporteGeneral() {
             </tbody>
           </table>
         </div>
-        )}
+        </div>
+        </div>
       </div>
 
-      {/* Resumen puntualidad */}
+      {/* Análisis de puntualidad */}
       <div className="rounded-card bg-card shadow-card overflow-hidden">
         <button
           onClick={() => setOpenReport(openReport === "puntualidad" ? null : "puntualidad")}
-          className={cn(
-            "w-full flex items-center justify-between px-5 py-3 bg-secondary/40 hover:bg-secondary/60 transition-colors text-left",
-            openReport === "puntualidad" && "border-b border-border",
-          )}
+          className="w-full flex items-center justify-between gap-4 px-5 py-3 border-b border-border bg-secondary/40 hover:bg-secondary/60 transition-colors text-left"
         >
-          <h3 className="font-semibold text-sm">Resumen de puntualidad</h3>
-          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform", openReport === "puntualidad" && "rotate-90")} />
+          <div>
+            <h3 className="font-semibold text-sm">Análisis de puntualidad</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Cumplimiento de horario: llegadas a tiempo, tardanzas y retraso promedio por cada trabajador.</p>
+          </div>
+          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform shrink-0", openReport === "puntualidad" && "rotate-90")} />
         </button>
-        {openReport === "puntualidad" && (
+        <div className={cn("grid transition-[grid-template-rows] duration-300 ease-in-out", openReport === "puntualidad" ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+        <div className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
@@ -2080,7 +2083,8 @@ function TabReporteGeneral() {
             </tbody>
           </table>
         </div>
-        )}
+        </div>
+        </div>
       </div>
     </div>
   );
