@@ -225,7 +225,7 @@ function ModalField({ label, children }: { label: string; children: React.ReactN
 }
 
 function CategoryPunctualityTable({
-  title, rows,
+  title, rows, open, onToggle,
 }: {
   title: string;
   rows: Array<{
@@ -233,12 +233,20 @@ function CategoryPunctualityTable({
     area: string;
     p: { diasUsados: number; diasCumplido: number; diasExcedido: number; pct: number; avgExcesoMin: number };
   }>;
+  open: boolean;
+  onToggle: () => void;
 }) {
   return (
     <div>
-      <div className="px-5 py-2.5 bg-secondary/20">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-2.5 bg-secondary/20 hover:bg-secondary/40 transition-colors text-left"
+      >
         <h4 className="font-medium text-xs uppercase tracking-wider text-muted-foreground">{title}</h4>
-      </div>
+        <ChevronRight className={cn("size-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
+      </button>
+      <div className={cn("grid transition-[grid-template-rows] duration-300 ease-in-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+      <div className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-secondary text-left">
@@ -282,6 +290,8 @@ function CategoryPunctualityTable({
             )}
           </tbody>
         </table>
+      </div>
+      </div>
       </div>
     </div>
   );
@@ -1980,6 +1990,7 @@ function TabReporteGeneral() {
 
   const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
   const [openReport, setOpenReport] = useState<"trabajador" | "puntualidad" | "puntualidad_pausas" | null>(null);
+  const [openBreakCategory, setOpenBreakCategory] = useState<"break1" | "break2" | "almuerzo" | null>(null);
 
   // General report mode
   const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
@@ -2192,14 +2203,20 @@ function TabReporteGeneral() {
           <CategoryPunctualityTable
             title="Break 1"
             rows={stats.map(({ emp, punctBreak1 }) => ({ emp, area: areas.find((a) => a.id === emp.areaId)?.name ?? "—", p: punctBreak1 }))}
+            open={openBreakCategory === "break1"}
+            onToggle={() => setOpenBreakCategory(openBreakCategory === "break1" ? null : "break1")}
           />
           <CategoryPunctualityTable
             title="Break 2"
             rows={stats.map(({ emp, punctBreak2 }) => ({ emp, area: areas.find((a) => a.id === emp.areaId)?.name ?? "—", p: punctBreak2 }))}
+            open={openBreakCategory === "break2"}
+            onToggle={() => setOpenBreakCategory(openBreakCategory === "break2" ? null : "break2")}
           />
           <CategoryPunctualityTable
             title="Almuerzo"
             rows={stats.map(({ emp, punctAlmuerzo }) => ({ emp, area: areas.find((a) => a.id === emp.areaId)?.name ?? "—", p: punctAlmuerzo }))}
+            open={openBreakCategory === "almuerzo"}
+            onToggle={() => setOpenBreakCategory(openBreakCategory === "almuerzo" ? null : "almuerzo")}
           />
         </div>
         </div>
