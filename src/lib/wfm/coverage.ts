@@ -1,6 +1,6 @@
 import type { Area, Employee, Shift, Absence } from "./types";
 import { toISO, addDays, startOfWeek } from "./date";
-import { detectCode, isSundayOrHoliday, getShiftWorkHours } from "./calc";
+import { detectCode, isSundayOrHoliday, getShiftWorkHours, computePartialAbsWorkHours } from "./calc";
 
 interface ShiftSlot {
   date: string;
@@ -121,11 +121,11 @@ export function generateAnchorWeek(
   function makeOff(emp: Employee, date: string): Shift {
     return { id: `${emp.id}-${date}`, employeeId: emp.id, date, start: 0, end: 0, breakMinutes: 0, code: "OFF", locked: true };
   }
-  function makeAbs(emp: Employee, date: string, abs: Absence): Shift {
+  function makeAbs(emp: Employee, date: string, abs: Absence, workHours?: { start: number; end: number } | null): Shift {
     const partial = abs.startHour !== undefined && abs.endHour !== undefined;
     return {
       id: `${emp.id}-${date}`, employeeId: emp.id, date,
-      start: 0, end: 0, breakMinutes: 0, code: "ABS", locked: true,
+      start: workHours?.start ?? 0, end: workHours?.end ?? 0, breakMinutes: workHours ? 60 : 0, code: "ABS", locked: true,
       note: partial ? `abs:${abs.type}:${abs.startHour}:${abs.endHour}` : `abs:${abs.type}`,
     };
   }
@@ -168,7 +168,14 @@ export function generateAnchorWeek(
       }
 
       const abs = absences.find(a => a.employeeId === emp.id && date >= a.startDate && date <= a.endDate);
-      if (abs) { result.push(makeAbs(emp, date, abs)); continue; }
+      if (abs) {
+        const partial = abs.startHour !== undefined && abs.endHour !== undefined;
+        if (!partial) { result.push(makeAbs(emp, date, abs)); continue; }
+        const workHours = computePartialAbsWorkHours(shiftType, shiftType.start, shiftType.end, abs.startHour!, abs.endHour!);
+        const noOverlap = workHours != null && workHours.start === shiftType.start && workHours.end === shiftType.end;
+        if (!noOverlap) { result.push(makeAbs(emp, date, abs, workHours)); continue; }
+        // Absence doesn't overlap this employee's shift window this day — treat as a normal working shift.
+      }
 
       const avail = emp.availability[dow];
       if (!avail || avail.start > shiftType.start || avail.end < shiftType.end) {
@@ -260,7 +267,14 @@ export function buildRotatedWeek(
             const key = `${emp.id}|${date}`;
             if (assignedKeys.has(key)) return false;
             const abs = absences.find(a => a.employeeId === emp.id && date >= a.startDate && date <= a.endDate);
-            if (abs) return false;
+            if (abs) {
+              const partial = abs.startHour !== undefined && abs.endHour !== undefined;
+              if (!partial) return false;
+              const workHours = computePartialAbsWorkHours({ start: slot.start, end: slot.end }, slot.start, slot.end, abs.startHour!, abs.endHour!);
+              const noOverlap = workHours != null && workHours.start === slot.start && workHours.end === slot.end;
+              if (!noOverlap) return false;
+              // Absence doesn't overlap this slot's hours — employee remains a valid candidate.
+            }
             const avail = emp.availability?.[dow];
             if (avail && (avail.start > slot.start || avail.end < slot.end)) return false;
             return true;
@@ -318,16 +332,24 @@ export function buildRotatedWeek(
         }
 
         // Absent employee → ABS, try the next employee in rotation for this slot
+        // (unless the absence doesn't actually overlap this slot's hours, in which case the employee stays available)
         const abs = absences.find(a => a.employeeId === emp.id && date >= a.startDate && date <= a.endDate);
         if (abs) {
-          assignedKeys.add(key);
           const partial = abs.startHour !== undefined && abs.endHour !== undefined;
-          result.push({
-            id: `${emp.id}-${date}`, employeeId: emp.id, date,
-            start: 0, end: 0, breakMinutes: 0, code: "ABS",
-            note: partial ? `abs:${abs.type}:${abs.startHour}:${abs.endHour}` : `abs:${abs.type}`,
-          });
-          continue;
+          const workHours = partial
+            ? computePartialAbsWorkHours({ start: slot.start, end: slot.end }, slot.start, slot.end, abs.startHour!, abs.endHour!)
+            : null;
+          const noOverlap = partial && workHours != null && workHours.start === slot.start && workHours.end === slot.end;
+          if (!noOverlap) {
+            assignedKeys.add(key);
+            result.push({
+              id: `${emp.id}-${date}`, employeeId: emp.id, date,
+              start: workHours?.start ?? 0, end: workHours?.end ?? 0, breakMinutes: workHours ? slot.breakMinutes : 0, code: "ABS",
+              note: partial ? `abs:${abs.type}:${abs.startHour}:${abs.endHour}` : `abs:${abs.type}`,
+            });
+            continue;
+          }
+          // Absence doesn't overlap this slot's hours — employee remains available for it.
         }
 
         const avail = emp.availability?.[dow];

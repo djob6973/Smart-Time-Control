@@ -217,6 +217,37 @@ describe("buildRotatedWeek reasigna el turno cuando el rotado está ausente", ()
   });
 });
 
+describe("buildRotatedWeek — ausencia parcial que no se solapa con el turno rotado", () => {
+  const pattern = extractBasePattern(LOCKED_SHIFTS, "2026-06-08");
+  // Beto rota a la mañana (6-14) el lunes 15 con offset=1. Su ausencia es 11-15,
+  // que SÍ se solapa con 6-14, así que debe generar ABS con horas residuales 6-11.
+  it("ausencia 11-15 sobre turno 6-14 deja horas de trabajo residuales 6-11 (no ABS 0/0)", () => {
+    const absencesPartial: Absence[] = [
+      { id: "abs-1", employeeId: "emp-b", type: "permiso", startDate: "2026-06-15", endDate: "2026-06-15", startHour: 11, endHour: 15, reason: "Cita médica" },
+    ];
+    const weekShifts = buildRotatedWeek(
+      "2026-06-15", pattern, SORTED_EMPLOYEES, 1, AREA, absencesPartial, LOCKED_SHIFTS
+    );
+    const betoShift = weekShifts.find(s => s.employeeId === "emp-b" && s.date === "2026-06-15");
+    expect(betoShift?.code).toBe("ABS");
+    expect(betoShift?.start).toBe(6);
+    expect(betoShift?.end).toBe(11);
+  });
+
+  it("ausencia 15-18 NO se solapa con el turno rotado 6-14 → el empleado trabaja normalmente (no ABS)", () => {
+    const absencesNoOverlap: Absence[] = [
+      { id: "abs-2", employeeId: "emp-b", type: "permiso", startDate: "2026-06-15", endDate: "2026-06-15", startHour: 15, endHour: 18, reason: "Cita médica" },
+    ];
+    const weekShifts = buildRotatedWeek(
+      "2026-06-15", pattern, SORTED_EMPLOYEES, 1, AREA, absencesNoOverlap, LOCKED_SHIFTS
+    );
+    const betoShift = weekShifts.find(s => s.employeeId === "emp-b" && s.date === "2026-06-15");
+    expect(betoShift?.code).not.toBe("ABS");
+    expect(betoShift?.start).toBe(6);
+    expect(betoShift?.end).toBe(14);
+  });
+});
+
 describe("Rotación completa de 4 semanas (Jun 8 → Jun 28)", () => {
   const pattern = extractBasePattern(LOCKED_SHIFTS, "2026-06-08");
   const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
