@@ -484,6 +484,7 @@ const T = {
     jornada_historial_col_days:   "Días",
     jornada_historial_col_time:   "Tiempo jornada",
     jornada_historial_col_effective: "Efectivo",
+    jornada_col_adicional:        "Adicional",
     // ── Mi Horario extras ────────────────────────────────────────────
     mi_horario_scheduled:         "Turno programado",
     mi_horario_no_programming:    "Sin programación",
@@ -977,6 +978,7 @@ const T = {
     jornada_historial_col_days:   "Days",
     jornada_historial_col_time:   "Shift time",
     jornada_historial_col_effective: "Effective",
+    jornada_col_adicional:        "Additional",
     // ── Mi Horario extras ────────────────────────────────────────────
     mi_horario_scheduled:         "Scheduled shift",
     mi_horario_no_programming:    "No schedule",
@@ -1470,6 +1472,7 @@ const T = {
     jornada_historial_col_days:   "Dias",
     jornada_historial_col_time:   "Tempo de jornada",
     jornada_historial_col_effective: "Efetivo",
+    jornada_col_adicional:        "Adicional",
     // ── Mi Horario extras ────────────────────────────────────────────
     mi_horario_scheduled:         "Turno programado",
     mi_horario_no_programming:    "Sem programação",

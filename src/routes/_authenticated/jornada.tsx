@@ -1844,11 +1844,49 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
 function TabReporteGeneral() {
   const { t } = useI18n();
-  const { employees, areas } = useWFM();
+  const { employees, areas, shifts } = useWFM();
   const { profile } = useAuth();
-  const { registros, configuracion, loadRango } = useJornada();
+  const { registros, configuracion, loadRango, horarios, horariosEmpleado, getShiftProgramado } = useJornada();
   const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
   const ownArea = profile?.areaId ?? null;
+
+  // Minutos programados (turno WFM u horario de jornada) para un empleado en una fecha,
+  // usados para calcular el tiempo "adicional" (efectivo por encima de lo programado).
+  function getProgramadoMin(emp: (typeof employees)[number], fecha: string): number {
+    const shift = getShiftProgramado(emp.id, fecha, shifts);
+    if (shift) {
+      if (shift.code === "OFF") return 0;
+      if (shift.code === "ABS") {
+        const absNote = parseAbsNote(shift.note);
+        const isPartialAbs = absNote != null && (shift.note?.split(":").length ?? 0) >= 4;
+        if (!isPartialAbs || !absNote) return 0; // ausencia completa: sin tiempo programado
+        let workHours: { start: number; end: number } | null = null;
+        if (shift.start > 0 || shift.end > 0) {
+          workHours = { start: shift.start, end: shift.end };
+        } else if (absNote.workStart != null) {
+          workHours = { start: absNote.workStart, end: absNote.workEnd! };
+        } else {
+          const dow = new Date(`${fecha}T12:00:00`).getDay();
+          const avail = emp.availability[dow];
+          const area = areas.find((a) => a.id === emp.areaId);
+          workHours = avail ? computePartialAbsWorkHours(avail, area?.startHour ?? 0, area?.endHour ?? 24, absNote.absStart, absNote.absEnd) : null;
+        }
+        return workHours ? Math.max(0, (workHours.end - workHours.start) * 60) : 0;
+      }
+      return Math.max(0, (shift.end - shift.start) * 60 - (shift.breakMinutes ?? 0));
+    }
+    // Sin turno WFM: revisar horario de jornada asignado
+    const dow = new Date(`${fecha}T12:00:00`).getDay();
+    const asig = horariosEmpleado.find(
+      (x) => x.employeeId === emp.id && x.activo && x.fechaInicio <= fecha && (!x.fechaFin || x.fechaFin >= fecha),
+    );
+    const horario = asig ? horarios.find((h) => h.id === asig.horarioId && h.activo && h.diasAplicables.includes(dow)) : undefined;
+    if (!horario?.horaEntrada || !horario?.horaSalida) return 0;
+    const toMin = (t: string) => { const [h, m] = t.slice(0, 5).split(":").map(Number); return h * 60 + m; };
+    let mins = toMin(horario.horaSalida) - toMin(horario.horaEntrada);
+    if (horario.breakInicio && horario.breakFin) mins -= (toMin(horario.breakFin) - toMin(horario.breakInicio));
+    return Math.max(0, mins);
+  }
 
   const [desde, setDesde] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
@@ -1869,7 +1907,7 @@ function TabReporteGeneral() {
   const stats = empList.map((emp) => {
     const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);
     const fechas = [...new Set(regs.map((r) => r.fecha))];
-    let totalJornadaMin = 0, totalBreak1Min = 0, totalBreak2Min = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, diasTrabajados = 0;
+    let totalJornadaMin = 0, totalBreak1Min = 0, totalBreak2Min = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, totalAdicionalMin = 0, diasTrabajados = 0;
     fechas.forEach((fecha) => {
       const s = calcDayStats(regs.filter((r) => r.fecha === fecha));
       if (s.entrada) diasTrabajados++;
@@ -1878,17 +1916,19 @@ function TabReporteGeneral() {
       totalBreak2Min   += s.breakMin2;
       totalAlmuerzoMin += s.almuerzoMin;
       totalEfectivoMin += s.efectivoMin;
+      const programadoMin = getProgramadoMin(emp, fecha);
+      totalAdicionalMin += Math.max(0, s.efectivoMin - programadoMin);
     });
     const punct = calcPunctuality(regs, config);
-    return { emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, punct };
+    return { emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalMin, punct };
   });
 
   function exportCSV() {
     const rows = stats.map((s) => {
       const area = areas.find((a) => a.id === s.emp.areaId)?.name ?? "";
-      return `"${s.emp.fullName}","${area}",${s.diasTrabajados},${fmtMins(s.totalJornadaMin)},${fmtMins(s.totalBreak1Min)},${fmtMins(s.totalBreak2Min)},${fmtMins(s.totalAlmuerzoMin)},${fmtMins(s.totalEfectivoMin)}`;
+      return `"${s.emp.fullName}","${area}",${s.diasTrabajados},${fmtMins(s.totalJornadaMin)},${fmtMins(s.totalBreak1Min)},${fmtMins(s.totalBreak2Min)},${fmtMins(s.totalAlmuerzoMin)},${fmtMins(s.totalEfectivoMin)},${fmtMins(s.totalAdicionalMin)}`;
     });
-    const csv = "Empleado,Área,Días trabajados,Horas jornada,Break 1,Break 2,Almuerzo,Efectivo\n" + rows.join("\n");
+    const csv = "Empleado,Área,Días trabajados,Horas jornada,Break 1,Break 2,Almuerzo,Efectivo,Adicional\n" + rows.join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     a.download = `jornada_${desde}_${hasta}.csv`;
@@ -1935,13 +1975,13 @@ function TabReporteGeneral() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_historial_col_time"),t("jornada_col_break1"),t("jornada_col_break2"),t("jornada_col_almuerzo"),t("jornada_historial_col_effective")].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_historial_col_time"),t("jornada_col_break1"),t("jornada_col_break2"),t("jornada_col_almuerzo"),t("jornada_historial_col_effective"),t("jornada_col_adicional")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin }) => (
+              {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalMin }) => (
                 <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -1958,10 +1998,15 @@ function TabReporteGeneral() {
                   <td className="px-4 py-3">{fmtMins(totalBreak2Min)}</td>
                   <td className="px-4 py-3">{fmtMins(totalAlmuerzoMin)}</td>
                   <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(totalEfectivoMin)}</td>
+                  <td className="px-4 py-3">
+                    {totalAdicionalMin > 0
+                      ? <span className="font-medium text-[#C98A00]">{fmtMins(totalAdicionalMin)}</span>
+                      : <span className="text-muted-foreground">0</span>}
+                  </td>
                 </tr>
               ))}
               {stats.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
               )}
             </tbody>
           </table>
