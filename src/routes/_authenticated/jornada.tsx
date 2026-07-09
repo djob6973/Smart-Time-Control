@@ -1896,6 +1896,7 @@ function TabReporteGeneral() {
   useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
 
   const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
+  const [openReport, setOpenReport] = useState<"trabajador" | "puntualidad" | null>(null);
 
   // General report mode
   const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
@@ -1968,9 +1969,17 @@ function TabReporteGeneral() {
 
       {/* Tiempos por trabajador */}
       <div className="rounded-card bg-card shadow-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border bg-secondary/40">
+        <button
+          onClick={() => setOpenReport(openReport === "trabajador" ? null : "trabajador")}
+          className={cn(
+            "w-full flex items-center justify-between px-5 py-3 bg-secondary/40 hover:bg-secondary/60 transition-colors text-left",
+            openReport === "trabajador" && "border-b border-border",
+          )}
+        >
           <h3 className="font-semibold text-sm">{t("jornada_col_worker")}</h3>
-        </div>
+          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform", openReport === "trabajador" && "rotate-90")} />
+        </button>
+        {openReport === "trabajador" && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
@@ -2011,13 +2020,22 @@ function TabReporteGeneral() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Resumen puntualidad */}
       <div className="rounded-card bg-card shadow-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-border bg-secondary/40">
+        <button
+          onClick={() => setOpenReport(openReport === "puntualidad" ? null : "puntualidad")}
+          className={cn(
+            "w-full flex items-center justify-between px-5 py-3 bg-secondary/40 hover:bg-secondary/60 transition-colors text-left",
+            openReport === "puntualidad" && "border-b border-border",
+          )}
+        >
           <h3 className="font-semibold text-sm">Resumen de puntualidad</h3>
-        </div>
+          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform", openReport === "puntualidad" && "rotate-90")} />
+        </button>
+        {openReport === "puntualidad" && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
@@ -2062,6 +2080,7 @@ function TabReporteGeneral() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );
