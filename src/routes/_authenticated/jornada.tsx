@@ -1666,17 +1666,19 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       diasCompletos: acc.diasCompletos + (d.salida  ? 1 : 0),
       jornadaMin:    acc.jornadaMin    + d.jornadaMin,
       breakMin:      acc.breakMin      + d.breakMin,
+      breakMin1:     acc.breakMin1     + d.breakMin1,
+      breakMin2:     acc.breakMin2     + d.breakMin2,
       almuerzoMin:   acc.almuerzoMin   + d.almuerzoMin,
       efectivoMin:   acc.efectivoMin   + d.efectivoMin,
-    }), { dias: 0, diasCompletos: 0, jornadaMin: 0, breakMin: 0, almuerzoMin: 0, efectivoMin: 0 }),
+    }), { dias: 0, diasCompletos: 0, jornadaMin: 0, breakMin: 0, breakMin1: 0, breakMin2: 0, almuerzoMin: 0, efectivoMin: 0 }),
     [selfDays],
   );
 
   function exportSelfCSV() {
     const rows = selfDays.map((d) =>
-      `${fmtFecha(d.fecha)},${fmtTime(d.entrada?.horaExacta)},${fmtTime(d.salida?.horaExacta)},${fmtMins(d.breakMin)},${fmtMins(d.almuerzoMin)},${fmtMins(d.jornadaMin)},${fmtMins(d.efectivoMin)}`
+      `${fmtFecha(d.fecha)},${fmtTime(d.entrada?.horaExacta)},${fmtTime(d.salida?.horaExacta)},${fmtMins(d.breakMin1)},${fmtMins(d.breakMin2)},${fmtMins(d.almuerzoMin)},${fmtMins(d.jornadaMin)},${fmtMins(d.efectivoMin)}`
     );
-    const csv = "Fecha,Entrada,Salida,Break,Almuerzo,Jornada,Efectivo\n" + rows.join("\n");
+    const csv = "Fecha,Entrada,Salida,Break 1,Break 2,Almuerzo,Jornada,Efectivo\n" + rows.join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     a.download = `mi_jornada_${desde}_${hasta}.csv`;
@@ -1766,7 +1768,7 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
         <table className="w-full text-sm">
           <thead className="bg-secondary/30 text-left">
             <tr>
-              {[t("jornada_historial_col_date"),t("jornada_historial_col_entry"),t("jornada_historial_col_exit"),t("jornada_col_break"),t("jornada_col_almuerzo"),t("jornada_historial_col_time"),t("jornada_historial_col_effective"),t("jornada_col_status")].map((h) => (
+              {[t("jornada_historial_col_date"),t("jornada_historial_col_entry"),t("jornada_historial_col_exit"),t("jornada_col_break1"),t("jornada_col_break2"),t("jornada_col_almuerzo"),t("jornada_historial_col_time"),t("jornada_historial_col_effective"),t("jornada_col_status")].map((h) => (
                 <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -1779,7 +1781,8 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
                   <td className="px-4 py-3 font-medium">{fmtFecha(d.fecha)}</td>
                   <td className="px-4 py-3 tabular-nums">{fmtTime(d.entrada?.horaExacta)}</td>
                   <td className="px-4 py-3 tabular-nums">{fmtTime(d.salida?.horaExacta)}</td>
-                  <td className="px-4 py-3">{d.breakMin   > 0 ? fmtMins(d.breakMin)   : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3">{d.breakMin1  > 0 ? fmtMins(d.breakMin1) : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3">{d.breakMin2  > 0 ? fmtMins(d.breakMin2) : <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3">{d.almuerzoMin > 0 ? fmtMins(d.almuerzoMin) : <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3">{fmtMins(d.jornadaMin)}</td>
                   <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(d.efectivoMin)}</td>
@@ -1792,14 +1795,15 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
               );
             })}
             {selfDays.length === 0 && (
-              <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Sin registros en el período</td></tr>
+              <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Sin registros en el período</td></tr>
             )}
           </tbody>
         </table>
         {selfDays.length > 0 && (
           <div className="px-4 py-3 bg-secondary/20 border-t border-border flex flex-wrap gap-6 text-xs text-muted-foreground">
             <span>Total jornada: <strong className="text-foreground">{fmtMins(selfTotals.jornadaMin)}</strong></span>
-            <span>Total break: <strong className="text-foreground">{fmtMins(selfTotals.breakMin)}</strong></span>
+            <span>Total Break 1: <strong className="text-foreground">{fmtMins(selfTotals.breakMin1)}</strong></span>
+            <span>Total Break 2: <strong className="text-foreground">{fmtMins(selfTotals.breakMin2)}</strong></span>
             <span>Total almuerzo: <strong className="text-foreground">{fmtMins(selfTotals.almuerzoMin)}</strong></span>
             <span>Total efectivo: <strong className="text-[#1F8A5B]">{fmtMins(selfTotals.efectivoMin)}</strong></span>
           </div>
