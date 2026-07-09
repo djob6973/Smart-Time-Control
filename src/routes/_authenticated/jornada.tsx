@@ -49,8 +49,10 @@ const TABS: { id: Tab; labelKey: TranslationKey; icon: any }[] = [
 
 const TIPO_ICONS: Record<TipoMovimiento, any> = {
   entrada:          LogIn,
-  salida_break:     Coffee,
-  regreso_break:    Coffee,
+  salida_break1:    Coffee,
+  regreso_break1:   Coffee,
+  salida_break2:    Coffee,
+  regreso_break2:   Coffee,
   salida_almuerzo:  UtensilsCrossed,
   regreso_almuerzo: UtensilsCrossed,
   salida:           LogOut,
@@ -58,8 +60,10 @@ const TIPO_ICONS: Record<TipoMovimiento, any> = {
 
 const TIPO_COLORS: Record<TipoMovimiento, string> = {
   entrada:          "bg-primary hover:opacity-90 text-primary-foreground",
-  salida_break:     "border border-border bg-card hover:bg-secondary text-foreground",
-  regreso_break:    "bg-primary hover:opacity-90 text-primary-foreground",
+  salida_break1:    "border border-border bg-card hover:bg-secondary text-foreground",
+  regreso_break1:   "bg-primary hover:opacity-90 text-primary-foreground",
+  salida_break2:    "border border-border bg-card hover:bg-secondary text-foreground",
+  regreso_break2:   "bg-primary hover:opacity-90 text-primary-foreground",
   salida_almuerzo:  "border border-border bg-card hover:bg-secondary text-foreground",
   regreso_almuerzo: "bg-primary hover:opacity-90 text-primary-foreground",
   salida:           "bg-foreground hover:opacity-90 text-background",
@@ -67,12 +71,20 @@ const TIPO_COLORS: Record<TipoMovimiento, string> = {
 
 const TIPO_SHORT_LABELS: Record<TipoMovimiento, string> = {
   entrada:          "Entrada",
-  salida_break:     "Break",
-  regreso_break:    "Fin break",
+  salida_break1:    "Break 1",
+  regreso_break1:   "Fin Break 1",
+  salida_break2:    "Break 2",
+  regreso_break2:   "Fin Break 2",
   salida_almuerzo:  "Almuerzo",
   regreso_almuerzo: "Fin almuerzo",
   salida:           "Salida",
 };
+
+function isWithinWindow(nowHHMM: string, inicio: string, fin: string) {
+  const i = inicio.slice(0, 5);
+  const f = fin.slice(0, 5);
+  return nowHHMM >= i && nowHHMM <= f;
+}
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -96,21 +108,26 @@ function calcDayStats(regs: JornadaRegistro[]) {
   const sorted = [...regs].sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
   const entrada  = sorted.find((r) => r.tipoMovimiento === "entrada");
   const salida   = sorted.find((r) => r.tipoMovimiento === "salida");
-  let jornadaMin = 0, breakMin = 0, almuerzoMin = 0;
+  let jornadaMin = 0, breakMin1 = 0, breakMin2 = 0, almuerzoMin = 0;
   if (entrada && salida) {
     jornadaMin = Math.floor((new Date(salida.horaExacta).getTime() - new Date(entrada.horaExacta).getTime()) / 60000);
   }
   for (let i = 0; i < sorted.length; i++) {
-    if (sorted[i].tipoMovimiento === "salida_break") {
-      const r = sorted.find((x, j) => j > i && x.tipoMovimiento === "regreso_break");
-      if (r) breakMin += Math.floor((new Date(r.horaExacta).getTime() - new Date(sorted[i].horaExacta).getTime()) / 60000);
+    if (sorted[i].tipoMovimiento === "salida_break1") {
+      const r = sorted.find((x, j) => j > i && x.tipoMovimiento === "regreso_break1");
+      if (r) breakMin1 += Math.floor((new Date(r.horaExacta).getTime() - new Date(sorted[i].horaExacta).getTime()) / 60000);
+    }
+    if (sorted[i].tipoMovimiento === "salida_break2") {
+      const r = sorted.find((x, j) => j > i && x.tipoMovimiento === "regreso_break2");
+      if (r) breakMin2 += Math.floor((new Date(r.horaExacta).getTime() - new Date(sorted[i].horaExacta).getTime()) / 60000);
     }
     if (sorted[i].tipoMovimiento === "salida_almuerzo") {
       const r = sorted.find((x, j) => j > i && x.tipoMovimiento === "regreso_almuerzo");
       if (r) almuerzoMin += Math.floor((new Date(r.horaExacta).getTime() - new Date(sorted[i].horaExacta).getTime()) / 60000);
     }
   }
-  return { entrada, salida, jornadaMin, breakMin, almuerzoMin, efectivoMin: Math.max(0, jornadaMin - breakMin - almuerzoMin) };
+  const breakMin = breakMin1 + breakMin2;
+  return { entrada, salida, jornadaMin, breakMin, breakMin1, breakMin2, almuerzoMin, efectivoMin: Math.max(0, jornadaMin - breakMin - almuerzoMin) };
 }
 
 function calcPunctuality(regs: JornadaRegistro[], config: JornadaConfiguracion | undefined) {
@@ -347,7 +364,7 @@ function TabDashboard() {
 
   const counts = useMemo(() => ({
     enJornada:  filteredEstados.filter((x) => x.est.estado === "en_jornada").length,
-    enBreak:    filteredEstados.filter((x) => x.est.estado === "en_break").length,
+    enBreak:    filteredEstados.filter((x) => x.est.estado === "en_break1" || x.est.estado === "en_break2").length,
     enAlmuerzo: filteredEstados.filter((x) => x.est.estado === "en_almuerzo").length,
     fuera:      filteredEstados.filter((x) => x.est.estado === "fuera_jornada").length,
     tardios:    filteredEstados.filter((x) => x.est.esTarde && esEsperadoHoy(x)).length,
@@ -624,14 +641,18 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const { user, profile } = useAuth();
   const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado, configuracion } = useJornada();
   const jornadaCfg = configuracion.find((c) => !c.areaId) ?? configuracion[0];
-  const maxBreaks    = jornadaCfg?.maxBreaksPorJornada    ?? 2;
   const maxAlmuerzos = jornadaCfg?.maxAlmuerzosPorJornada ?? 1;
+  const break1HoraInicio = jornadaCfg?.break1HoraInicio ?? "09:00";
+  const break1HoraFin    = jornadaCfg?.break1HoraFin    ?? "11:00";
+  const break2HoraInicio = jornadaCfg?.break2HoraInicio ?? "14:00";
+  const break2HoraFin    = jornadaCfg?.break2HoraFin    ?? "16:00";
   const ownArea = profile?.areaId ?? null;
 
   const isSelfMode = !!autoEmployeeId;
   const nowLocal = new Date();
   const hoy = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
   const hoyDia = new Date(`${hoy}T12:00:00`).getDay();
+  const nowHHMM = `${String(nowLocal.getHours()).padStart(2, "0")}:${String(nowLocal.getMinutes()).padStart(2, "0")}`;
   const activeEmployees = employees.filter((e) =>
     e.status === "active" || (e.status === "inactive" && !!e.inactiveDate && e.inactiveDate >= hoy)
   );
@@ -695,11 +716,13 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   const selfCanRegister = (!!selfShift && selfShift.code !== "OFF" && (selfShift.code !== "ABS" || (selfIsPartialAbs && selfWorkHours != null))) || selfHasJornadaHorario;
 
-  const selfBreaks    = selfRegs.filter((r) => r.tipoMovimiento === "salida_break").length;
-  const selfAlmuerzos = selfRegs.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
+  const selfBreak1Usado = selfRegs.some((r) => r.tipoMovimiento === "salida_break1");
+  const selfBreak2Usado = selfRegs.some((r) => r.tipoMovimiento === "salida_break2");
+  const selfAlmuerzos   = selfRegs.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
   const selfSiguientes = selfEst
     ? (SIGUIENTES_MOVIMIENTOS[selfEst.estado] ?? []).filter((tipo) => {
-        if (tipo === "salida_break")    return selfBreaks    < maxBreaks;
+        if (tipo === "salida_break1")   return !selfBreak1Usado && isWithinWindow(nowHHMM, break1HoraInicio, break1HoraFin);
+        if (tipo === "salida_break2")   return !selfBreak2Usado && isWithinWindow(nowHHMM, break2HoraInicio, break2HoraFin);
         if (tipo === "salida_almuerzo") return selfAlmuerzos < maxAlmuerzos;
         return true;
       })
@@ -1034,10 +1057,12 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           const shift      = getShiftProgramado(emp.id, hoy, shifts);
           const est        = getEstadoEmpleado(emp.id, hoy, shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null);
           const regsHoy    = registros.filter((r) => r.employeeId === emp.id && r.fecha === hoy);
-          const breaksUsados    = regsHoy.filter((r) => r.tipoMovimiento === "salida_break").length;
+          const break1Usado     = regsHoy.some((r) => r.tipoMovimiento === "salida_break1");
+          const break2Usado     = regsHoy.some((r) => r.tipoMovimiento === "salida_break2");
           const almuerzosUsados = regsHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
           const siguientes      = (SIGUIENTES_MOVIMIENTOS[est.estado] ?? []).filter((tipo) => {
-            if (tipo === "salida_break")    return breaksUsados    < maxBreaks;
+            if (tipo === "salida_break1")   return !break1Usado && isWithinWindow(nowHHMM, break1HoraInicio, break1HoraFin);
+            if (tipo === "salida_break2")   return !break2Usado && isWithinWindow(nowHHMM, break2HoraInicio, break2HoraFin);
             if (tipo === "salida_almuerzo") return almuerzosUsados < maxAlmuerzos;
             return true;
           });
@@ -1813,25 +1838,26 @@ function TabReporteGeneral() {
   const stats = empList.map((emp) => {
     const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);
     const fechas = [...new Set(regs.map((r) => r.fecha))];
-    let totalJornadaMin = 0, totalBreakMin = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, diasTrabajados = 0;
+    let totalJornadaMin = 0, totalBreak1Min = 0, totalBreak2Min = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, diasTrabajados = 0;
     fechas.forEach((fecha) => {
       const s = calcDayStats(regs.filter((r) => r.fecha === fecha));
       if (s.entrada) diasTrabajados++;
       totalJornadaMin  += s.jornadaMin;
-      totalBreakMin    += s.breakMin;
+      totalBreak1Min   += s.breakMin1;
+      totalBreak2Min   += s.breakMin2;
       totalAlmuerzoMin += s.almuerzoMin;
       totalEfectivoMin += s.efectivoMin;
     });
     const punct = calcPunctuality(regs, config);
-    return { emp, diasTrabajados, totalJornadaMin, totalBreakMin, totalAlmuerzoMin, totalEfectivoMin, punct };
+    return { emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, punct };
   });
 
   function exportCSV() {
     const rows = stats.map((s) => {
       const area = areas.find((a) => a.id === s.emp.areaId)?.name ?? "";
-      return `"${s.emp.fullName}","${area}",${s.diasTrabajados},${fmtMins(s.totalJornadaMin)},${fmtMins(s.totalBreakMin)},${fmtMins(s.totalAlmuerzoMin)},${fmtMins(s.totalEfectivoMin)}`;
+      return `"${s.emp.fullName}","${area}",${s.diasTrabajados},${fmtMins(s.totalJornadaMin)},${fmtMins(s.totalBreak1Min)},${fmtMins(s.totalBreak2Min)},${fmtMins(s.totalAlmuerzoMin)},${fmtMins(s.totalEfectivoMin)}`;
     });
-    const csv = "Empleado,Área,Días trabajados,Horas jornada,Break,Almuerzo,Efectivo\n" + rows.join("\n");
+    const csv = "Empleado,Área,Días trabajados,Horas jornada,Break 1,Break 2,Almuerzo,Efectivo\n" + rows.join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     a.download = `jornada_${desde}_${hasta}.csv`;
@@ -1878,13 +1904,13 @@ function TabReporteGeneral() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_historial_col_time"),t("jornada_col_break"),t("jornada_col_almuerzo"),t("jornada_historial_col_effective")].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_historial_col_time"),t("jornada_col_break1"),t("jornada_col_break2"),t("jornada_col_almuerzo"),t("jornada_historial_col_effective")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreakMin, totalAlmuerzoMin, totalEfectivoMin }) => (
+              {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin }) => (
                 <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -1897,13 +1923,14 @@ function TabReporteGeneral() {
                   <td className="px-4 py-3 text-muted-foreground">{areas.find((a) => a.id === emp.areaId)?.name ?? "—"}</td>
                   <td className="px-4 py-3 tabular-nums font-medium">{diasTrabajados}</td>
                   <td className="px-4 py-3">{fmtMins(totalJornadaMin)}</td>
-                  <td className="px-4 py-3">{fmtMins(totalBreakMin)}</td>
+                  <td className="px-4 py-3">{fmtMins(totalBreak1Min)}</td>
+                  <td className="px-4 py-3">{fmtMins(totalBreak2Min)}</td>
                   <td className="px-4 py-3">{fmtMins(totalAlmuerzoMin)}</td>
                   <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(totalEfectivoMin)}</td>
                 </tr>
               ))}
               {stats.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
               )}
             </tbody>
           </table>
@@ -1997,7 +2024,10 @@ function TabConfiguracion() {
         toleranciaLlegadaMin:      global?.toleranciaLlegadaMin      ?? 15,
         tiempoMaxBreakMin:         global?.tiempoMaxBreakMin          ?? 15,
         tiempoMaxAlmuerzoMin:      global?.tiempoMaxAlmuerzoMin       ?? 60,
-        maxBreaksPorJornada:       global?.maxBreaksPorJornada        ?? 2,
+        break1HoraInicio:          global?.break1HoraInicio           ?? "09:00",
+        break1HoraFin:             global?.break1HoraFin              ?? "11:00",
+        break2HoraInicio:          global?.break2HoraInicio           ?? "14:00",
+        break2HoraFin:             global?.break2HoraFin              ?? "16:00",
         maxAlmuerzosPorJornada:    global?.maxAlmuerzosPorJornada     ?? 1,
         diasLaborales:             global?.diasLaborales              ?? [1, 2, 3, 4, 5],
         horaInicioJornada:         global?.horaInicioJornada          ?? "08:00",
@@ -2062,8 +2092,17 @@ function TabConfiguracion() {
           <CfgField label="Tiempo máx. almuerzo (min)">
             <input type="number" min={1} max={180} className="cfg-input" value={cfg.tiempoMaxAlmuerzoMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxAlmuerzoMin: Number(e.target.value) })} />
           </CfgField>
-          <CfgField label="Máx. breaks por jornada">
-            <input type="number" min={0} max={10} className="cfg-input" value={cfg.maxBreaksPorJornada ?? 2} onChange={(e) => setCfg({ ...cfg, maxBreaksPorJornada: Number(e.target.value) })} />
+          <CfgField label="Break 1 — hora inicio">
+            <input type="time" className="cfg-input" value={cfg.break1HoraInicio} onChange={(e) => setCfg({ ...cfg, break1HoraInicio: e.target.value })} />
+          </CfgField>
+          <CfgField label="Break 1 — hora fin">
+            <input type="time" className="cfg-input" value={cfg.break1HoraFin} onChange={(e) => setCfg({ ...cfg, break1HoraFin: e.target.value })} />
+          </CfgField>
+          <CfgField label="Break 2 — hora inicio">
+            <input type="time" className="cfg-input" value={cfg.break2HoraInicio} onChange={(e) => setCfg({ ...cfg, break2HoraInicio: e.target.value })} />
+          </CfgField>
+          <CfgField label="Break 2 — hora fin">
+            <input type="time" className="cfg-input" value={cfg.break2HoraFin} onChange={(e) => setCfg({ ...cfg, break2HoraFin: e.target.value })} />
           </CfgField>
           <CfgField label="Máx. almuerzos por jornada">
             <input type="number" min={0} max={5} className="cfg-input" value={cfg.maxAlmuerzosPorJornada ?? 1} onChange={(e) => setCfg({ ...cfg, maxAlmuerzosPorJornada: Number(e.target.value) })} />

@@ -80,7 +80,10 @@ function configFromDB(r: Record<string, unknown>): JornadaConfiguracion {
     toleranciaLlegadaMin: r.tolerancia_llegada_min as number,
     tiempoMaxBreakMin: r.tiempo_max_break_min as number,
     tiempoMaxAlmuerzoMin: r.tiempo_max_almuerzo_min as number,
-    maxBreaksPorJornada: (r.max_breaks_por_jornada as number) ?? 2,
+    break1HoraInicio: (r.break1_hora_inicio as string) ?? "09:00",
+    break1HoraFin: (r.break1_hora_fin as string) ?? "11:00",
+    break2HoraInicio: (r.break2_hora_inicio as string) ?? "14:00",
+    break2HoraFin: (r.break2_hora_fin as string) ?? "16:00",
     maxAlmuerzosPorJornada: (r.max_almuerzos_por_jornada as number) ?? 1,
     diasLaborales: (r.dias_laborales as number[]) ?? [1, 2, 3, 4, 5],
     horaInicioJornada: r.hora_inicio_jornada as string,
@@ -278,17 +281,19 @@ const _upsertConfiguracion = createServerFn({ method: "POST" })
     await execute(
       `INSERT INTO public.jornada_configuracion
          (id, area_id, tolerancia_llegada_min, tiempo_max_break_min, tiempo_max_almuerzo_min,
-          max_breaks_por_jornada, max_almuerzos_por_jornada,
+          break1_hora_inicio, break1_hora_fin, break2_hora_inicio, break2_hora_fin, max_almuerzos_por_jornada,
           dias_laborales, hora_inicio_jornada, hora_fin_jornada, requiere_aprobacion_edicion)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        ON CONFLICT (id) DO UPDATE SET
          area_id=$2, tolerancia_llegada_min=$3, tiempo_max_break_min=$4,
-         tiempo_max_almuerzo_min=$5, max_breaks_por_jornada=$6, max_almuerzos_por_jornada=$7,
-         dias_laborales=$8, hora_inicio_jornada=$9,
-         hora_fin_jornada=$10, requiere_aprobacion_edicion=$11`,
+         tiempo_max_almuerzo_min=$5, break1_hora_inicio=$6, break1_hora_fin=$7,
+         break2_hora_inicio=$8, break2_hora_fin=$9, max_almuerzos_por_jornada=$10,
+         dias_laborales=$11, hora_inicio_jornada=$12,
+         hora_fin_jornada=$13, requiere_aprobacion_edicion=$14`,
       [
         c.id, c.areaId ?? null, c.toleranciaLlegadaMin, c.tiempoMaxBreakMin,
-        c.tiempoMaxAlmuerzoMin, c.maxBreaksPorJornada ?? 2, c.maxAlmuerzosPorJornada ?? 1,
+        c.tiempoMaxAlmuerzoMin, c.break1HoraInicio, c.break1HoraFin,
+        c.break2HoraInicio, c.break2HoraFin, c.maxAlmuerzosPorJornada ?? 1,
         c.diasLaborales, c.horaInicioJornada,
         c.horaFinJornada, c.requiereAprobacionEdicion,
       ],

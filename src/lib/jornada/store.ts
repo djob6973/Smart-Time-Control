@@ -87,7 +87,7 @@ function computeEstado(
   fecha: string,
   horario?: JornadaHorario,
   shiftHoraEntrada?: string, // hora de inicio del turno WFM ("HH:MM"), usado cuando no hay horario jornada
-): Pick<EstadoJornadaEmpleado, "estado" | "ultimoMovimiento" | "horaUltimoMovimiento" | "tiempoEnBreakMin" | "tiempoEnAlmuerzoMin" | "minutosEnJornada" | "esTarde" | "minutosRetraso" | "breakExcedido" | "almuerzoExcedido" | "jornadaExcedida"> {
+): Pick<EstadoJornadaEmpleado, "estado" | "ultimoMovimiento" | "horaUltimoMovimiento" | "tiempoEnBreakMin" | "tiempoEnBreak1Min" | "tiempoEnBreak2Min" | "tiempoEnAlmuerzoMin" | "minutosEnJornada" | "esTarde" | "minutosRetraso" | "breakExcedido" | "almuerzoExcedido" | "jornadaExcedida"> {
   const sorted = [...registros].sort(
     (a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime(),
   );
@@ -126,8 +126,10 @@ function computeEstado(
     const tipo = ultimo.tipoMovimiento;
     if (tipo === "salida") {
       estado = "fuera_jornada";
-    } else if (tipo === "salida_break") {
-      estado = esFechaActual ? "en_break" : "fuera_jornada";
+    } else if (tipo === "salida_break1") {
+      estado = esFechaActual ? "en_break1" : "fuera_jornada";
+    } else if (tipo === "salida_break2") {
+      estado = esFechaActual ? "en_break2" : "fuera_jornada";
     } else if (tipo === "salida_almuerzo") {
       estado = esFechaActual ? "en_almuerzo" : "fuera_jornada";
     } else {
@@ -156,18 +158,28 @@ function computeEstado(
     }
   }
 
-  // Tiempo en break
-  let tiempoEnBreakMin = 0;
+  // Tiempo en break (calculado por separado para Break 1 y Break 2)
+  let tiempoEnBreak1Min = 0;
+  let tiempoEnBreak2Min = 0;
   for (let i = 0; i < sorted.length; i++) {
-    if (sorted[i].tipoMovimiento === "salida_break") {
+    if (sorted[i].tipoMovimiento === "salida_break1") {
       const fin = sorted.find(
-        (r, j) => j > i && r.tipoMovimiento === "regreso_break",
+        (r, j) => j > i && r.tipoMovimiento === "regreso_break1",
       );
       const salida = new Date(sorted[i].horaExacta).getTime();
       const regreso = fin ? new Date(fin.horaExacta).getTime() : refTime;
-      tiempoEnBreakMin += Math.floor((regreso - salida) / 60000);
+      tiempoEnBreak1Min += Math.floor((regreso - salida) / 60000);
+    }
+    if (sorted[i].tipoMovimiento === "salida_break2") {
+      const fin = sorted.find(
+        (r, j) => j > i && r.tipoMovimiento === "regreso_break2",
+      );
+      const salida = new Date(sorted[i].horaExacta).getTime();
+      const regreso = fin ? new Date(fin.horaExacta).getTime() : refTime;
+      tiempoEnBreak2Min += Math.floor((regreso - salida) / 60000);
     }
   }
+  const tiempoEnBreakMin = tiempoEnBreak1Min + tiempoEnBreak2Min;
 
   // Tiempo en almuerzo
   let tiempoEnAlmuerzoMin = 0;
@@ -199,18 +211,20 @@ function computeEstado(
   const horaFinStr = toHHMM(horario?.horaSalida ?? config?.horaFinJornada ?? "22:00");
   const horaFinMs = new Date(`${fecha}T${horaFinStr}:00`).getTime();
 
-  const breakExcedido = tiempoEnBreakMin > tiempoMaxBreakMin;
+  const breakExcedido = tiempoEnBreak1Min > tiempoMaxBreakMin || tiempoEnBreak2Min > tiempoMaxBreakMin;
   const almuerzoExcedido = tiempoEnAlmuerzoMin > tiempoMaxAlmuerzoMin;
   const jornadaExcedida =
     esFechaActual &&
     now.getTime() > horaFinMs &&
-    (estado === "en_jornada" || estado === "en_break" || estado === "en_almuerzo");
+    (estado === "en_jornada" || estado === "en_break1" || estado === "en_break2" || estado === "en_almuerzo");
 
   return {
     estado,
     ultimoMovimiento: ultimo?.tipoMovimiento,
     horaUltimoMovimiento: ultimo?.horaExacta,
     tiempoEnBreakMin,
+    tiempoEnBreak1Min,
+    tiempoEnBreak2Min,
     tiempoEnAlmuerzoMin,
     minutosEnJornada,
     esTarde,
@@ -300,11 +314,17 @@ export const useJornada = create<JornadaState>()((set, get) => ({
       return { ok: false, error: "Ya existe una entrada registrada para hoy." };
     }
 
-    if (tipo === "salida_break") {
-      const maxBreaks = config?.maxBreaksPorJornada ?? 2;
-      const breaks = registrosHoy.filter((r) => r.tipoMovimiento === "salida_break").length;
-      if (breaks >= maxBreaks) {
-        return { ok: false, error: `Ya se han usado los ${maxBreaks} break${maxBreaks !== 1 ? "s" : ""} permitidos por jornada.` };
+    if (tipo === "salida_break1" || tipo === "salida_break2") {
+      const n = tipo === "salida_break1" ? 1 : 2;
+      const yaUsado = registrosHoy.some((r) => r.tipoMovimiento === tipo);
+      if (yaUsado) {
+        return { ok: false, error: `Ya se usó el Break ${n} hoy.` };
+      }
+      const horaInicio = n === 1 ? (config?.break1HoraInicio ?? "09:00") : (config?.break2HoraInicio ?? "14:00");
+      const horaFin = n === 1 ? (config?.break1HoraFin ?? "11:00") : (config?.break2HoraFin ?? "16:00");
+      const nowHHMM = `${String(nowLocal.getHours()).padStart(2, "0")}:${String(nowLocal.getMinutes()).padStart(2, "0")}`;
+      if (nowHHMM < horaInicio.slice(0, 5) || nowHHMM > horaFin.slice(0, 5)) {
+        return { ok: false, error: `Break ${n} solo puede iniciarse entre ${horaInicio.slice(0, 5)} y ${horaFin.slice(0, 5)}.` };
       }
     }
     if (tipo === "salida_almuerzo") {
@@ -323,11 +343,13 @@ export const useJornada = create<JornadaState>()((set, get) => ({
 
     const flujoValido: Record<string, TipoMovimiento[]> = {
       entrada: [],
-      salida_break: ["entrada", "regreso_break", "regreso_almuerzo"],
-      regreso_break: ["salida_break"],
-      salida_almuerzo: ["entrada", "regreso_break", "regreso_almuerzo"],
+      salida_break1: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
+      regreso_break1: ["salida_break1"],
+      salida_break2: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
+      regreso_break2: ["salida_break2"],
+      salida_almuerzo: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
       regreso_almuerzo: ["salida_almuerzo"],
-      salida: ["entrada", "regreso_break", "regreso_almuerzo"],
+      salida: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
     };
 
     const prevAllow = flujoValido[tipo] ?? [];
@@ -336,8 +358,8 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     }
 
     // Check cupo limits for break / almuerzo
-    if (tipo === "salida_break" || tipo === "salida_almuerzo") {
-      const cupoTipo = tipo === "salida_break" ? "break" : "almuerzo";
+    if (tipo === "salida_break1" || tipo === "salida_break2" || tipo === "salida_almuerzo") {
+      const cupoTipo = tipo === "salida_almuerzo" ? "almuerzo" : "break";
       const { max, enUso } = get().getCuposDisponibles(areaId, cupoTipo, hoy);
       if (max > 0 && enUso >= max) {
         return {
@@ -518,7 +540,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
     );
     if (!cupo) return { max: 0, enUso: 0, disponibles: 999 };
 
-    const tipoSalida = tipo === "break" ? "salida_break" : "salida_almuerzo";
+    const tiposSalida: TipoMovimiento[] = tipo === "break" ? ["salida_break1", "salida_break2"] : ["salida_almuerzo"];
 
     const enUso = registros.filter((r) => {
       if (r.fecha !== fecha) return false;
@@ -526,7 +548,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
         .filter((x) => x.employeeId === r.employeeId && x.fecha === fecha)
         .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
       const last = empRegs[empRegs.length - 1];
-      return last?.tipoMovimiento === tipoSalida;
+      return !!last && tiposSalida.includes(last.tipoMovimiento);
     });
 
     const count = new Set(enUso.map((r) => r.employeeId)).size;

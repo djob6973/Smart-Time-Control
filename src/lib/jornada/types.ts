@@ -1,7 +1,9 @@
 export type TipoMovimiento =
   | "entrada"
-  | "salida_break"
-  | "regreso_break"
+  | "salida_break1"
+  | "regreso_break1"
+  | "salida_break2"
+  | "regreso_break2"
   | "salida_almuerzo"
   | "regreso_almuerzo"
   | "salida";
@@ -25,7 +27,8 @@ export type TipoJornada =
 
 export type EstadoEmpleado =
   | "en_jornada"
-  | "en_break"
+  | "en_break1"
+  | "en_break2"
   | "en_almuerzo"
   | "fuera_jornada"
   | "ausente"
@@ -104,7 +107,10 @@ export interface JornadaConfiguracion {
   toleranciaLlegadaMin: number;
   tiempoMaxBreakMin: number;
   tiempoMaxAlmuerzoMin: number;
-  maxBreaksPorJornada: number;
+  break1HoraInicio: string;
+  break1HoraFin: string;
+  break2HoraInicio: string;
+  break2HoraFin: string;
   maxAlmuerzosPorJornada: number;
   diasLaborales: number[];
   horaInicioJornada: string;
@@ -124,6 +130,8 @@ export interface EstadoJornadaEmpleado {
   minutosEnJornada?: number;
   esTarde: boolean;
   minutosRetraso: number; // 0 si no llegó tarde
+  tiempoEnBreak1Min?: number;
+  tiempoEnBreak2Min?: number;
   breakExcedido: boolean;
   almuerzoExcedido: boolean;
   jornadaExcedida: boolean;
@@ -131,8 +139,10 @@ export interface EstadoJornadaEmpleado {
 
 export const TIPO_MOVIMIENTO_LABELS: Record<TipoMovimiento, string> = {
   entrada: "Entrada",
-  salida_break: "Salida a Break",
-  regreso_break: "Regreso de Break",
+  salida_break1: "Salida a Break 1",
+  regreso_break1: "Regreso de Break 1",
+  salida_break2: "Salida a Break 2",
+  regreso_break2: "Regreso de Break 2",
   salida_almuerzo: "Salida a Almuerzo",
   regreso_almuerzo: "Regreso de Almuerzo",
   salida: "Salida",
@@ -140,7 +150,8 @@ export const TIPO_MOVIMIENTO_LABELS: Record<TipoMovimiento, string> = {
 
 export const ESTADO_LABELS: Record<EstadoEmpleado, string> = {
   en_jornada: "En jornada",
-  en_break: "En break",
+  en_break1: "En Break 1",
+  en_break2: "En Break 2",
   en_almuerzo: "En almuerzo",
   fuera_jornada: "Fuera de jornada",
   ausente: "Ausente",
@@ -151,7 +162,8 @@ export const ESTADO_LABELS: Record<EstadoEmpleado, string> = {
 
 export const ESTADO_COLORS: Record<EstadoEmpleado, string> = {
   en_jornada:        "bg-[color-mix(in_srgb,#1F8A5B_14%,transparent)] text-[#1F8A5B]",
-  en_break:          "bg-[color-mix(in_srgb,#C98A00_16%,transparent)] text-[#9a6b00]",
+  en_break1:         "bg-[color-mix(in_srgb,#C98A00_16%,transparent)] text-[#9a6b00]",
+  en_break2:         "bg-[color-mix(in_srgb,#C98A00_16%,transparent)] text-[#9a6b00]",
   en_almuerzo:       "bg-primary/12 text-primary",
   fuera_jornada:     "bg-secondary text-muted-foreground",
   ausente:           "bg-primary/12 text-primary",
@@ -165,8 +177,9 @@ export const SIGUIENTES_MOVIMIENTOS: Record<EstadoEmpleado, TipoMovimiento[]> = 
   pendiente_ingreso: ["entrada"],
   tarde:             ["entrada"],
   ausente:           ["entrada"],
-  en_jornada:        ["salida_break", "salida_almuerzo", "salida"],
-  en_break:          ["regreso_break"],
+  en_jornada:        ["salida_break1", "salida_break2", "salida_almuerzo", "salida"],
+  en_break1:         ["regreso_break1"],
+  en_break2:         ["regreso_break2"],
   en_almuerzo:       ["regreso_almuerzo"],
   fuera_jornada:     [],
   sin_turno:         [],

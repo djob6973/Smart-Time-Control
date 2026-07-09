@@ -359,6 +359,15 @@ export async function runMigration(): Promise<void> {
   `);
   await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS max_breaks_por_jornada INT NOT NULL DEFAULT 2`);
   await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS max_almuerzos_por_jornada INT NOT NULL DEFAULT 1`);
+  await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS break1_hora_inicio TIME NOT NULL DEFAULT '09:00'`);
+  await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS break1_hora_fin    TIME NOT NULL DEFAULT '11:00'`);
+  await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS break2_hora_inicio TIME NOT NULL DEFAULT '14:00'`);
+  await execute(`ALTER TABLE public.jornada_configuracion ADD COLUMN IF NOT EXISTS break2_hora_fin    TIME NOT NULL DEFAULT '16:00'`);
+
+  // Migrar registros históricos del break único ("salida_break"/"regreso_break") a Break 1,
+  // ahora que el módulo distingue Break 1 y Break 2 por separado.
+  await execute(`UPDATE public.jornada_registros SET tipo_movimiento = 'salida_break1'  WHERE tipo_movimiento = 'salida_break'`);
+  await execute(`UPDATE public.jornada_registros SET tipo_movimiento = 'regreso_break1' WHERE tipo_movimiento = 'regreso_break'`);
 
   await execute(`
     INSERT INTO public.jornada_configuracion

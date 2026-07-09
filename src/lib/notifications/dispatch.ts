@@ -186,7 +186,7 @@ export const dispatchEmployeeEvent = createServerFn({ method: "POST" })
 export const dispatchJornadaEvent = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      tipo:         z.enum(["entrada", "salida_break", "regreso_break", "salida_almuerzo", "regreso_almuerzo", "salida"]),
+      tipo:         z.enum(["entrada", "salida_break1", "regreso_break1", "salida_break2", "regreso_break2", "salida_almuerzo", "regreso_almuerzo", "salida"]),
       employeeName: z.string(),
       hora:         z.string(),
       areaName:     z.string().optional(),
@@ -200,8 +200,10 @@ export const dispatchJornadaEvent = createServerFn({ method: "POST" })
     const suffix = data.areaName ? ` · ${data.areaName}` : "";
     const templates: Record<string, { type: string; title: string; body: string }> = {
       entrada:          { type: "success", title: "Entrada registrada",    body: `${data.employeeName} registró entrada a las ${data.hora}${suffix}` },
-      salida_break:     { type: "info",    title: "Salida a break",        body: `${data.employeeName} salió a break a las ${data.hora}${suffix}` },
-      regreso_break:    { type: "info",    title: "Regreso de break",      body: `${data.employeeName} regresó de break a las ${data.hora}${suffix}` },
+      salida_break1:    { type: "info",    title: "Salida a Break 1",      body: `${data.employeeName} salió a Break 1 a las ${data.hora}${suffix}` },
+      regreso_break1:   { type: "info",    title: "Regreso de Break 1",    body: `${data.employeeName} regresó de Break 1 a las ${data.hora}${suffix}` },
+      salida_break2:    { type: "info",    title: "Salida a Break 2",      body: `${data.employeeName} salió a Break 2 a las ${data.hora}${suffix}` },
+      regreso_break2:   { type: "info",    title: "Regreso de Break 2",    body: `${data.employeeName} regresó de Break 2 a las ${data.hora}${suffix}` },
       salida_almuerzo:  { type: "info",    title: "Salida a almuerzo",     body: `${data.employeeName} salió a almuerzo a las ${data.hora}${suffix}` },
       regreso_almuerzo: { type: "info",    title: "Regreso de almuerzo",   body: `${data.employeeName} regresó de almuerzo a las ${data.hora}${suffix}` },
       salida:           { type: "success", title: "Salida registrada",     body: `${data.employeeName} registró salida a las ${data.hora}${suffix}` },

@@ -93,8 +93,10 @@ export const testSlackConnection = createServerFn({ method: "POST" })
 
 const LABELS: Record<string, string> = {
   entrada:          "Entrada",
-  salida_break:     "Break",
-  regreso_break:    "Regreso de break",
+  salida_break1:    "Break 1",
+  regreso_break1:   "Regreso de Break 1",
+  salida_break2:    "Break 2",
+  regreso_break2:   "Regreso de Break 2",
   salida_almuerzo:  "Almuerzo",
   regreso_almuerzo: "Regreso de almuerzo",
   salida:           "Salida",
@@ -103,7 +105,7 @@ const LABELS: Record<string, string> = {
 export const dispatchSlackJornada = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      tipo:         z.enum(["entrada", "salida_break", "regreso_break", "salida_almuerzo", "regreso_almuerzo", "salida"]),
+      tipo:         z.enum(["entrada", "salida_break1", "regreso_break1", "salida_break2", "regreso_break2", "salida_almuerzo", "regreso_almuerzo", "salida"]),
       employeeName: z.string(),
       hora:         z.string(),
       areaName:     z.string().optional(),
