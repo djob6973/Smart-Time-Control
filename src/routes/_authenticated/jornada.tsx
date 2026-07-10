@@ -809,7 +809,7 @@ function TabDashboard() {
                       <div className="size-8 shrink-0 rounded-full bg-primary/15 flex items-center justify-center text-xs font-bold text-primary">
                         {emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
-                      <span className="font-medium whitespace-nowrap">{emp.fullName}</span>
+                      <span className="font-medium">{emp.fullName}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{areas.find((a) => a.id === emp.areaId)?.name ?? "—"}</td>
