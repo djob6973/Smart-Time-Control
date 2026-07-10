@@ -2213,8 +2213,8 @@ function TabReporteGeneral() {
               </select>
             </label>
           </div>
-          <div className="p-4 grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
-            <div className="lg:col-span-3 rounded-card border border-border overflow-hidden">
+          <div className="p-4 space-y-4">
+            <div className="rounded-card border border-border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-secondary text-left">
@@ -2261,7 +2261,7 @@ function TabReporteGeneral() {
               </div>
             </div>
 
-            <div className="lg:col-span-2 rounded-card border border-border p-4">
+            <div className="rounded-card border border-border p-4">
               <div className="flex items-center justify-between gap-3 mb-3">
                 <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">% Cumplimiento</h4>
                 <div className="flex items-center bg-secondary border border-border rounded-pill p-0.5 gap-0.5 text-[11px] shrink-0">
@@ -2280,7 +2280,7 @@ function TabReporteGeneral() {
                 </div>
               </div>
               {adherenciaChart.length > 0 ? (
-                <div className="h-56">
+                <div className="h-72">
                   <ResponsiveContainer>
                     <LineChart data={adherenciaChart} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 4" stroke="var(--color-border)" vertical={false} />
