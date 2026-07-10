@@ -41,6 +41,7 @@ function AvisosPage() {
     avisos,
     initialized,
     initFromDB,
+    reloadActivos,
     crearAviso,
     actualizarAviso,
     eliminarAviso,
@@ -54,6 +55,12 @@ function AvisosPage() {
   useEffect(() => {
     if (organization?.id && !initialized) initFromDB(organization.id);
   }, [organization?.id, initialized, initFromDB]);
+
+  // Tras crear/editar/eliminar, refresca también los avisos vigentes del widget
+  // flotante — de lo contrario quedaría desactualizado hasta el próximo poll (60s).
+  function syncWidget() {
+    if (organization?.id) reloadActivos(organization.id, profile?.areaId ?? null);
+  }
 
   const [editing, setEditing] = useState<"new" | Aviso | null>(null);
 
@@ -71,6 +78,7 @@ function AvisosPage() {
       else await crearAviso(input, user.id);
       toast.success(id ? "Aviso actualizado" : "Aviso creado");
       setEditing(null);
+      syncWidget();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Error al guardar el aviso");
     }
@@ -81,6 +89,7 @@ function AvisosPage() {
     try {
       await eliminarAviso(id, user.id);
       toast.success("Aviso eliminado");
+      syncWidget();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Error al eliminar el aviso");
     }
@@ -90,6 +99,7 @@ function AvisosPage() {
     if (!user?.id) return;
     try {
       await toggleActivo(a.id, !a.activo, user.id);
+      syncWidget();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Error al actualizar el aviso");
     }
