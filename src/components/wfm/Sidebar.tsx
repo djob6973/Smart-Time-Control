@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, CalendarDays, Users, Building2,
   CalendarOff, FileText, Settings, Clock, CalendarCheck,
-  Sun, Moon, ChevronRight, Languages, User,
+  Sun, Moon, ChevronRight, Languages, User, Megaphone,
 } from "lucide-react";
 import { useEffect, useRef, useState, Fragment } from "react";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,7 @@ const NAV: NavItem[] = [
   { to: "/areas",      labelKey: "areas",      icon: Building2,       resource: "areas" },
   { to: "/absences",   labelKey: "absences",   icon: CalendarOff,     resource: "absences" },
   { to: "/reports",    labelKey: "reports",    icon: FileText,        resource: "reports" },
+  { to: "/avisos",     labelKey: "avisos",     icon: Megaphone,       resource: "avisos" },
   { to: "/settings",   labelKey: "settings",   icon: Settings,        resource: "settings", sectionKey: "Administración" },
 ];
 

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/wfm/Sidebar";
+import { AvisosFlotantes } from "@/components/wfm/AvisosFlotantes";
 import { useWFM } from "@/lib/wfm/store";
 import { AppProvider } from "@/lib/app-context";
 
@@ -146,6 +147,7 @@ function AuthenticatedLayout() {
             <Outlet />
           </main>
         </div>
+        <AvisosFlotantes />
       </AppProvider>
     </AppLoader>
   );

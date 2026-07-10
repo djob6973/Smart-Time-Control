@@ -26,7 +26,9 @@ export type Resource =
   | "settings"
   | "settings_roles"
   | "settings_users"
-  | "settings_data";
+  | "settings_data"
+  // Novedades del día — avisos flotantes por área
+  | "avisos";
 
 export type Action = "view" | "edit" | "full" | "create" | "delete";
 
@@ -52,6 +54,7 @@ const ROLE_PERMISSIONS: Record<RoleName, Partial<Record<Resource, Action[]>>> = 
     settings_roles:       ["view", "edit", "full"],
     settings_users:       ["view", "edit", "full"],
     settings_data:        ["view", "edit", "full"],
+    avisos:               ["view", "edit", "create", "delete"],
   },
   supervisor: {
     dashboard:            ["view"],
@@ -73,6 +76,7 @@ const ROLE_PERMISSIONS: Record<RoleName, Partial<Record<Resource, Action[]>>> = 
     settings_roles:       [],
     settings_users:       [],
     settings_data:        [],
+    avisos:               ["view", "edit", "create"],
   },
   lider: {
     dashboard:            ["view"],
@@ -94,6 +98,7 @@ const ROLE_PERMISSIONS: Record<RoleName, Partial<Record<Resource, Action[]>>> = 
     settings_roles:          [],
     settings_users:          [],
     settings_data:           [],
+    avisos:                  ["view", "edit", "create"],
   },
   gestor: {
     dashboard:            ["view"],
@@ -115,6 +120,7 @@ const ROLE_PERMISSIONS: Record<RoleName, Partial<Record<Resource, Action[]>>> = 
     settings_roles:          [],
     settings_users:          [],
     settings_data:           [],
+    avisos:                  [],
   },
   consulta: {
     dashboard:            ["view"],
@@ -136,6 +142,7 @@ const ROLE_PERMISSIONS: Record<RoleName, Partial<Record<Resource, Action[]>>> = 
     settings_roles:          [],
     settings_users:          [],
     settings_data:           [],
+    avisos:                  [],
   },
 };
 

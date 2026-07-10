@@ -428,5 +428,36 @@ export async function runMigration(): Promise<void> {
     )
   `);
 
+  // ── Novedades del día (avisos flotantes por área) ─────────────────────────
+
+  await execute(`
+    CREATE TABLE IF NOT EXISTS public.avisos (
+      id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+      organization_id   UUID        NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+      area_id           TEXT        REFERENCES public.areas(id) ON DELETE CASCADE,
+      titulo            TEXT        NOT NULL,
+      subtitulo         TEXT,
+      descripcion       TEXT        NOT NULL,
+      imagen_data       TEXT,
+      fecha_activacion  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      fecha_vencimiento TIMESTAMPTZ NOT NULL,
+      activo            BOOLEAN     NOT NULL DEFAULT true,
+      creado_por        UUID,
+      creado_por_nombre TEXT        NOT NULL DEFAULT '',
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await execute(`CREATE INDEX IF NOT EXISTS idx_avisos_vigencia ON public.avisos(organization_id, activo, fecha_activacion, fecha_vencimiento)`);
+  await execute(`CREATE INDEX IF NOT EXISTS idx_avisos_area     ON public.avisos(area_id)`);
+
+  await execute(`DROP TRIGGER IF EXISTS avisos_updated_at ON public.avisos`);
+  await execute(`
+    CREATE TRIGGER avisos_updated_at
+      BEFORE UPDATE ON public.avisos
+      FOR EACH ROW EXECUTE FUNCTION public.update_timestamp()
+  `);
+
   done = true; // solo se marca como completada si todo tuvo éxito
 }

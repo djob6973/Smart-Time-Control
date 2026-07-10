@@ -19,6 +19,7 @@ const T = {
     areas:      "Áreas",
     absences:   "Ausencias",
     reports:    "Reportes",
+    avisos:     "Novedades del día",
     settings:   "Configuración",
     mi_cuenta:  "Mi Cuenta",
     // ── Common ───────────────────────────────────────────────────────
@@ -515,6 +516,7 @@ const T = {
     areas:      "Areas",
     absences:   "Absences",
     reports:    "Reports",
+    avisos:     "Daily announcements",
     settings:   "Settings",
     mi_cuenta:  "My Account",
     // ── Common ───────────────────────────────────────────────────────
@@ -1011,6 +1013,7 @@ const T = {
     areas:      "Áreas",
     absences:   "Ausências",
     reports:    "Relatórios",
+    avisos:     "Novidades do dia",
     settings:   "Configurações",
     mi_cuenta:  "Minha Conta",
     // ── Common ───────────────────────────────────────────────────────

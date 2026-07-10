@@ -24,6 +24,7 @@ import { Route as AuthenticatedMiHorarioRouteImport } from './routes/_authentica
 import { Route as AuthenticatedMiCuentaRouteImport } from './routes/_authenticated/mi-cuenta'
 import { Route as AuthenticatedJornadaRouteImport } from './routes/_authenticated/jornada'
 import { Route as AuthenticatedEmployeesRouteImport } from './routes/_authenticated/employees'
+import { Route as AuthenticatedAvisosRouteImport } from './routes/_authenticated/avisos'
 import { Route as AuthenticatedAreasRouteImport } from './routes/_authenticated/areas'
 import { Route as AuthenticatedAbsencesRouteImport } from './routes/_authenticated/absences'
 
@@ -101,6 +102,11 @@ const AuthenticatedEmployeesRoute = AuthenticatedEmployeesRouteImport.update({
   path: '/employees',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAvisosRoute = AuthenticatedAvisosRouteImport.update({
+  id: '/avisos',
+  path: '/avisos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedAreasRoute = AuthenticatedAreasRouteImport.update({
   id: '/areas',
   path: '/areas',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/pending-approval': typeof PendingApprovalRoute
   '/absences': typeof AuthenticatedAbsencesRoute
   '/areas': typeof AuthenticatedAreasRoute
+  '/avisos': typeof AuthenticatedAvisosRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/jornada': typeof AuthenticatedJornadaRoute
   '/mi-cuenta': typeof AuthenticatedMiCuentaRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/pending-approval': typeof PendingApprovalRoute
   '/absences': typeof AuthenticatedAbsencesRoute
   '/areas': typeof AuthenticatedAreasRoute
+  '/avisos': typeof AuthenticatedAvisosRoute
   '/employees': typeof AuthenticatedEmployeesRoute
   '/jornada': typeof AuthenticatedJornadaRoute
   '/mi-cuenta': typeof AuthenticatedMiCuentaRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/pending-approval': typeof PendingApprovalRoute
   '/_authenticated/absences': typeof AuthenticatedAbsencesRoute
   '/_authenticated/areas': typeof AuthenticatedAreasRoute
+  '/_authenticated/avisos': typeof AuthenticatedAvisosRoute
   '/_authenticated/employees': typeof AuthenticatedEmployeesRoute
   '/_authenticated/jornada': typeof AuthenticatedJornadaRoute
   '/_authenticated/mi-cuenta': typeof AuthenticatedMiCuentaRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/absences'
     | '/areas'
+    | '/avisos'
     | '/employees'
     | '/jornada'
     | '/mi-cuenta'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/absences'
     | '/areas'
+    | '/avisos'
     | '/employees'
     | '/jornada'
     | '/mi-cuenta'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/pending-approval'
     | '/_authenticated/absences'
     | '/_authenticated/areas'
+    | '/_authenticated/avisos'
     | '/_authenticated/employees'
     | '/_authenticated/jornada'
     | '/_authenticated/mi-cuenta'
@@ -340,6 +352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEmployeesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/avisos': {
+      id: '/_authenticated/avisos'
+      path: '/avisos'
+      fullPath: '/avisos'
+      preLoaderRoute: typeof AuthenticatedAvisosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/areas': {
       id: '/_authenticated/areas'
       path: '/areas'
@@ -360,6 +379,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAbsencesRoute: typeof AuthenticatedAbsencesRoute
   AuthenticatedAreasRoute: typeof AuthenticatedAreasRoute
+  AuthenticatedAvisosRoute: typeof AuthenticatedAvisosRoute
   AuthenticatedEmployeesRoute: typeof AuthenticatedEmployeesRoute
   AuthenticatedJornadaRoute: typeof AuthenticatedJornadaRoute
   AuthenticatedMiCuentaRoute: typeof AuthenticatedMiCuentaRoute
@@ -373,6 +393,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAbsencesRoute: AuthenticatedAbsencesRoute,
   AuthenticatedAreasRoute: AuthenticatedAreasRoute,
+  AuthenticatedAvisosRoute: AuthenticatedAvisosRoute,
   AuthenticatedEmployeesRoute: AuthenticatedEmployeesRoute,
   AuthenticatedJornadaRoute: AuthenticatedJornadaRoute,
   AuthenticatedMiCuentaRoute: AuthenticatedMiCuentaRoute,
