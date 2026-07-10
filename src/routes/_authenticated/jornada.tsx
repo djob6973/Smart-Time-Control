@@ -150,6 +150,50 @@ function calcDayStats(regs: JornadaRegistro[]) {
   return { entrada, salida, jornadaMin, breakMin, breakMin1, breakMin2, almuerzoMin, efectivoMin: Math.max(0, jornadaMin - breakMin - almuerzoMin) };
 }
 
+// Tiempo adicional (trabajado después de la hora de fin de turno) partido en Día
+// (antes de las 7:00 p.m.) y Noche (desde las 7:00 p.m.). Reconstruye los tramos
+// realmente trabajados del día (excluyendo breaks/almuerzo) a partir de las horas
+// exactas de cada registro. Si no hay hora de fin de turno (horaFinTimestamp null),
+// todo el tiempo trabajado se considera adicional, partido igual por las 7:00 p.m.
+function calcAdicionalDiaNoche(regs: JornadaRegistro[], fecha: string, horaFinTimestamp: number | null) {
+  const sorted = [...regs].sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
+  const entrada = sorted.find((r) => r.tipoMovimiento === "entrada");
+  const salida  = sorted.find((r) => r.tipoMovimiento === "salida");
+  if (!entrada || !salida) return { diurno: 0, nocturno: 0 };
+
+  const sevenPM = new Date(`${fecha}T19:00:00`).getTime();
+  const corte   = horaFinTimestamp ?? new Date(entrada.horaExacta).getTime();
+
+  const esSalidaDescanso  = (t: TipoMovimiento) => t === "salida_break1" || t === "salida_break2" || t === "salida_almuerzo";
+  const esRegresoDescanso = (t: TipoMovimiento) => t === "regreso_break1" || t === "regreso_break2" || t === "regreso_almuerzo";
+
+  const segmentos: Array<{ start: number; end: number }> = [];
+  let cursor = new Date(entrada.horaExacta).getTime();
+  for (const r of sorted) {
+    const t = new Date(r.horaExacta).getTime();
+    if (esSalidaDescanso(r.tipoMovimiento)) {
+      if (t > cursor) segmentos.push({ start: cursor, end: t });
+      cursor = t;
+    } else if (esRegresoDescanso(r.tipoMovimiento)) {
+      cursor = t;
+    }
+  }
+  const salidaTime = new Date(salida.horaExacta).getTime();
+  if (salidaTime > cursor) segmentos.push({ start: cursor, end: salidaTime });
+
+  let diurno = 0, nocturno = 0;
+  for (const seg of segmentos) {
+    const start = Math.max(seg.start, corte);
+    const end   = seg.end;
+    if (end <= start) continue;
+    const diaEnd = Math.min(end, sevenPM);
+    if (diaEnd > start) diurno += (diaEnd - start) / 60000;
+    const nocheStart = Math.max(start, sevenPM);
+    if (end > nocheStart) nocturno += (end - nocheStart) / 60000;
+  }
+  return { diurno: Math.round(diurno), nocturno: Math.round(nocturno) };
+}
+
 function calcPunctuality(regs: JornadaRegistro[], config: JornadaConfiguracion | undefined) {
   const toleranciaMin = config?.toleranciaLlegadaMin ?? 15;
   const horaInicio    = (config?.horaInicioJornada ?? "08:00").slice(0, 5);
@@ -2166,30 +2210,26 @@ function TabReporteGeneral() {
   const config = configuracion.find((c) => !c.areaId) ?? configuracion[0];
   const ownArea = profile?.areaId ?? null;
 
-  // Minutos programados (turno WFM u horario de jornada) para un empleado en una fecha,
-  // usados para calcular el tiempo "adicional" (efectivo por encima de lo programado).
-  function getProgramadoMin(emp: (typeof employees)[number], fecha: string): number {
+  // Hora de fin de turno programado (timestamp) para un empleado en una fecha, usada como
+  // punto de corte para el tiempo adicional (día/noche). null = sin turno/horario ese día.
+  function getHoraFinTimestamp(emp: (typeof employees)[number], fecha: string): number | null {
+    const dayStart = new Date(`${fecha}T00:00:00`).getTime();
     const shift = getShiftProgramado(emp.id, fecha, shifts);
     if (shift) {
-      if (shift.code === "OFF") return 0;
+      if (shift.code === "OFF") return null;
       if (shift.code === "ABS") {
         const absNote = parseAbsNote(shift.note);
         const isPartialAbs = absNote != null && (shift.note?.split(":").length ?? 0) >= 4;
-        if (!isPartialAbs || !absNote) return 0; // ausencia completa: sin tiempo programado
-        let workHours: { start: number; end: number } | null = null;
-        if (shift.start > 0 || shift.end > 0) {
-          workHours = { start: shift.start, end: shift.end };
-        } else if (absNote.workStart != null) {
-          workHours = { start: absNote.workStart, end: absNote.workEnd! };
-        } else {
-          const dow = new Date(`${fecha}T12:00:00`).getDay();
-          const avail = emp.availability[dow];
-          const area = areas.find((a) => a.id === emp.areaId);
-          workHours = avail ? computePartialAbsWorkHours(avail, area?.startHour ?? 0, area?.endHour ?? 24, absNote.absStart, absNote.absEnd) : null;
-        }
-        return workHours ? Math.max(0, (workHours.end - workHours.start) * 60) : 0;
+        if (!isPartialAbs || !absNote) return null; // ausencia completa: sin turno de referencia
+        if (shift.start > 0 || shift.end > 0) return dayStart + shift.end * 3600000;
+        if (absNote.workEnd != null) return dayStart + absNote.workEnd * 3600000;
+        const dow = new Date(`${fecha}T12:00:00`).getDay();
+        const avail = emp.availability[dow];
+        const area = areas.find((a) => a.id === emp.areaId);
+        const wh = avail ? computePartialAbsWorkHours(avail, area?.startHour ?? 0, area?.endHour ?? 24, absNote.absStart, absNote.absEnd) : null;
+        return wh ? dayStart + wh.end * 3600000 : null;
       }
-      return Math.max(0, (shift.end - shift.start) * 60 - (shift.breakMinutes ?? 0));
+      return dayStart + shift.end * 3600000;
     }
     // Sin turno WFM: revisar horario de jornada asignado
     const dow = new Date(`${fecha}T12:00:00`).getDay();
@@ -2197,11 +2237,9 @@ function TabReporteGeneral() {
       (x) => x.employeeId === emp.id && x.activo && x.fechaInicio <= fecha && (!x.fechaFin || x.fechaFin >= fecha),
     );
     const horario = asig ? horarios.find((h) => h.id === asig.horarioId && h.activo && h.diasAplicables.includes(dow)) : undefined;
-    if (!horario?.horaEntrada || !horario?.horaSalida) return 0;
-    const toMin = (t: string) => { const [h, m] = t.slice(0, 5).split(":").map(Number); return h * 60 + m; };
-    let mins = toMin(horario.horaSalida) - toMin(horario.horaEntrada);
-    if (horario.breakInicio && horario.breakFin) mins -= (toMin(horario.breakFin) - toMin(horario.breakInicio));
-    return Math.max(0, mins);
+    if (!horario?.horaSalida) return null;
+    const [h, m] = horario.horaSalida.slice(0, 5).split(":").map(Number);
+    return dayStart + (h * 60 + m) * 60000;
   }
 
   const [desde, setDesde] = useState(() => currentMonthRange().desde);
@@ -2248,17 +2286,20 @@ function TabReporteGeneral() {
   const stats = filteredEmpList.map((emp) => {
     const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);
     const fechas = [...new Set(regs.map((r) => r.fecha))];
-    let totalJornadaMin = 0, totalBreak1Min = 0, totalBreak2Min = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, totalAdicionalMin = 0, diasTrabajados = 0;
+    let totalJornadaMin = 0, totalBreak1Min = 0, totalBreak2Min = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, totalAdicionalDiaMin = 0, totalAdicionalNocheMin = 0, diasTrabajados = 0;
     fechas.forEach((fecha) => {
-      const s = calcDayStats(regs.filter((r) => r.fecha === fecha));
+      const regsDia = regs.filter((r) => r.fecha === fecha);
+      const s = calcDayStats(regsDia);
       if (s.entrada) diasTrabajados++;
       totalJornadaMin  += s.jornadaMin;
       totalBreak1Min   += s.breakMin1;
       totalBreak2Min   += s.breakMin2;
       totalAlmuerzoMin += s.almuerzoMin;
       totalEfectivoMin += s.efectivoMin;
-      const programadoMin = getProgramadoMin(emp, fecha);
-      totalAdicionalMin += Math.max(0, s.efectivoMin - programadoMin);
+      const horaFinTs = getHoraFinTimestamp(emp, fecha);
+      const { diurno, nocturno } = calcAdicionalDiaNoche(regsDia, fecha, horaFinTs);
+      totalAdicionalDiaMin   += diurno;
+      totalAdicionalNocheMin += nocturno;
     });
     const punct = calcPunctuality(regs, config);
     const maxBreakMin    = config?.tiempoMaxBreakMin ?? 15;
@@ -2266,15 +2307,15 @@ function TabReporteGeneral() {
     const punctBreak1    = calcCategoryPunctuality(regs, "breakMin1", maxBreakMin);
     const punctBreak2    = calcCategoryPunctuality(regs, "breakMin2", maxBreakMin);
     const punctAlmuerzo  = calcCategoryPunctuality(regs, "almuerzoMin", maxAlmuerzoMin);
-    return { emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalMin, punct, punctBreak1, punctBreak2, punctAlmuerzo };
+    return { emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalDiaMin, totalAdicionalNocheMin, punct, punctBreak1, punctBreak2, punctAlmuerzo };
   });
 
   function exportCSV() {
     const rows = stats.map((s) => {
       const area = areas.find((a) => a.id === s.emp.areaId)?.name ?? "";
-      return `"${s.emp.fullName}","${area}",${s.diasTrabajados},${fmtMins(s.totalJornadaMin)},${fmtMins(s.totalBreak1Min)},${fmtMins(s.totalBreak2Min)},${fmtMins(s.totalAlmuerzoMin)},${fmtMins(s.totalEfectivoMin)},${fmtMins(s.totalAdicionalMin)}`;
+      return `"${s.emp.fullName}","${area}",${s.diasTrabajados},${fmtMins(s.totalJornadaMin)},${fmtMins(s.totalBreak1Min)},${fmtMins(s.totalBreak2Min)},${fmtMins(s.totalAlmuerzoMin)},${fmtMins(s.totalEfectivoMin)},${fmtMins(s.totalAdicionalDiaMin)},${fmtMins(s.totalAdicionalNocheMin)}`;
     });
-    const csv = "Empleado,Área,Días trabajados,Horas jornada,Break 1,Break 2,Almuerzo,Efectivo,Adicional\n" + rows.join("\n");
+    const csv = "Empleado,Área,Días trabajados,Horas jornada,Break 1,Break 2,Almuerzo,Efectivo,Adicional Día,Adicional Noche\n" + rows.join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     a.download = `jornada_${desde}_${hasta}.csv`;
@@ -2466,13 +2507,13 @@ function TabReporteGeneral() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-left">
               <tr>
-                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_historial_col_time"),t("jornada_col_break1"),t("jornada_col_break2"),t("jornada_col_almuerzo"),t("jornada_historial_col_effective"),t("jornada_col_adicional")].map((h) => (
+                {[t("jornada_col_worker"),t("jornada_col_area"),t("jornada_historial_col_days"),t("jornada_historial_col_time"),t("jornada_col_break1"),t("jornada_col_break2"),t("jornada_col_almuerzo"),t("jornada_historial_col_effective"),t("jornada_col_adicional_dia"),t("jornada_col_adicional_noche")].map((h) => (
                   <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalMin }) => (
+              {stats.map(({ emp, diasTrabajados, totalJornadaMin, totalBreak1Min, totalBreak2Min, totalAlmuerzoMin, totalEfectivoMin, totalAdicionalDiaMin, totalAdicionalNocheMin }) => (
                 <tr key={emp.id} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -2490,14 +2531,19 @@ function TabReporteGeneral() {
                   <td className="px-4 py-3">{fmtMins(totalAlmuerzoMin)}</td>
                   <td className="px-4 py-3 font-medium text-[#1F8A5B]">{fmtMins(totalEfectivoMin)}</td>
                   <td className="px-4 py-3">
-                    {totalAdicionalMin > 0
-                      ? <span className="font-medium text-[#C98A00]">{fmtMins(totalAdicionalMin)}</span>
+                    {totalAdicionalDiaMin > 0
+                      ? <span className="font-medium text-[#C98A00]">{fmtMins(totalAdicionalDiaMin)}</span>
+                      : <span className="text-muted-foreground">0</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {totalAdicionalNocheMin > 0
+                      ? <span className="font-medium text-primary">{fmtMins(totalAdicionalNocheMin)}</span>
                       : <span className="text-muted-foreground">0</span>}
                   </td>
                 </tr>
               ))}
               {stats.length === 0 && (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
+                <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
               )}
             </tbody>
           </table>
