@@ -2591,43 +2591,74 @@ function TabConfiguracion() {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <CfgField label="Tolerancia de llegada (min)">
-            <input type="number" min={0} max={120} className="cfg-input" value={cfg.toleranciaLlegadaMin} onChange={(e) => setCfg({ ...cfg, toleranciaLlegadaMin: Number(e.target.value) })} />
-          </CfgField>
-          <CfgField label="Tiempo máx. break (min)">
-            <input type="number" min={1} max={60} className="cfg-input" value={cfg.tiempoMaxBreakMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxBreakMin: Number(e.target.value) })} />
-          </CfgField>
-          <CfgField label="Tiempo máx. almuerzo (min)">
-            <input type="number" min={1} max={180} className="cfg-input" value={cfg.tiempoMaxAlmuerzoMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxAlmuerzoMin: Number(e.target.value) })} />
-          </CfgField>
-          <CfgField label="Break 1 — hora inicio">
-            <input type="time" className="cfg-input" value={cfg.break1HoraInicio} onChange={(e) => setCfg({ ...cfg, break1HoraInicio: e.target.value })} />
-          </CfgField>
-          <CfgField label="Break 1 — hora fin">
-            <input type="time" className="cfg-input" value={cfg.break1HoraFin} onChange={(e) => setCfg({ ...cfg, break1HoraFin: e.target.value })} />
-          </CfgField>
-          <CfgField label="Break 2 — hora inicio">
-            <input type="time" className="cfg-input" value={cfg.break2HoraInicio} onChange={(e) => setCfg({ ...cfg, break2HoraInicio: e.target.value })} />
-          </CfgField>
-          <CfgField label="Break 2 — hora fin">
-            <input type="time" className="cfg-input" value={cfg.break2HoraFin} onChange={(e) => setCfg({ ...cfg, break2HoraFin: e.target.value })} />
-          </CfgField>
-          <CfgField label="Máx. almuerzos por jornada">
-            <input type="number" min={0} max={5} className="cfg-input" value={cfg.maxAlmuerzosPorJornada ?? 1} onChange={(e) => setCfg({ ...cfg, maxAlmuerzosPorJornada: Number(e.target.value) })} />
-          </CfgField>
-          <CfgField label="Hora inicio jornada">
-            <input type="time" className="cfg-input" value={cfg.horaInicioJornada} onChange={(e) => setCfg({ ...cfg, horaInicioJornada: e.target.value })} />
-          </CfgField>
-          <CfgField label="Hora fin jornada">
-            <input type="time" className="cfg-input" value={cfg.horaFinJornada} onChange={(e) => setCfg({ ...cfg, horaFinJornada: e.target.value })} />
-          </CfgField>
-          <CfgField label="Requiere aprobación para ediciones">
-            <select className="cfg-input" value={cfg.requiereAprobacionEdicion ? "1" : "0"} onChange={(e) => setCfg({ ...cfg, requiereAprobacionEdicion: e.target.value === "1" })}>
-              <option value="1">Sí</option>
-              <option value="0">No</option>
-            </select>
-          </CfgField>
+        <div className="space-y-6">
+          <CfgSection icon={Clock} title="Jornada">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <CfgField label="Hora inicio jornada">
+                <input type="time" className="cfg-input" value={cfg.horaInicioJornada} onChange={(e) => setCfg({ ...cfg, horaInicioJornada: e.target.value })} />
+              </CfgField>
+              <CfgField label="Hora fin jornada">
+                <input type="time" className="cfg-input" value={cfg.horaFinJornada} onChange={(e) => setCfg({ ...cfg, horaFinJornada: e.target.value })} />
+              </CfgField>
+              <CfgField label="Tolerancia de llegada (min)">
+                <input type="number" min={0} max={120} className="cfg-input" value={cfg.toleranciaLlegadaMin} onChange={(e) => setCfg({ ...cfg, toleranciaLlegadaMin: Number(e.target.value) })} />
+              </CfgField>
+            </div>
+          </CfgSection>
+
+          <CfgSection icon={Coffee} title="Breaks">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-4">
+              <CfgField label="Tiempo máx. break (min)">
+                <input type="number" min={1} max={60} className="cfg-input" value={cfg.tiempoMaxBreakMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxBreakMin: Number(e.target.value) })} />
+              </CfgField>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="rounded-xl bg-secondary/40 p-4">
+                <p className="text-xs font-semibold text-foreground mb-3">Break 1</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <CfgField label="Hora inicio">
+                    <input type="time" className="cfg-input" value={cfg.break1HoraInicio} onChange={(e) => setCfg({ ...cfg, break1HoraInicio: e.target.value })} />
+                  </CfgField>
+                  <CfgField label="Hora fin">
+                    <input type="time" className="cfg-input" value={cfg.break1HoraFin} onChange={(e) => setCfg({ ...cfg, break1HoraFin: e.target.value })} />
+                  </CfgField>
+                </div>
+              </div>
+              <div className="rounded-xl bg-secondary/40 p-4">
+                <p className="text-xs font-semibold text-foreground mb-3">Break 2</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <CfgField label="Hora inicio">
+                    <input type="time" className="cfg-input" value={cfg.break2HoraInicio} onChange={(e) => setCfg({ ...cfg, break2HoraInicio: e.target.value })} />
+                  </CfgField>
+                  <CfgField label="Hora fin">
+                    <input type="time" className="cfg-input" value={cfg.break2HoraFin} onChange={(e) => setCfg({ ...cfg, break2HoraFin: e.target.value })} />
+                  </CfgField>
+                </div>
+              </div>
+            </div>
+          </CfgSection>
+
+          <CfgSection icon={UtensilsCrossed} title="Almuerzo">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <CfgField label="Tiempo máx. almuerzo (min)">
+                <input type="number" min={1} max={180} className="cfg-input" value={cfg.tiempoMaxAlmuerzoMin} onChange={(e) => setCfg({ ...cfg, tiempoMaxAlmuerzoMin: Number(e.target.value) })} />
+              </CfgField>
+              <CfgField label="Máx. almuerzos por jornada">
+                <input type="number" min={0} max={5} className="cfg-input" value={cfg.maxAlmuerzosPorJornada ?? 1} onChange={(e) => setCfg({ ...cfg, maxAlmuerzosPorJornada: Number(e.target.value) })} />
+              </CfgField>
+            </div>
+          </CfgSection>
+
+          <CfgSection icon={Edit3} title="Ediciones">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <CfgField label="Requiere aprobación para ediciones">
+                <select className="cfg-input" value={cfg.requiereAprobacionEdicion ? "1" : "0"} onChange={(e) => setCfg({ ...cfg, requiereAprobacionEdicion: e.target.value === "1" })}>
+                  <option value="1">Sí</option>
+                  <option value="0">No</option>
+                </select>
+              </CfgField>
+            </div>
+          </CfgSection>
         </div>
         <div className="mt-5 flex items-center justify-end gap-4">
           {savingMsg && (
@@ -2724,6 +2755,17 @@ function CfgField({ label, children }: { label: string; children: React.ReactNod
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
       <div className="mt-1">{children}</div>
     </label>
+  );
+}
+
+function CfgSection({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t border-border/60 pt-5 first:border-t-0 first:pt-0">
+      <h4 className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+        <Icon className="size-3.5 text-muted-foreground" /> {title}
+      </h4>
+      {children}
+    </div>
   );
 }
 
