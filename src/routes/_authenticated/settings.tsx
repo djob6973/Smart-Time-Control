@@ -353,6 +353,7 @@ function SettingsPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError]     = useState<string | null>(null);
   const [userSearch, setUserSearch]     = useState("");
+  const [userAreaFilter, setUserAreaFilter] = useState(""); // "" = todas las áreas
 
   // Create user modal state
   const [createUserOpen, setCreateUserOpen]     = useState(false);
@@ -671,10 +672,12 @@ function SettingsPage() {
 
 
   const filteredUsers = users.filter(u => {
+    if (userAreaFilter && u.areaId !== userAreaFilter) return false;
     if (!userSearch) return true;
     const q = userSearch.toLowerCase();
     return (u.fullName ?? "").toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
   });
+  const hasActiveUserFilters = !!userSearch || !!userAreaFilter;
 
   const activeCount = users.filter(u => u.isActive).length;
 
@@ -755,6 +758,14 @@ function SettingsPage() {
                   className="w-full rounded-pill border border-border bg-card pl-8 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
+              <select
+                value={userAreaFilter}
+                onChange={e => setUserAreaFilter(e.target.value)}
+                className="rounded-pill border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">{t("settings_filter_all_areas")}</option>
+                {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
               <span className="text-sm text-muted-foreground ml-auto">
                 <strong className="font-semibold text-foreground">{activeCount}</strong> {t("settings_active_users_label")}
               </span>
@@ -804,7 +815,7 @@ function SettingsPage() {
                     {!usersLoading && filteredUsers.length === 0 && (
                       <tr>
                         <td colSpan={6} className="py-12 text-center text-muted-foreground">
-                          {userSearch ? t("settings_no_search_results") : t("settings_no_users")}
+                          {hasActiveUserFilters ? t("settings_no_search_results") : t("settings_no_users")}
                         </td>
                       </tr>
                     )}
