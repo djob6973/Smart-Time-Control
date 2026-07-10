@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useI18n } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import {
@@ -16,7 +16,7 @@ import { useWFM } from "@/lib/wfm/store";
 import { parseAbsNote, computePartialAbsWorkHours } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
 import { useJornada } from "@/lib/jornada/store";
-import { dispatchJornadaEvent } from "@/lib/notifications/dispatch";
+import { dispatchJornadaEvent, dispatchBreakExcedidoEvent } from "@/lib/notifications/dispatch";
 import { dispatchSlackJornada } from "@/lib/slack";
 import type {
   TipoMovimiento,
@@ -105,6 +105,14 @@ function fmtMins(mins: number) {
 function fmtFecha(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function fmtCountdown(totalSec: number) {
+  const neg = totalSec < 0;
+  const abs = Math.abs(totalSec);
+  const m = Math.floor(abs / 60);
+  const s = abs % 60;
+  return `${neg ? "+" : ""}${m}:${String(s).padStart(2, "0")}`;
 }
 
 function currentMonthRange() {
@@ -305,6 +313,47 @@ function CupoBar({ label, enUso, max }: { label: string; enUso: number; max: num
         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
       <p className="text-xs text-muted-foreground">{Math.max(0, max - enUso)} {t("jornada_cupos_available")}</p>
+    </div>
+  );
+}
+
+function BreakCountdown({
+  startISO, maxMin, label, onExceeded, size = "md",
+}: {
+  startISO: string;
+  maxMin: number;
+  label: string;
+  onExceeded?: () => void;
+  size?: "sm" | "md";
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const notifiedRef = useRef(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const elapsedSec   = Math.floor((now - new Date(startISO).getTime()) / 1000);
+  const remainingSec = maxMin * 60 - elapsedSec;
+  const exceeded      = remainingSec < 0;
+
+  useEffect(() => {
+    if (exceeded && !notifiedRef.current) {
+      notifiedRef.current = true;
+      onExceeded?.();
+    }
+  }, [exceeded, onExceeded]);
+
+  return (
+    <div className={cn(
+      "inline-flex items-center gap-1.5 rounded-pill font-semibold tabular-nums transition-colors",
+      size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-1.5 text-sm",
+      exceeded ? "bg-primary/12 text-primary" : "bg-secondary text-foreground",
+    )}>
+      <Clock className={size === "sm" ? "size-3" : "size-4"} />
+      {label}: {fmtCountdown(remainingSec)}
+      {exceeded && <span className="text-[10px] uppercase tracking-wide opacity-80">excedido</span>}
     </div>
   );
 }
@@ -922,6 +971,25 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     ? [...registros.filter((r) => r.employeeId === autoEmployeeId && r.fecha === hoy)]
         .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime())
     : [];
+  // Break/almuerzo en curso: base para el temporizador de cuenta regresiva
+  const selfActiveBreak = (() => {
+    if (!selfEst) return null;
+    const maxBreakMin    = jornadaCfg?.tiempoMaxBreakMin ?? 15;
+    const maxAlmuerzoMin = jornadaCfg?.tiempoMaxAlmuerzoMin ?? 60;
+    if (selfEst.estado === "en_break1") {
+      const reg = [...selfRegs].reverse().find((r) => r.tipoMovimiento === "salida_break1");
+      return reg ? { startISO: reg.horaExacta, maxMin: maxBreakMin, label: "Break 1", tipo: "break1" as const } : null;
+    }
+    if (selfEst.estado === "en_break2") {
+      const reg = [...selfRegs].reverse().find((r) => r.tipoMovimiento === "salida_break2");
+      return reg ? { startISO: reg.horaExacta, maxMin: maxBreakMin, label: "Break 2", tipo: "break2" as const } : null;
+    }
+    if (selfEst.estado === "en_almuerzo") {
+      const reg = [...selfRegs].reverse().find((r) => r.tipoMovimiento === "salida_almuerzo");
+      return reg ? { startISO: reg.horaExacta, maxMin: maxAlmuerzoMin, label: "Almuerzo", tipo: "almuerzo" as const } : null;
+    }
+    return null;
+  })();
   // Verificar si el empleado tiene un horario de jornada activo para hoy (sin turno WFM)
   const selfHasJornadaHorario = useMemo(() => {
     if (!autoEmployeeId) return false;
@@ -996,6 +1064,14 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
         .catch((e) => console.error("[slack:jornada]", e?.message ?? e));
     }
     setSelfBusy(false);
+  }
+
+  function handleBreakExcedido(tipo: "break1" | "break2" | "almuerzo", maxMin: number) {
+    if (!selfEmp) return;
+    const areaId   = selfEmp.areaId;
+    const areaName = areas.find((a) => a.id === areaId)?.name;
+    dispatchBreakExcedidoEvent({ data: { tipo, employeeName: selfEmp.fullName, maxMin, areaName, areaId: areaId ?? null } })
+      .catch((e) => console.error("[notif:break_excedido]", e?.message ?? e));
   }
 
   // ── No linked employee ────────────────────────────────────
@@ -1095,6 +1171,16 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
               {ESTADO_LABELS[selfEst.estado]}
             </span>
           </div>
+          {selfActiveBreak && (
+            <div className="mt-4">
+              <BreakCountdown
+                startISO={selfActiveBreak.startISO}
+                maxMin={selfActiveBreak.maxMin}
+                label={selfActiveBreak.label}
+                onExceeded={() => handleBreakExcedido(selfActiveBreak.tipo, selfActiveBreak.maxMin)}
+              />
+            </div>
+          )}
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="rounded-lg bg-secondary p-3">
               <div className="text-xs text-muted-foreground mb-1">{t("mi_horario_break1_accum")}</div>
@@ -1302,6 +1388,23 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
           const areaName    = areas.find((a) => a.id === emp.areaId)?.name ?? "—";
           const hasShift    = shift && shift.code !== "OFF" && shift.code !== "ABS";
           const entradaReg  = regsHoy.find((r) => r.tipoMovimiento === "entrada");
+          const maxBreakMin    = jornadaCfg?.tiempoMaxBreakMin ?? 15;
+          const maxAlmuerzoMin = jornadaCfg?.tiempoMaxAlmuerzoMin ?? 60;
+          const activeBreak = (() => {
+            if (est.estado === "en_break1") {
+              const reg = [...regsHoy].reverse().find((r) => r.tipoMovimiento === "salida_break1");
+              return reg ? { startISO: reg.horaExacta, maxMin: maxBreakMin, label: "Break 1" } : null;
+            }
+            if (est.estado === "en_break2") {
+              const reg = [...regsHoy].reverse().find((r) => r.tipoMovimiento === "salida_break2");
+              return reg ? { startISO: reg.horaExacta, maxMin: maxBreakMin, label: "Break 2" } : null;
+            }
+            if (est.estado === "en_almuerzo") {
+              const reg = [...regsHoy].reverse().find((r) => r.tipoMovimiento === "salida_almuerzo");
+              return reg ? { startISO: reg.horaExacta, maxMin: maxAlmuerzoMin, label: "Almuerzo" } : null;
+            }
+            return null;
+          })();
 
           return (
             <div
@@ -1363,6 +1466,10 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
                   <div className="text-xs font-semibold">{est.minutosEnJornada ? fmtMins(est.minutosEnJornada) : "—"}</div>
                 </div>
               </div>
+
+              {activeBreak && (
+                <BreakCountdown startISO={activeBreak.startISO} maxMin={activeBreak.maxMin} label={activeBreak.label} size="sm" />
+              )}
 
               {/* Actions */}
               {!hasShift ? (

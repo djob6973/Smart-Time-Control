@@ -215,6 +215,35 @@ export const dispatchJornadaEvent = createServerFn({ method: "POST" })
     );
   });
 
+// ── Jornada (tiempo excedido) ──────────────────────────────────────────────
+// Break 1 / Break 2 / Almuerzo excedidos → Admin + Supervisor + Líder.
+// Se dispara desde el cliente del propio empleado al cruzar el tiempo máximo.
+
+export const dispatchBreakExcedidoEvent = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      tipo:         z.enum(["break1", "break2", "almuerzo"]),
+      employeeName: z.string(),
+      maxMin:       z.number(),
+      areaName:     z.string().optional(),
+      areaId:       z.string().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const managers = await managersForArea(data.areaId, "admin", "supervisor", "lider");
+    if (managers.length === 0) return;
+
+    const suffix = data.areaName ? ` · ${data.areaName}` : "";
+    const labels: Record<string, string> = { break1: "Break 1", break2: "Break 2", almuerzo: "almuerzo" };
+    const label = labels[data.tipo];
+    const title = `Tiempo de ${label} excedido`;
+    const body  = `${data.employeeName} superó el tiempo máximo de ${label} (${data.maxMin} min)${suffix}`;
+
+    await insertNotifications(
+      managers.map((uid) => ({ user_id: uid, type: "warning", title, body, data: { event: `jornada_excedido_${data.tipo}` } })),
+    );
+  });
+
 // ── Aprobaciones de novedades (reportes) ──────────────────────────────────
 // Destinatario: el empleado cuya novedad fue aprobada o rechazada.
 
