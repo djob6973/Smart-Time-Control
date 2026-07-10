@@ -216,11 +216,15 @@ function calcAdherenciaPorPeriodo(regs: JornadaRegistro[], config: JornadaConfig
   const maxBreakMin    = config?.tiempoMaxBreakMin ?? 15;
   const maxAlmuerzoMin = config?.tiempoMaxAlmuerzoMin ?? 60;
 
-  const fechas = [...new Set(regs.map((r) => r.fecha))].sort();
+  // Agrupa por (empleado, fecha) para poder agregar varios trabajadores sin mezclar sus registros del mismo día.
+  const diasEmpleado = [...new Set(regs.map((r) => `${r.employeeId}|${r.fecha}`))].sort();
   const porPeriodo = new Map<string, { dias: number; entradaExcedido: number; break1Excedido: number; almuerzoExcedido: number; break2Excedido: number }>();
 
-  fechas.forEach((fecha) => {
-    const regsDia = regs.filter((r) => r.fecha === fecha);
+  diasEmpleado.forEach((dk) => {
+    const sep = dk.indexOf("|");
+    const empId = dk.slice(0, sep);
+    const fecha = dk.slice(sep + 1);
+    const regsDia = regs.filter((r) => r.employeeId === empId && r.fecha === fecha);
     const entrada = regsDia.find((r) => r.tipoMovimiento === "entrada");
     if (!entrada) return;
     const key = adherenciaPeriodKey(fecha, granularidad);
@@ -249,6 +253,11 @@ function calcAdherenciaPorPeriodo(regs: JornadaRegistro[], config: JornadaConfig
       pct: oportunidades > 0 ? Math.round(((oportunidades - total) / oportunidades) * 100) : 100,
     };
   });
+}
+
+function adherenciaPctTitle(dias: number, total: number, pct: number) {
+  const oportunidades = dias * 4;
+  return `% Cumplimiento = (Días × 4 − Total Excedido) / (Días × 4)\n= (${dias} × 4 − ${total}) / (${dias} × 4)\n= ${oportunidades - total} / ${oportunidades}\n= ${pct}%`;
 }
 
 // ── Shared components ──────────────────────────────────────
@@ -2089,9 +2098,9 @@ function TabReporteGeneral() {
   useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
 
   const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
+  const [employeeFilter, setEmployeeFilter] = useState("all");
   const [openReport, setOpenReport] = useState<"adherencia" | "trabajador" | "puntualidad" | "puntualidad_pausas" | null>(null);
   const [openBreakCategory, setOpenBreakCategory] = useState<"break1" | "break2" | "almuerzo" | null>(null);
-  const [adherenciaEmpId, setAdherenciaEmpId] = useState<string>("");
   const [adherenciaGranularidad, setAdherenciaGranularidad] = useState<AdherenciaGranularidad>("mes");
 
   // General report mode
@@ -2100,11 +2109,16 @@ function TabReporteGeneral() {
     (!effectiveArea || e.areaId === effectiveArea) &&
     (e.status === "active" || (e.status === "inactive" && !!e.inactiveDate && e.inactiveDate >= desde))
   );
+  // Si el trabajador filtrado ya no pertenece al área seleccionada, se vuelve a "Todos"
+  useEffect(() => {
+    if (employeeFilter !== "all" && !empList.some((e) => e.id === employeeFilter)) setEmployeeFilter("all");
+  }, [employeeFilter, empList]);
 
-  const adherenciaEmp = empList.find((e) => e.id === adherenciaEmpId) ?? empList[0];
-  const adherenciaRegs = adherenciaEmp
-    ? registros.filter((r) => r.employeeId === adherenciaEmp.id && r.fecha >= desde && r.fecha <= hasta)
-    : [];
+  const filteredEmpList = employeeFilter === "all" ? empList : empList.filter((e) => e.id === employeeFilter);
+
+  const adherenciaRegs = registros.filter(
+    (r) => filteredEmpList.some((e) => e.id === r.employeeId) && r.fecha >= desde && r.fecha <= hasta,
+  );
   const adherenciaMensual = calcAdherenciaPorPeriodo(adherenciaRegs, config, "mes");
   const adherenciaChart = calcAdherenciaPorPeriodo(adherenciaRegs, config, adherenciaGranularidad);
   const adherenciaTotales = adherenciaMensual.reduce((acc, m) => ({
@@ -2119,7 +2133,7 @@ function TabReporteGeneral() {
     ? Math.round(((adherenciaTotales.dias * 4 - adherenciaTotales.total) / (adherenciaTotales.dias * 4)) * 100)
     : 100;
 
-  const stats = empList.map((emp) => {
+  const stats = filteredEmpList.map((emp) => {
     const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);
     const fechas = [...new Set(regs.map((r) => r.fecha))];
     let totalJornadaMin = 0, totalBreak1Min = 0, totalBreak2Min = 0, totalAlmuerzoMin = 0, totalEfectivoMin = 0, totalAdicionalMin = 0, diasTrabajados = 0;
@@ -2181,6 +2195,10 @@ function TabReporteGeneral() {
             {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         )}
+        <select value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)} className="text-sm rounded-pill border border-border bg-card px-3 py-2">
+          <option value="all">Todos los trabajadores</option>
+          {empList.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+        </select>
         <button onClick={exportCSV} className="ml-auto inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
           <Download className="size-4" /> {t("reports_download")}
         </button>
@@ -2194,25 +2212,17 @@ function TabReporteGeneral() {
         >
           <div>
             <h3 className="font-semibold text-sm">Análisis de Adherencia</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Cumplimiento mensual de entrada, Break 1, Almuerzo y Break 2 de un trabajador, con tendencia de % cumplimiento.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Cumplimiento mensual de entrada, Break 1, Almuerzo y Break 2, con tendencia de % cumplimiento.{" "}
+              {employeeFilter === "all"
+                ? "Vista global de todos los trabajadores filtrados."
+                : `Vista de ${filteredEmpList[0]?.fullName ?? "trabajador seleccionado"}.`}
+            </p>
           </div>
           <ChevronRight className={cn("size-4 text-muted-foreground transition-transform shrink-0", openReport === "adherencia" && "rotate-90")} />
         </button>
         <div className={cn("grid transition-[grid-template-rows] duration-300 ease-in-out", openReport === "adherencia" ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
         <div className="overflow-hidden">
-          <div className="px-5 pt-4">
-            <label className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Trabajador</span>
-              <select
-                value={adherenciaEmp?.id ?? ""}
-                onChange={(e) => setAdherenciaEmpId(e.target.value)}
-                className="text-sm rounded-pill border border-border bg-card px-3 py-2"
-              >
-                {empList.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
-                {empList.length === 0 && <option value="">Sin trabajadores</option>}
-              </select>
-            </label>
-          </div>
           <div className="p-4 space-y-4">
             <div className="rounded-card border border-border overflow-hidden">
               <div className="overflow-x-auto">
@@ -2235,7 +2245,12 @@ function TabReporteGeneral() {
                         <td className="px-4 py-3 tabular-nums">{m.break2Excedido}</td>
                         <td className="px-4 py-3 tabular-nums font-medium">{m.total}</td>
                         <td className="px-4 py-3">
-                          <span className={cn("font-medium", m.pct >= 90 ? "text-[#1F8A5B]" : m.pct >= 75 ? "text-[#9a6b00]" : "text-primary")}>{m.pct}%</span>
+                          <span
+                            title={adherenciaPctTitle(m.dias, m.total, m.pct)}
+                            className={cn("font-medium cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2", m.pct >= 90 ? "text-[#1F8A5B]" : m.pct >= 75 ? "text-[#9a6b00]" : "text-primary")}
+                          >
+                            {m.pct}%
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -2253,7 +2268,11 @@ function TabReporteGeneral() {
                         <td className="px-4 py-3 tabular-nums">{adherenciaTotales.almuerzoExcedido}</td>
                         <td className="px-4 py-3 tabular-nums">{adherenciaTotales.break2Excedido}</td>
                         <td className="px-4 py-3 tabular-nums">{adherenciaTotales.total}</td>
-                        <td className="px-4 py-3">{adherenciaTotalPct}%</td>
+                        <td className="px-4 py-3">
+                          <span title={adherenciaPctTitle(adherenciaTotales.dias, adherenciaTotales.total, adherenciaTotalPct)} className="cursor-help underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">
+                            {adherenciaTotalPct}%
+                          </span>
+                        </td>
                       </tr>
                     </tfoot>
                   )}
