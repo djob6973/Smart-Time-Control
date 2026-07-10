@@ -8,6 +8,9 @@ import {
   Plus, Edit3, Trash2, Search, AlertTriangle, CheckCircle2,
   Download, RefreshCw, CalendarDays, ChevronRight, X,
 } from "lucide-react";
+import {
+  LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid,
+} from "recharts";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { parseAbsNote, computePartialAbsWorkHours } from "@/lib/wfm/calc";
@@ -175,6 +178,79 @@ function calcCategoryPunctuality(regs: JornadaRegistro[], key: "breakMin1" | "br
   };
 }
 
+type AdherenciaGranularidad = "semana" | "mes" | "trimestre";
+
+function mondayOf(fecha: string) {
+  const d = new Date(`${fecha}T00:00:00`);
+  const dow = (d.getDay() + 6) % 7; // lunes = 0
+  d.setDate(d.getDate() - dow);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function adherenciaPeriodKey(fecha: string, granularidad: AdherenciaGranularidad): string {
+  if (granularidad === "mes") return fecha.slice(0, 7);
+  if (granularidad === "trimestre") {
+    const [y, m] = fecha.split("-");
+    return `${y}-Q${Math.ceil(Number(m) / 3)}`;
+  }
+  return mondayOf(fecha);
+}
+
+const MES_LABELS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+function adherenciaPeriodLabel(key: string, granularidad: AdherenciaGranularidad): string {
+  if (granularidad === "mes") {
+    const [y, m] = key.split("-");
+    return `${MES_LABELS[Number(m) - 1]} ${y}`;
+  }
+  if (granularidad === "trimestre") return key.replace("-", " ");
+  const [, m, d] = key.split("-");
+  return `${d}/${m}`;
+}
+
+// Adherencia: por cada día trabajado se evalúan 4 chequeos (entrada, break 1, almuerzo, break 2);
+// % Cumplimiento = chequeos NO excedidos / (días * 4).
+function calcAdherenciaPorPeriodo(regs: JornadaRegistro[], config: JornadaConfiguracion | undefined, granularidad: AdherenciaGranularidad) {
+  const toleranciaMin  = config?.toleranciaLlegadaMin ?? 15;
+  const horaInicio     = (config?.horaInicioJornada ?? "08:00").slice(0, 5);
+  const maxBreakMin    = config?.tiempoMaxBreakMin ?? 15;
+  const maxAlmuerzoMin = config?.tiempoMaxAlmuerzoMin ?? 60;
+
+  const fechas = [...new Set(regs.map((r) => r.fecha))].sort();
+  const porPeriodo = new Map<string, { dias: number; entradaExcedido: number; break1Excedido: number; almuerzoExcedido: number; break2Excedido: number }>();
+
+  fechas.forEach((fecha) => {
+    const regsDia = regs.filter((r) => r.fecha === fecha);
+    const entrada = regsDia.find((r) => r.tipoMovimiento === "entrada");
+    if (!entrada) return;
+    const key = adherenciaPeriodKey(fecha, granularidad);
+    const b = porPeriodo.get(key) ?? { dias: 0, entradaExcedido: 0, break1Excedido: 0, almuerzoExcedido: 0, break2Excedido: 0 };
+    b.dias++;
+    const limite = new Date(`${fecha}T${horaInicio}:00`).getTime() + toleranciaMin * 60000;
+    if (new Date(entrada.horaExacta).getTime() > limite) b.entradaExcedido++;
+    const s = calcDayStats(regsDia);
+    if (s.breakMin1 > maxBreakMin) b.break1Excedido++;
+    if (s.almuerzoMin > maxAlmuerzoMin) b.almuerzoExcedido++;
+    if (s.breakMin2 > maxBreakMin) b.break2Excedido++;
+    porPeriodo.set(key, b);
+  });
+
+  return [...porPeriodo.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, b]) => {
+    const total = b.entradaExcedido + b.break1Excedido + b.almuerzoExcedido + b.break2Excedido;
+    const oportunidades = b.dias * 4;
+    return {
+      key, label: adherenciaPeriodLabel(key, granularidad),
+      dias: b.dias,
+      entradaExcedido: b.entradaExcedido,
+      break1Excedido: b.break1Excedido,
+      almuerzoExcedido: b.almuerzoExcedido,
+      break2Excedido: b.break2Excedido,
+      total,
+      pct: oportunidades > 0 ? Math.round(((oportunidades - total) / oportunidades) * 100) : 100,
+    };
+  });
+}
+
 // ── Shared components ──────────────────────────────────────
 
 function KPI({ icon: Icon, label, value, hint, alert }: { icon: any; label: string; value: any; hint?: string; alert?: boolean }) {
@@ -292,6 +368,30 @@ function CategoryPunctualityTable({
         </table>
       </div>
       </div>
+      </div>
+    </div>
+  );
+}
+
+function AdherenciaTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="rounded-card shadow-card p-3.5 text-sm min-w-[160px]" style={{ background: "#1f1f1f", color: "#fff" }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: "rgba(255,255,255,0.6)" }}>{label}</p>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.65)" }}>Cumplimiento</span>
+          <span className="font-semibold tabular-nums" style={{ color: "#fff" }}>{d.pct}%</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.65)" }}>Días</span>
+          <span className="tabular-nums" style={{ color: "rgba(255,255,255,0.9)" }}>{d.dias}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.65)" }}>Excedido</span>
+          <span className="tabular-nums" style={{ color: "rgba(255,255,255,0.9)" }}>{d.total}</span>
+        </div>
       </div>
     </div>
   );
@@ -1989,8 +2089,10 @@ function TabReporteGeneral() {
   useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
 
   const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
-  const [openReport, setOpenReport] = useState<"trabajador" | "puntualidad" | "puntualidad_pausas" | null>(null);
+  const [openReport, setOpenReport] = useState<"adherencia" | "trabajador" | "puntualidad" | "puntualidad_pausas" | null>(null);
   const [openBreakCategory, setOpenBreakCategory] = useState<"break1" | "break2" | "almuerzo" | null>(null);
+  const [adherenciaEmpId, setAdherenciaEmpId] = useState<string>("");
+  const [adherenciaGranularidad, setAdherenciaGranularidad] = useState<AdherenciaGranularidad>("mes");
 
   // General report mode
   const effectiveArea = ownArea ?? (areaFilter !== "all" ? areaFilter : null);
@@ -1998,6 +2100,24 @@ function TabReporteGeneral() {
     (!effectiveArea || e.areaId === effectiveArea) &&
     (e.status === "active" || (e.status === "inactive" && !!e.inactiveDate && e.inactiveDate >= desde))
   );
+
+  const adherenciaEmp = empList.find((e) => e.id === adherenciaEmpId) ?? empList[0];
+  const adherenciaRegs = adherenciaEmp
+    ? registros.filter((r) => r.employeeId === adherenciaEmp.id && r.fecha >= desde && r.fecha <= hasta)
+    : [];
+  const adherenciaMensual = calcAdherenciaPorPeriodo(adherenciaRegs, config, "mes");
+  const adherenciaChart = calcAdherenciaPorPeriodo(adherenciaRegs, config, adherenciaGranularidad);
+  const adherenciaTotales = adherenciaMensual.reduce((acc, m) => ({
+    dias: acc.dias + m.dias,
+    entradaExcedido: acc.entradaExcedido + m.entradaExcedido,
+    break1Excedido: acc.break1Excedido + m.break1Excedido,
+    almuerzoExcedido: acc.almuerzoExcedido + m.almuerzoExcedido,
+    break2Excedido: acc.break2Excedido + m.break2Excedido,
+    total: acc.total + m.total,
+  }), { dias: 0, entradaExcedido: 0, break1Excedido: 0, almuerzoExcedido: 0, break2Excedido: 0, total: 0 });
+  const adherenciaTotalPct = adherenciaTotales.dias > 0
+    ? Math.round(((adherenciaTotales.dias * 4 - adherenciaTotales.total) / (adherenciaTotales.dias * 4)) * 100)
+    : 100;
 
   const stats = empList.map((emp) => {
     const regs   = registros.filter((r) => r.employeeId === emp.id && r.fecha >= desde && r.fecha <= hasta);
@@ -2064,6 +2184,129 @@ function TabReporteGeneral() {
         <button onClick={exportCSV} className="ml-auto inline-flex items-center gap-2 rounded-pill border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
           <Download className="size-4" /> {t("reports_download")}
         </button>
+      </div>
+
+      {/* Análisis de Adherencia */}
+      <div className="rounded-card bg-card shadow-card overflow-hidden">
+        <button
+          onClick={() => setOpenReport(openReport === "adherencia" ? null : "adherencia")}
+          className="w-full flex items-center justify-between gap-4 px-5 py-3 border-b border-border bg-secondary/40 hover:bg-secondary/60 transition-colors text-left"
+        >
+          <div>
+            <h3 className="font-semibold text-sm">Análisis de Adherencia</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Cumplimiento mensual de entrada, Break 1, Almuerzo y Break 2 de un trabajador, con tendencia de % cumplimiento.</p>
+          </div>
+          <ChevronRight className={cn("size-4 text-muted-foreground transition-transform shrink-0", openReport === "adherencia" && "rotate-90")} />
+        </button>
+        <div className={cn("grid transition-[grid-template-rows] duration-300 ease-in-out", openReport === "adherencia" ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+        <div className="overflow-hidden">
+          <div className="px-5 pt-4">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Trabajador</span>
+              <select
+                value={adherenciaEmp?.id ?? ""}
+                onChange={(e) => setAdherenciaEmpId(e.target.value)}
+                className="text-sm rounded-pill border border-border bg-card px-3 py-2"
+              >
+                {empList.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                {empList.length === 0 && <option value="">Sin trabajadores</option>}
+              </select>
+            </label>
+          </div>
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+            <div className="lg:col-span-3 rounded-card border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary text-left">
+                    <tr>
+                      {["Mes","Días","Entrada Excedido","Break 1 Excedido","Lunch Excedido","Break 2 Excedido","Total Excedido","Cumplimiento %"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.03em] text-muted-foreground whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adherenciaMensual.map((m) => (
+                      <tr key={m.key} className="border-t border-border/60 hover:bg-secondary/60 transition-colors">
+                        <td className="px-4 py-3 font-medium whitespace-nowrap">{m.label}</td>
+                        <td className="px-4 py-3 tabular-nums">{m.dias}</td>
+                        <td className="px-4 py-3 tabular-nums">{m.entradaExcedido}</td>
+                        <td className="px-4 py-3 tabular-nums">{m.break1Excedido}</td>
+                        <td className="px-4 py-3 tabular-nums">{m.almuerzoExcedido}</td>
+                        <td className="px-4 py-3 tabular-nums">{m.break2Excedido}</td>
+                        <td className="px-4 py-3 tabular-nums font-medium">{m.total}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn("font-medium", m.pct >= 90 ? "text-[#1F8A5B]" : m.pct >= 75 ? "text-[#9a6b00]" : "text-primary")}>{m.pct}%</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {adherenciaMensual.length === 0 && (
+                      <tr><td colSpan={8} className="text-center py-10 text-muted-foreground">Sin datos para el período seleccionado</td></tr>
+                    )}
+                  </tbody>
+                  {adherenciaMensual.length > 0 && (
+                    <tfoot>
+                      <tr className="border-t-2 border-border bg-secondary/40 font-semibold">
+                        <td className="px-4 py-3">Total</td>
+                        <td className="px-4 py-3 tabular-nums">{adherenciaTotales.dias}</td>
+                        <td className="px-4 py-3 tabular-nums">{adherenciaTotales.entradaExcedido}</td>
+                        <td className="px-4 py-3 tabular-nums">{adherenciaTotales.break1Excedido}</td>
+                        <td className="px-4 py-3 tabular-nums">{adherenciaTotales.almuerzoExcedido}</td>
+                        <td className="px-4 py-3 tabular-nums">{adherenciaTotales.break2Excedido}</td>
+                        <td className="px-4 py-3 tabular-nums">{adherenciaTotales.total}</td>
+                        <td className="px-4 py-3">{adherenciaTotalPct}%</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 rounded-card border border-border p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">% Cumplimiento</h4>
+                <div className="flex items-center bg-secondary border border-border rounded-pill p-0.5 gap-0.5 text-[11px] shrink-0">
+                  {(["semana", "mes", "trimestre"] as AdherenciaGranularidad[]).map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setAdherenciaGranularidad(g)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-pill font-medium transition-colors capitalize",
+                        adherenciaGranularidad === g ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {adherenciaChart.length > 0 ? (
+                <div className="h-56">
+                  <ResponsiveContainer>
+                    <LineChart data={adherenciaChart} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 4" stroke="var(--color-border)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} unit="%" width={38} />
+                      <Tooltip
+                        content={<AdherenciaTooltip />}
+                        cursor={{ stroke: "var(--color-primary)", strokeWidth: 1, strokeDasharray: "4 3", opacity: 0.4 }}
+                      />
+                      <Line
+                        dataKey="pct"
+                        stroke="var(--color-primary)"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: "var(--color-card)", stroke: "var(--color-primary)", strokeWidth: 2 }}
+                        activeDot={{ r: 5, fill: "var(--color-primary)", stroke: "var(--color-card)", strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-muted-foreground py-16">Sin datos para graficar</p>
+              )}
+            </div>
+          </div>
+        </div>
+        </div>
       </div>
 
       {/* Análisis de jornada laboral */}
