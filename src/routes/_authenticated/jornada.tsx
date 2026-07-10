@@ -107,6 +107,15 @@ function fmtFecha(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
+function currentMonthRange() {
+  const n = new Date();
+  const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return {
+    desde: toISO(new Date(n.getFullYear(), n.getMonth(), 1)),
+    hasta: toISO(new Date(n.getFullYear(), n.getMonth() + 1, 0)),
+  };
+}
+
 function calcDayStats(regs: JornadaRegistro[]) {
   const sorted = [...regs].sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
   const entrada  = sorted.find((r) => r.tipoMovimiento === "entrada");
@@ -1871,10 +1880,8 @@ function TabReportes({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const { profile } = useAuth();
   const { registros, loadRango } = useJornada();
 
-  const [desde, setDesde] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
-  });
-  const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
+  const [desde, setDesde] = useState(() => currentMonthRange().desde);
+  const [hasta, setHasta] = useState(() => currentMonthRange().hasta);
 
   useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
 
@@ -2090,10 +2097,8 @@ function TabReporteGeneral() {
     return Math.max(0, mins);
   }
 
-  const [desde, setDesde] = useState(() => {
-    const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10);
-  });
-  const [hasta, setHasta] = useState(new Date().toISOString().slice(0, 10));
+  const [desde, setDesde] = useState(() => currentMonthRange().desde);
+  const [hasta, setHasta] = useState(() => currentMonthRange().hasta);
 
   useEffect(() => { loadRango(desde, hasta); }, [desde, hasta]);
 
