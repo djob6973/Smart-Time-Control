@@ -48,7 +48,7 @@ function AvisosPage() {
     toggleActivo,
   } = useAvisos();
 
-  const canCreate = hasPermission("avisos", "create");
+  const canManage = hasPermission("avisos", "edit");
   const restrictedToOwnArea = role === "supervisor" || role === "lider";
   const ownAreaId = profile?.areaId ?? null;
 
@@ -111,7 +111,7 @@ function AvisosPage() {
         title="Novedades del día"
         subtitle="Avisos flotantes por área para tu equipo"
         right={
-          canCreate ? (
+          canManage ? (
             <button
               onClick={() => setEditing("new")}
               className="inline-flex items-center gap-2 rounded-pill bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
@@ -173,7 +173,7 @@ function AvisosPage() {
                     </div>
                   )}
                 </div>
-                {(!restrictedToOwnArea || a.areaId === ownAreaId) && canCreate && (
+                {(!restrictedToOwnArea || a.areaId === ownAreaId) && canManage && (
                   <div className="flex items-center gap-1.5 pt-2 border-t border-border mt-2">
                     <button
                       onClick={() => setEditing(a)}
