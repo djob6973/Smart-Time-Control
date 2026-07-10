@@ -235,11 +235,11 @@ function calcAdherenciaPorPeriodo(regs: JornadaRegistro[], config: JornadaConfig
     porPeriodo.set(key, b);
   });
 
-  return [...porPeriodo.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, b]) => {
+  return [...porPeriodo.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([key, b], i) => {
     const total = b.entradaExcedido + b.break1Excedido + b.almuerzoExcedido + b.break2Excedido;
     const oportunidades = b.dias * 4;
     return {
-      key, label: adherenciaPeriodLabel(key, granularidad),
+      key, label: granularidad === "semana" ? `S${i + 1}` : adherenciaPeriodLabel(key, granularidad),
       dias: b.dias,
       entradaExcedido: b.entradaExcedido,
       break1Excedido: b.break1Excedido,
@@ -2282,9 +2282,17 @@ function TabReporteGeneral() {
               {adherenciaChart.length > 0 ? (
                 <div className="h-72">
                   <ResponsiveContainer>
-                    <LineChart data={adherenciaChart} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                    <LineChart data={adherenciaChart} margin={{ top: 4, right: 16, bottom: 8, left: 8 }}>
                       <CartesianGrid strokeDasharray="3 4" stroke="var(--color-border)" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickMargin={10}
+                        minTickGap={24}
+                        padding={{ left: 16, right: 16 }}
+                      />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} axisLine={false} tickLine={false} unit="%" width={38} />
                       <Tooltip
                         content={<AdherenciaTooltip />}
