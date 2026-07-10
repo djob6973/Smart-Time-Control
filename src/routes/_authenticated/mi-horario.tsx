@@ -83,6 +83,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
   const { shifts, employees, areas } = useWFM();
   const { registros, getEstadoEmpleado } = useJornada();
 
+  const emp          = employees.find(e => e.id === employeeId);
   const shift        = shifts.find(s => s.employeeId === employeeId && s.date === date) ?? null;
   const absNote      = shift?.code === "ABS" ? parseAbsNote(shift.note) : null;
   // Partial absence: note has explicit absStart/absEnd (4 or 6-part format)
@@ -92,7 +93,6 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
     if (!isPartialAbs || !absNote || !shift) return null;
     if (shift.start > 0 || shift.end > 0) return { start: shift.start, end: shift.end };
     if (absNote.workStart != null) return { start: absNote.workStart, end: absNote.workEnd! };
-    const emp   = employees.find(e => e.id === employeeId);
     const dow   = new Date(date + "T12:00:00").getDay();
     const avail = emp?.availability[dow];
     if (!avail) return null;
@@ -102,7 +102,7 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
   const shiftStart   = shift && shift.code !== "OFF" && shift.code !== "ABS"
     ? shift.start
     : (workHours?.start ?? null);
-  const estado       = getEstadoEmpleado(employeeId, date, shiftStart);
+  const estado       = getEstadoEmpleado(employeeId, date, shiftStart, emp?.areaId);
   const registrosHoy = [...registros.filter(r => r.employeeId === employeeId && r.fecha === date)]
     .sort((a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime());
 
@@ -356,10 +356,11 @@ function DayView({ employeeId, date }: { employeeId: string; date: string }) {
 
 function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: string }) {
   const { t } = useI18n();
-  const { shifts } = useWFM();
+  const { shifts, employees } = useWFM();
   const { registros, getEstadoEmpleado } = useJornada();
   const days  = weekDays(weekStart);
   const today = isoDate(new Date());
+  const emp   = employees.find(e => e.id === employeeId);
 
   const weekShifts = days.map(d => shifts.find(s => s.employeeId === employeeId && s.date === d) ?? null);
   const horasEst   = weekShifts
@@ -400,6 +401,7 @@ function WeekView({ employeeId, weekStart }: { employeeId: string; weekStart: st
             employeeId,
             day,
             isWork ? shift!.start : null,
+            emp?.areaId,
           );
           const hasMov  = registros.some(r => r.employeeId === employeeId && r.fecha === day);
 

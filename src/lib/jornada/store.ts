@@ -69,7 +69,7 @@ interface JornadaState {
   upsertConfiguracion: (c: JornadaConfiguracion) => Promise<void>;
 
   // Computed helpers
-  getEstadoEmpleado: (employeeId: string, fecha: string, shiftStart?: number | null) => EstadoJornadaEmpleado;
+  getEstadoEmpleado: (employeeId: string, fecha: string, shiftStart?: number | null, areaId?: string) => EstadoJornadaEmpleado;
   getRegistrosDia: (employeeId: string, fecha: string) => JornadaRegistro[];
   getCuposDisponibles: (
     areaId: string | undefined,
@@ -79,6 +79,19 @@ interface JornadaState {
   
   // Sincronización con scheduler
   getShiftProgramado: (employeeId: string, fecha: string, shifts: Shift[]) => Shift | null;
+}
+
+// Resuelve la configuración de jornada aplicable a un área: prioriza la config
+// propia del área (si existe) y cae a la config global (areaId vacío) en su defecto.
+export function resolveJornadaConfig(
+  configuracion: JornadaConfiguracion[],
+  areaId?: string | null,
+): JornadaConfiguracion | undefined {
+  if (areaId) {
+    const propia = configuracion.find((c) => c.areaId === areaId);
+    if (propia) return propia;
+  }
+  return configuracion.find((c) => !c.areaId) ?? configuracion[0];
 }
 
 function computeEstado(
@@ -298,7 +311,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   },
 
   registrarMovimiento: async (employeeId, tipo, areaId, usuarioId, observaciones, areaWorkingDays) => {
-    const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
+    const config = resolveJornadaConfig(get().configuracion, areaId);
     // Priorizar los días laborales del área; si no están disponibles, usar la config de jornada
     const diasEfectivos = areaWorkingDays ?? config?.diasLaborales;
     if (diasEfectivos?.length && !diasEfectivos.includes(new Date().getDay())) {
@@ -393,7 +406,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   },
 
   editarRegistro: async (registro, nuevaHora, motivo, usuarioId, nombreUsuario) => {
-    const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
+    const config = resolveJornadaConfig(get().configuracion, registro.areaId);
     const estadoResultante = config?.requiereAprobacionEdicion ? "pendiente" : "modificado";
     const actualizado: JornadaRegistro = {
       ...registro,
@@ -440,7 +453,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   },
 
   agregarRegistroManual: async (r, motivo, usuarioId, nombreUsuario) => {
-    const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
+    const config = resolveJornadaConfig(get().configuracion, r.areaId);
     const estadoResultante = config?.requiereAprobacionEdicion ? "pendiente" : "modificado";
     const nuevo = await db.insertRegistro({ ...r, esModificacion: true, estado: estadoResultante });
     set((s) => ({ registros: [...s.registros, nuevo] }));
@@ -511,9 +524,9 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   getRegistrosDia: (employeeId, fecha) =>
     get().registros.filter((r) => r.employeeId === employeeId && r.fecha === fecha),
 
-  getEstadoEmpleado: (employeeId, fecha, shiftStart) => {
+  getEstadoEmpleado: (employeeId, fecha, shiftStart, areaId) => {
     const registros = get().getRegistrosDia(employeeId, fecha);
-    const config = get().configuracion.find((c) => !c.areaId) ?? get().configuracion[0];
+    const config = resolveJornadaConfig(get().configuracion, areaId);
 
     // Buscar horario asignado al empleado vigente en esa fecha
     const diaSemana = new Date(`${fecha}T12:00:00`).getDay();

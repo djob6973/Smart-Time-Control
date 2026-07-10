@@ -15,7 +15,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useWFM } from "@/lib/wfm/store";
 import { parseAbsNote, computePartialAbsWorkHours } from "@/lib/wfm/calc";
 import { useAuth } from "@/lib/auth";
-import { useJornada } from "@/lib/jornada/store";
+import { useJornada, resolveJornadaConfig } from "@/lib/jornada/store";
 import { dispatchJornadaEvent, dispatchBreakExcedidoEvent } from "@/lib/notifications/dispatch";
 import { dispatchSlackJornada } from "@/lib/slack";
 import type {
@@ -625,7 +625,7 @@ function TabDashboard() {
         workHours,
         isPartialAbs,
         absNote,
-        est: getEstadoEmpleado(e.id, fechaActiva, shiftStart),
+        est: getEstadoEmpleado(e.id, fechaActiva, shiftStart, e.areaId),
       };
     }),
     [activeEmployees, registros, fechaActiva, shifts],
@@ -952,12 +952,6 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const { employees, areas, shifts } = useWFM();
   const { user, profile } = useAuth();
   const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado, configuracion } = useJornada();
-  const jornadaCfg = configuracion.find((c) => !c.areaId) ?? configuracion[0];
-  const maxAlmuerzos = jornadaCfg?.maxAlmuerzosPorJornada ?? 1;
-  const break1HoraInicio = jornadaCfg?.break1HoraInicio ?? "09:00";
-  const break1HoraFin    = jornadaCfg?.break1HoraFin    ?? "11:00";
-  const break2HoraInicio = jornadaCfg?.break2HoraInicio ?? "14:00";
-  const break2HoraFin    = jornadaCfg?.break2HoraFin    ?? "16:00";
   const ownArea = profile?.areaId ?? null;
 
   const isSelfMode = !!autoEmployeeId;
@@ -991,6 +985,12 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
 
   // Self mode derived values
   const selfEmp      = isSelfMode ? employees.find((e) => e.id === autoEmployeeId) : null;
+  const selfCfg = resolveJornadaConfig(configuracion, selfEmp?.areaId);
+  const selfMaxAlmuerzos     = selfCfg?.maxAlmuerzosPorJornada ?? 1;
+  const selfBreak1HoraInicio = selfCfg?.break1HoraInicio ?? "09:00";
+  const selfBreak1HoraFin    = selfCfg?.break1HoraFin    ?? "11:00";
+  const selfBreak2HoraInicio = selfCfg?.break2HoraInicio ?? "14:00";
+  const selfBreak2HoraFin    = selfCfg?.break2HoraFin    ?? "16:00";
   const selfShift    = isSelfMode ? getShiftProgramado(autoEmployeeId!, hoy, shifts) : null;
   const selfAbsNote  = selfShift?.code === "ABS" ? parseAbsNote(selfShift.note) : null;
   // Partial absence: note has explicit absStart/absEnd (4 or 6-part format), not just the 2-part full-day
@@ -1009,7 +1009,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     ? selfShift.start
     : (selfWorkHours?.start ?? null);
   const selfEst   = isSelfMode
-    ? getEstadoEmpleado(autoEmployeeId!, hoy, selfShiftStart)
+    ? getEstadoEmpleado(autoEmployeeId!, hoy, selfShiftStart, selfEmp?.areaId)
     : null;
   const selfRegs  = isSelfMode
     ? [...registros.filter((r) => r.employeeId === autoEmployeeId && r.fecha === hoy)]
@@ -1018,8 +1018,8 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   // Break/almuerzo en curso: base para el temporizador de cuenta regresiva
   const selfActiveBreak = (() => {
     if (!selfEst) return null;
-    const maxBreakMin    = jornadaCfg?.tiempoMaxBreakMin ?? 15;
-    const maxAlmuerzoMin = jornadaCfg?.tiempoMaxAlmuerzoMin ?? 60;
+    const maxBreakMin    = selfCfg?.tiempoMaxBreakMin ?? 15;
+    const maxAlmuerzoMin = selfCfg?.tiempoMaxAlmuerzoMin ?? 60;
     if (selfEst.estado === "en_break1") {
       const reg = [...selfRegs].reverse().find((r) => r.tipoMovimiento === "salida_break1");
       return reg ? { startISO: reg.horaExacta, maxMin: maxBreakMin, label: "Break 1", tipo: "break1" as const } : null;
@@ -1052,9 +1052,9 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const selfAlmuerzos   = selfRegs.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
   const selfSiguientes = selfEst
     ? (SIGUIENTES_MOVIMIENTOS[selfEst.estado] ?? []).filter((tipo) => {
-        if (tipo === "salida_break1")   return !selfBreak1Usado && isWithinWindow(nowHHMM, break1HoraInicio, break1HoraFin);
-        if (tipo === "salida_break2")   return !selfBreak2Usado && isWithinWindow(nowHHMM, break2HoraInicio, break2HoraFin);
-        if (tipo === "salida_almuerzo") return selfAlmuerzos < maxAlmuerzos;
+        if (tipo === "salida_break1")   return !selfBreak1Usado && isWithinWindow(nowHHMM, selfBreak1HoraInicio, selfBreak1HoraFin);
+        if (tipo === "salida_break2")   return !selfBreak2Usado && isWithinWindow(nowHHMM, selfBreak2HoraInicio, selfBreak2HoraFin);
+        if (tipo === "salida_almuerzo") return selfAlmuerzos < selfMaxAlmuerzos;
         return true;
       })
     : [];
@@ -1416,24 +1416,30 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       {/* Cards */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:"1rem" }}>
         {filtered.map((emp) => {
+          const empCfg     = resolveJornadaConfig(configuracion, emp.areaId);
+          const empMaxAlmuerzos     = empCfg?.maxAlmuerzosPorJornada ?? 1;
+          const empBreak1HoraInicio = empCfg?.break1HoraInicio ?? "09:00";
+          const empBreak1HoraFin    = empCfg?.break1HoraFin    ?? "11:00";
+          const empBreak2HoraInicio = empCfg?.break2HoraInicio ?? "14:00";
+          const empBreak2HoraFin    = empCfg?.break2HoraFin    ?? "16:00";
           const shift      = getShiftProgramado(emp.id, hoy, shifts);
-          const est        = getEstadoEmpleado(emp.id, hoy, shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null);
+          const est        = getEstadoEmpleado(emp.id, hoy, shift && shift.code !== "OFF" && shift.code !== "ABS" ? shift.start : null, emp.areaId);
           const regsHoy    = registros.filter((r) => r.employeeId === emp.id && r.fecha === hoy);
           const break1Usado     = regsHoy.some((r) => r.tipoMovimiento === "salida_break1");
           const break2Usado     = regsHoy.some((r) => r.tipoMovimiento === "salida_break2");
           const almuerzosUsados = regsHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
           const siguientes      = (SIGUIENTES_MOVIMIENTOS[est.estado] ?? []).filter((tipo) => {
-            if (tipo === "salida_break1")   return !break1Usado && isWithinWindow(nowHHMM, break1HoraInicio, break1HoraFin);
-            if (tipo === "salida_break2")   return !break2Usado && isWithinWindow(nowHHMM, break2HoraInicio, break2HoraFin);
-            if (tipo === "salida_almuerzo") return almuerzosUsados < maxAlmuerzos;
+            if (tipo === "salida_break1")   return !break1Usado && isWithinWindow(nowHHMM, empBreak1HoraInicio, empBreak1HoraFin);
+            if (tipo === "salida_break2")   return !break2Usado && isWithinWindow(nowHHMM, empBreak2HoraInicio, empBreak2HoraFin);
+            if (tipo === "salida_almuerzo") return almuerzosUsados < empMaxAlmuerzos;
             return true;
           });
           const initials    = emp.fullName.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
           const areaName    = areas.find((a) => a.id === emp.areaId)?.name ?? "—";
           const hasShift    = shift && shift.code !== "OFF" && shift.code !== "ABS";
           const entradaReg  = regsHoy.find((r) => r.tipoMovimiento === "entrada");
-          const maxBreakMin    = jornadaCfg?.tiempoMaxBreakMin ?? 15;
-          const maxAlmuerzoMin = jornadaCfg?.tiempoMaxAlmuerzoMin ?? 60;
+          const maxBreakMin    = empCfg?.tiempoMaxBreakMin ?? 15;
+          const maxAlmuerzoMin = empCfg?.tiempoMaxAlmuerzoMin ?? 60;
           const activeBreak = (() => {
             if (est.estado === "en_break1") {
               const reg = [...regsHoy].reverse().find((r) => r.tipoMovimiento === "salida_break1");
