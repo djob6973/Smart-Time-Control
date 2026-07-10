@@ -9,9 +9,9 @@ export const Route = createFileRoute("/_authenticated/mi-cuenta")({
 });
 
 const ROLE_LABELS: Record<string, Record<string, string>> = {
-  es: { admin: "Super Admin", supervisor: "Supervisor", lider: "Líder", gestor: "Gestor", consulta: "Consulta" },
-  en: { admin: "Super Admin", supervisor: "Supervisor", lider: "Leader",  gestor: "Manager", consulta: "Read-only" },
-  pt: { admin: "Super Admin", supervisor: "Supervisor", lider: "Líder",  gestor: "Gestor",  consulta: "Somente leitura" },
+  es: { admin: "Super Admin", supervisor: "Supervisor", lider: "Líder", gestor: "Agente", consulta: "Gestor" },
+  en: { admin: "Super Admin", supervisor: "Supervisor", lider: "Leader",  gestor: "Agent", consulta: "Manager" },
+  pt: { admin: "Super Admin", supervisor: "Supervisor", lider: "Líder",  gestor: "Agente",  consulta: "Gestor" },
 };
 
 function MiCuentaPage() {

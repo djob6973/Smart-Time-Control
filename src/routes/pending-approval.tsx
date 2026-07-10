@@ -91,7 +91,7 @@ function PendingApprovalPage() {
           {!assigned && (
             <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 13.5, lineHeight: 1.7 }}>
               {t("pending_role_msg")}{" "}
-              <strong style={{ color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Gestor</strong>
+              <strong style={{ color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Agente</strong>
               {", "}{t("pending_role_cta")}
             </p>
           )}

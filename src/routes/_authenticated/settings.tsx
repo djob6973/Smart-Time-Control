@@ -137,7 +137,7 @@ const INITIAL_ROLES: Role[] = [
     limits: { restrictToOwnArea:true, canApproveAbsences:false, canGenerateShifts:false, canExportReports:false, canManageRoles:false, canDeleteData:false },
   },
   {
-    id: "gestor", name: "Gestor", color: "text-amber-700", bgColor: "bg-amber-100",
+    id: "gestor", name: "Agente", color: "text-amber-700", bgColor: "bg-amber-100",
     description: "Crea ausencias y edita datos de empleados.",
     permissions: {
       dashboard:"view", scheduler:"view", mi_horario:"view", employees:"edit", areas:"none", absences:"edit", reports:"view",
@@ -148,7 +148,7 @@ const INITIAL_ROLES: Role[] = [
     limits: { restrictToOwnArea:false, canApproveAbsences:false, canGenerateShifts:false, canExportReports:false, canManageRoles:false, canDeleteData:false },
   },
   {
-    id: "consulta", name: "Consulta", color: "text-muted-foreground", bgColor: "bg-muted",
+    id: "consulta", name: "Gestor", color: "text-muted-foreground", bgColor: "bg-muted",
     description: "Solo puede visualizar información del sistema.",
     permissions: {
       dashboard:"view", scheduler:"view", mi_horario:"view", employees:"view", areas:"view", absences:"view", reports:"view",
@@ -178,8 +178,8 @@ export const ROLE_MAP: Record<string, Pick<Role, "name" | "color" | "bgColor">> 
   admin:      { name: "Administrador", color: "text-primary",          bgColor: "bg-primary/10" },
   supervisor: { name: "Supervisor",    color: "text-purple-700",       bgColor: "bg-purple-100" },
   lider:      { name: "Líder",         color: "text-blue-700",         bgColor: "bg-blue-100" },
-  gestor:     { name: "Gestor",        color: "text-amber-700",        bgColor: "bg-amber-100" },
-  consulta:   { name: "Consulta",      color: "text-muted-foreground", bgColor: "bg-muted" },
+  gestor:     { name: "Agente",        color: "text-amber-700",        bgColor: "bg-amber-100" },
+  consulta:   { name: "Gestor",        color: "text-muted-foreground", bgColor: "bg-muted" },
 };
 
 // ── Route ─────────────────────────────────────────────────────────────────
