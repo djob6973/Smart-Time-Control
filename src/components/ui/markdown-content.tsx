@@ -1,10 +1,12 @@
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
 export function MarkdownContent({ content, className }: { content: string; className?: string }) {
   return (
     <div className={cn(className)}>
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ children }) => <p className="text-base font-semibold mt-1.5 first:mt-0">{children}</p>,
           h2: ({ children }) => <p className="text-sm font-semibold mt-1.5 first:mt-0">{children}</p>,
@@ -24,6 +26,15 @@ export function MarkdownContent({ content, className }: { content: string; class
               {children}
             </a>
           ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto mt-1.5 first:mt-0">
+              <table className="w-full text-left border-collapse">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => <thead className="border-b border-border">{children}</thead>,
+          tr: ({ children }) => <tr className="border-b border-border last:border-0">{children}</tr>,
+          th: ({ children }) => <th className="py-1 pr-3 font-semibold">{children}</th>,
+          td: ({ children }) => <td className="py-1 pr-3 align-top">{children}</td>,
         }}
       >
         {content}

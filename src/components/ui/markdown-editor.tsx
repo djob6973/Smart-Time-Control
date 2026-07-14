@@ -1,5 +1,22 @@
-import { useRef } from "react";
-import { Bold, Italic, Quote, List, ListOrdered, Heading1, Heading2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Bold,
+  Italic,
+  Quote,
+  List,
+  ListOrdered,
+  Heading1,
+  Heading2,
+  Link2,
+  Table2,
+  Smile,
+} from "lucide-react";
+
+const EMOJIS = [
+  "😀", "😉", "😊", "🙌", "👍", "👏", "🙏", "💪",
+  "🎉", "✅", "❌", "⚠️", "🚨", "❗", "❓", "💡",
+  "📢", "📌", "📅", "⏰", "📝", "💬", "🔥", "⭐",
+];
 
 function wrapSelection(
   textarea: HTMLTextAreaElement,
@@ -65,6 +82,33 @@ function prefixLines(
   });
 }
 
+function insertAtCursor(
+  textarea: HTMLTextAreaElement,
+  value: string,
+  onChange: (v: string) => void,
+  text: string,
+) {
+  const { selectionStart: start, selectionEnd: end } = textarea;
+  const next = value.slice(0, start) + text + value.slice(end);
+  const caret = start + text.length;
+  onChange(next);
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  });
+}
+
+function insertLink(textarea: HTMLTextAreaElement, value: string, onChange: (v: string) => void) {
+  const url = window.prompt("URL del enlace:", "https://");
+  if (!url) return;
+  const { selectionStart: start, selectionEnd: end } = textarea;
+  const selected = value.slice(start, end) || "texto del enlace";
+  insertAtCursor(textarea, value, onChange, `[${selected}](${url})`);
+}
+
+const TABLE_TEMPLATE =
+  "\n| Columna 1 | Columna 2 |\n| --- | --- |\n| Celda 1 | Celda 2 |\n";
+
 const TOOLBAR_ACTIONS = [
   {
     icon: Heading1,
@@ -103,6 +147,17 @@ const TOOLBAR_ACTIONS = [
     label: "Lista numerada",
     run: (ta: HTMLTextAreaElement, v: string, c: (v: string) => void) => prefixLines(ta, v, c, "1. "),
   },
+  {
+    icon: Link2,
+    label: "Enlace",
+    run: insertLink,
+  },
+  {
+    icon: Table2,
+    label: "Tabla",
+    run: (ta: HTMLTextAreaElement, v: string, c: (v: string) => void) =>
+      insertAtCursor(ta, v, c, TABLE_TEMPLATE),
+  },
 ];
 
 export function MarkdownEditor({
@@ -119,6 +174,24 @@ export function MarkdownEditor({
   textareaStyle?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
+  useEffect(() => {
+    if (!emojiOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setEmojiOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [emojiOpen]);
+
+  function pickEmoji(emoji: string) {
+    if (ref.current) insertAtCursor(ref.current, value, onChange, emoji);
+    setEmojiOpen(false);
+  }
 
   return (
     <div className={className}>
@@ -134,6 +207,30 @@ export function MarkdownEditor({
             <Icon className="size-3.5" />
           </button>
         ))}
+        <div className="relative" ref={emojiRef}>
+          <button
+            type="button"
+            title="Emoji"
+            onClick={() => setEmojiOpen((o) => !o)}
+            className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+          >
+            <Smile className="size-3.5" />
+          </button>
+          {emojiOpen && (
+            <div className="absolute z-10 top-full left-0 mt-1 grid grid-cols-8 gap-0.5 p-2 rounded-xl border border-border bg-card shadow-card">
+              {EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => pickEmoji(emoji)}
+                  className="size-7 flex items-center justify-center rounded-lg hover:bg-secondary text-base"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <textarea
         ref={ref}
