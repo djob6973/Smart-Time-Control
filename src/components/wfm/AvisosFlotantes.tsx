@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Megaphone, X, ImageIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useAvisos } from "@/lib/avisos/store";
+import type { Aviso } from "@/lib/avisos/types";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 
 const SEEN_KEY_PREFIX = "stc_avisos_vistos_";
@@ -27,6 +28,7 @@ export function AvisosFlotantes() {
   const { user, profile, organization } = useAuth();
   const { avisosActivos, reloadActivos } = useAvisos();
   const [open, setOpen] = useState(false);
+  const [detalle, setDetalle] = useState<Aviso | null>(null);
   const autoOpened = useRef(false);
 
   const orgId = organization?.id;
@@ -104,9 +106,10 @@ export function AvisosFlotantes() {
               </div>
             ) : (
               avisosActivos.map((a) => (
-                <div
+                <button
                   key={a.id}
-                  className="rounded-xl border border-border overflow-hidden bg-secondary/20"
+                  onClick={() => setDetalle(a)}
+                  className="block w-full text-left rounded-xl border border-border overflow-hidden bg-secondary/20 hover:border-primary/40 transition-colors"
                 >
                   {a.imagenData ? (
                     <img src={a.imagenData} alt={a.titulo} className="h-40 w-full object-cover" />
@@ -122,15 +125,60 @@ export function AvisosFlotantes() {
                     )}
                     <MarkdownContent
                       content={a.descripcion}
-                      className="text-sm text-foreground/80 mt-1"
+                      className="text-sm text-foreground/80 mt-1 max-h-24 overflow-hidden"
                     />
                     <p className="text-xs text-muted-foreground/70 mt-2.5">
                       Vigente hasta {new Date(a.fechaVencimiento).toLocaleString()}
                     </p>
                   </div>
-                </div>
+                </button>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {detalle && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setDetalle(null)}
+        >
+          <div
+            className="w-[min(36rem,calc(100vw-2rem))] max-h-[85vh] flex flex-col rounded-card bg-card shadow-card overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setDetalle(null)}
+                className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/40 text-white hover:bg-black/60"
+              >
+                <X className="size-5" />
+              </button>
+              {detalle.imagenData ? (
+                <img
+                  src={detalle.imagenData}
+                  alt={detalle.titulo}
+                  className="h-64 w-full object-cover"
+                />
+              ) : (
+                <div className="h-32 w-full flex items-center justify-center text-muted-foreground/30 bg-secondary/40">
+                  <ImageIcon className="size-8" />
+                </div>
+              )}
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <p className="text-xl font-semibold leading-tight">{detalle.titulo}</p>
+              {detalle.subtitulo && (
+                <p className="text-base text-muted-foreground mt-1">{detalle.subtitulo}</p>
+              )}
+              <MarkdownContent
+                content={detalle.descripcion}
+                className="text-base text-foreground/80 mt-3"
+              />
+              <p className="text-xs text-muted-foreground/70 mt-4 pt-3 border-t border-border">
+                Vigente hasta {new Date(detalle.fechaVencimiento).toLocaleString()}
+              </p>
+            </div>
           </div>
         </div>
       )}
