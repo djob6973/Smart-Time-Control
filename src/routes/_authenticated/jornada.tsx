@@ -1079,7 +1079,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       const hora     = fmtHora();
       dispatchJornadaEvent({ data: { tipo, employeeName: empName, hora, areaName: empArea, areaId: areaId ?? null } })
         .catch((e) => console.error("[notif:jornada]", e?.message ?? e));
-      dispatchSlackJornada({ data: { tipo, employeeName: empName, hora, areaName: empArea } })
+      dispatchSlackJornada({ data: { tipo, employeeName: empName, hora, areaName: empArea, areaId: areaId ?? null } })
         .catch((e) => console.error("[slack:jornada]", e?.message ?? e));
     }
     setBusy(false);
@@ -1104,7 +1104,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
       const selfHora = fmtHora();
       dispatchJornadaEvent({ data: { tipo, employeeName: selfName, hora: selfHora, areaName: selfArea, areaId: areaId ?? null } })
         .catch((e) => console.error("[notif:jornada]", e?.message ?? e));
-      dispatchSlackJornada({ data: { tipo, employeeName: selfName, hora: selfHora, areaName: selfArea } })
+      dispatchSlackJornada({ data: { tipo, employeeName: selfName, hora: selfHora, areaName: selfArea, areaId: areaId ?? null } })
         .catch((e) => console.error("[slack:jornada]", e?.message ?? e));
     }
     setSelfBusy(false);

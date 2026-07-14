@@ -240,6 +240,7 @@ function AreaModal({
     coverageRequirements: [],
     enableCoverageMode: false,
     holidaySchedule: { active: false, start: 8, end: 18 },
+    slackMentionId: "",
   });
 
   const [newReq, setNewReq] = useState({ startHour: 8, endHour: 16, minWorkers: 2, preferredWorkers: 3 });
@@ -472,6 +473,31 @@ function AreaModal({
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Mención de Slack para notificaciones de esta área */}
+          <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t("areas_field_slack_mention")}
+              </span>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="size-3.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-72 leading-relaxed whitespace-normal text-left bg-popover text-popover-foreground border border-border shadow-md">
+                    Es el ID del subteam (user group) de Slack a mencionar en las notificaciones de registro de jornada de esta área (ej. <code>S0550J0H6BF</code>). Si se deja vacío, las notificaciones se envían sin mencionar a nadie.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <input
+              className="fi"
+              value={form.slackMentionId ?? ""}
+              onChange={e => set("slackMentionId", e.target.value.trim() || null)}
+              placeholder={t("areas_ph_slack_mention")}
+            />
           </div>
 
           {/* Coverage requirements — solo visible cuando el modo cobertura está activo */}

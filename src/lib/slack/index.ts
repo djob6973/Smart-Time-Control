@@ -102,6 +102,14 @@ const LABELS: Record<string, string> = {
   salida:           "Salida",
 };
 
+async function fetchAreaSlackMentionId(areaId: string): Promise<string | null> {
+  const rows = await query<{ slack_mention_id: string | null }>(
+    `SELECT slack_mention_id FROM public.areas WHERE id = $1`,
+    [areaId],
+  );
+  return rows[0]?.slack_mention_id ?? null;
+}
+
 export const dispatchSlackJornada = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
@@ -109,15 +117,19 @@ export const dispatchSlackJornada = createServerFn({ method: "POST" })
       employeeName: z.string(),
       hora:         z.string(),
       areaName:     z.string().optional(),
+      areaId:       z.string().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
     const cfg = await fetchConfig();
     if (!cfg.enabled || !cfg.botToken || !cfg.channelId) return;
 
-    const label = LABELS[data.tipo] ?? data.tipo;
-    const area  = data.areaName ? ` · ${data.areaName}` : "";
-    const text  = `*${label}:* ${data.employeeName}${area} — ${data.hora}   <!subteam^S0550J0H6BF>`;
+    const mentionId = data.areaId ? await fetchAreaSlackMentionId(data.areaId) : null;
+
+    const label   = LABELS[data.tipo] ?? data.tipo;
+    const area    = data.areaName ? ` · ${data.areaName}` : "";
+    const mention = mentionId ? `   <!subteam^${mentionId}>` : "";
+    const text    = `*${label}:* ${data.employeeName}${area} — ${data.hora}${mention}`;
 
     await postSlackMessage(cfg.botToken, cfg.channelId, text);
   });

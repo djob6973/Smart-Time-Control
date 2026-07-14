@@ -24,6 +24,7 @@ function areaFromDB(r: Record<string, unknown>): Area {
     enableCoverageMode: (r.enable_coverage_mode as boolean) ?? false,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     holidaySchedule: (r.holiday_schedule as any) ?? { active: false, start: 8, end: 18 },
+    slackMentionId: (r.slack_mention_id as string | null) ?? null,
   };
 }
 
@@ -109,19 +110,22 @@ const _upsertArea = createServerFn({ method: "POST" })
       `INSERT INTO public.areas
          (id, name, leader, start_hour, end_hour, working_days, max_hours_day,
           max_hours_week, max_hours_month, allow_overtime, allow_sunday,
-          min_rest_hours, coverage_requirements, enable_coverage_mode, holiday_schedule)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+          min_rest_hours, coverage_requirements, enable_coverage_mode, holiday_schedule,
+          slack_mention_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        ON CONFLICT (id) DO UPDATE SET
          name=$2, leader=$3, start_hour=$4, end_hour=$5, working_days=$6,
          max_hours_day=$7, max_hours_week=$8, max_hours_month=$9,
          allow_overtime=$10, allow_sunday=$11, min_rest_hours=$12,
-         coverage_requirements=$13, enable_coverage_mode=$14, holiday_schedule=$15`,
+         coverage_requirements=$13, enable_coverage_mode=$14, holiday_schedule=$15,
+         slack_mention_id=$16`,
       [
         a.id, a.name, a.leader, a.startHour, a.endHour,
         a.workingDays, a.maxHoursDay, a.maxHoursWeek, a.maxHoursMonth,
         a.allowOvertime, a.allowSunday, a.minRestHours,
         JSON.stringify(a.coverageRequirements), a.enableCoverageMode,
         JSON.stringify(a.holidaySchedule ?? { active: false, start: 8, end: 18 }),
+        a.slackMentionId ?? null,
       ],
     );
   });

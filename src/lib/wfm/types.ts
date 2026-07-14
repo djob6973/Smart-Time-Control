@@ -31,6 +31,7 @@ export interface Area {
   coverageRequirements: CoverageRequirement[]; // Requisitos de cobertura por día/horario
   enableCoverageMode: boolean; // Activar modo basado en cobertura
   holidaySchedule: HolidaySchedule; // Horario especial para días festivos
+  slackMentionId?: string | null; // ID de subteam de Slack para menciones (opcional)
 }
 
 export interface Availability {
