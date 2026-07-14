@@ -141,7 +141,11 @@ function AvisosPage() {
               className="rounded-card bg-card shadow-card overflow-hidden flex flex-col"
             >
               {a.imagenData ? (
-                <img src={a.imagenData} alt={a.titulo} className="h-32 w-full object-cover" />
+                <img
+                  src={a.imagenData}
+                  alt={a.titulo}
+                  className="h-32 w-full object-contain bg-secondary/30"
+                />
               ) : (
                 <div className="h-32 w-full bg-secondary/50 flex items-center justify-center text-muted-foreground/40">
                   <ImageIcon className="size-8" />

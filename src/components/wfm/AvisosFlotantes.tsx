@@ -112,7 +112,11 @@ export function AvisosFlotantes() {
                   className="block w-full text-left rounded-xl border border-border overflow-hidden bg-secondary/20 hover:border-primary/40 transition-colors"
                 >
                   {a.imagenData ? (
-                    <img src={a.imagenData} alt={a.titulo} className="h-40 w-full object-cover" />
+                    <img
+                      src={a.imagenData}
+                      alt={a.titulo}
+                      className="h-40 w-full object-contain bg-secondary/30"
+                    />
                   ) : (
                     <div className="h-20 w-full flex items-center justify-center text-muted-foreground/30 bg-secondary/40">
                       <ImageIcon className="size-6" />
@@ -158,7 +162,7 @@ export function AvisosFlotantes() {
                 <img
                   src={detalle.imagenData}
                   alt={detalle.titulo}
-                  className="h-64 w-full object-cover"
+                  className="h-64 w-full object-contain bg-secondary/20"
                 />
               ) : (
                 <div className="h-32 w-full flex items-center justify-center text-muted-foreground/30 bg-secondary/40">
