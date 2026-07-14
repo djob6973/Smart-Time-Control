@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Megaphone, Plus, Trash2, Pencil, Power, PowerOff, ImageIcon, Upload } from "lucide-react";
+import { Megaphone, Plus, Trash2, Pencil, Power, PowerOff, ImageIcon, Upload, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Topbar } from "@/components/wfm/Topbar";
 import { useAuth } from "@/lib/auth";
@@ -65,8 +65,25 @@ function AvisosPage() {
   }
 
   const [editing, setEditing] = useState<"new" | Aviso | null>(null);
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
 
   const visibleAvisos = restrictedToOwnArea ? avisos.filter((a) => a.areaId === ownAreaId) : avisos;
+
+  const filteredAvisos = visibleAvisos.filter((a) => {
+    if (statusFilter === "active" && !a.activo) return false;
+    if (statusFilter === "inactive" && a.activo) return false;
+    if (q.trim()) {
+      const needle = q.trim().toLowerCase();
+      const haystack = `${a.titulo} ${a.subtitulo ?? ""} ${a.descripcion}`.toLowerCase();
+      if (!haystack.includes(needle)) return false;
+    }
+    if (desde && new Date(a.fechaVencimiento) < new Date(`${desde}T00:00:00`)) return false;
+    if (hasta && new Date(a.fechaActivacion) > new Date(`${hasta}T23:59:59`)) return false;
+    return true;
+  });
 
   function areaName(areaId: string | null) {
     if (!areaId) return "Todas las áreas";
@@ -125,6 +142,60 @@ function AvisosPage() {
         }
       />
 
+      <div className="px-4 md:px-6 pt-4 md:pt-6 max-w-[1280px] mx-auto">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex items-center shrink-0">
+            <Search className="absolute left-3 size-[18px] text-muted-foreground pointer-events-none" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar aviso…"
+              className="h-10 pl-9 pr-3.5 rounded-full border border-border bg-card text-sm outline-none w-80 focus:border-primary/40 transition-colors"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 text-sm shrink-0">
+            <span className="text-muted-foreground">Desde</span>
+            <input
+              type="date"
+              value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+              className="rounded-pill border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm shrink-0">
+            <span className="text-muted-foreground">Hasta</span>
+            <input
+              type="date"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              className="rounded-pill border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
+
+          <div className="h-10 flex items-center rounded-full bg-secondary border border-border p-[3px] gap-[3px] shrink-0">
+            {(["all", "active", "inactive"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  "h-[34px] px-4 rounded-full text-sm transition-colors",
+                  statusFilter === s
+                    ? "bg-card shadow-sm text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {s === "all" ? "Todos" : s === "active" ? "Activos" : "Inactivos"}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-sm text-muted-foreground ml-auto shrink-0">
+            {filteredAvisos.length} aviso{filteredAvisos.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+      </div>
+
       <div
         className="px-4 md:px-6 py-4 md:py-6 max-w-[1280px] mx-auto"
         style={{
@@ -133,7 +204,7 @@ function AvisosPage() {
           gap: "1.25rem",
         }}
       >
-        {visibleAvisos.map((a) => {
+        {filteredAvisos.map((a) => {
           const estado = estadoAviso(a);
           return (
             <div
@@ -216,10 +287,12 @@ function AvisosPage() {
           );
         })}
 
-        {visibleAvisos.length === 0 && (
+        {filteredAvisos.length === 0 && (
           <div className="col-span-full py-16 text-center text-sm text-muted-foreground flex flex-col items-center gap-2">
             <Megaphone className="size-6 opacity-30" />
-            Sin avisos registrados
+            {visibleAvisos.length === 0
+              ? "Sin avisos registrados"
+              : "Ningún aviso coincide con los filtros"}
           </div>
         )}
       </div>
