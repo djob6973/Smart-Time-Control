@@ -14,6 +14,8 @@ import {
   type AvisoInput,
 } from "@/lib/avisos/types";
 import { cn } from "@/lib/utils";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 
 export const Route = createFileRoute("/_authenticated/avisos")({
   head: () => ({ meta: [{ title: "Novedades del día · STC" }] }),
@@ -158,7 +160,10 @@ function AvisosPage() {
                   </span>
                 </div>
                 {a.subtitulo && <p className="text-sm text-muted-foreground">{a.subtitulo}</p>}
-                <p className="text-sm text-foreground/80 line-clamp-3">{a.descripcion}</p>
+                <MarkdownContent
+                  content={a.descripcion}
+                  className="text-sm text-foreground/80 max-h-16 overflow-hidden"
+                />
                 <div className="mt-auto pt-2 text-xs text-muted-foreground space-y-0.5">
                   <div>
                     Área: <span className="text-foreground">{areaName(a.areaId)}</span>
@@ -354,18 +359,17 @@ function AvisoModal({
             />
           </label>
 
-          <label className="block">
+          <div className="block">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Descripción
             </span>
-            <textarea
-              className="fi mt-1"
-              style={{ borderRadius: 16, minHeight: 90 }}
+            <MarkdownEditor
+              className="mt-1"
               value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
+              onChange={setDescripcion}
               placeholder="Detalle de la novedad"
             />
-          </label>
+          </div>
 
           <label className="block">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Megaphone, X, ImageIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useAvisos } from "@/lib/avisos/store";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 
 const SEEN_KEY_PREFIX = "stc_avisos_vistos_";
 
@@ -81,25 +82,25 @@ export function AvisosFlotantes() {
       </button>
 
       {open && (
-        <div className="fixed bottom-24 right-6 z-40 w-[min(24rem,calc(100vw-3rem))] max-h-[70vh] flex flex-col rounded-card bg-card shadow-card border border-border overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-            <span className="font-semibold text-sm flex items-center gap-2">
-              <Megaphone className="size-4 text-primary" />
+        <div className="fixed bottom-24 right-6 z-40 w-[min(30rem,calc(100vw-2rem))] max-h-[80vh] flex flex-col rounded-card bg-card shadow-card border border-border overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+            <span className="font-semibold text-base flex items-center gap-2">
+              <Megaphone className="size-5 text-primary" />
               Novedades del día
             </span>
             <button
               onClick={() => setOpen(false)}
               className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground"
             >
-              <X className="size-4" />
+              <X className="size-5" />
             </button>
           </div>
 
-          <div className="overflow-y-auto p-3 space-y-2.5">
+          <div className="overflow-y-auto p-4 space-y-3.5">
             {avisosActivos.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-1.5 py-10 text-muted-foreground">
                 <Megaphone className="size-6 opacity-30" />
-                <span className="text-xs">Sin novedades activas</span>
+                <span className="text-sm">Sin novedades activas</span>
               </div>
             ) : (
               avisosActivos.map((a) => (
@@ -108,21 +109,22 @@ export function AvisosFlotantes() {
                   className="rounded-xl border border-border overflow-hidden bg-secondary/20"
                 >
                   {a.imagenData ? (
-                    <img src={a.imagenData} alt={a.titulo} className="h-28 w-full object-cover" />
+                    <img src={a.imagenData} alt={a.titulo} className="h-40 w-full object-cover" />
                   ) : (
-                    <div className="h-16 w-full flex items-center justify-center text-muted-foreground/30 bg-secondary/40">
-                      <ImageIcon className="size-5" />
+                    <div className="h-20 w-full flex items-center justify-center text-muted-foreground/30 bg-secondary/40">
+                      <ImageIcon className="size-6" />
                     </div>
                   )}
-                  <div className="p-3">
-                    <p className="text-sm font-semibold leading-tight">{a.titulo}</p>
+                  <div className="p-4">
+                    <p className="text-base font-semibold leading-tight">{a.titulo}</p>
                     {a.subtitulo && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{a.subtitulo}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">{a.subtitulo}</p>
                     )}
-                    <p className="text-xs text-foreground/80 mt-1.5 whitespace-pre-line">
-                      {a.descripcion}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/70 mt-2">
+                    <MarkdownContent
+                      content={a.descripcion}
+                      className="text-sm text-foreground/80 mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground/70 mt-2.5">
                       Vigente hasta {new Date(a.fechaVencimiento).toLocaleString()}
                     </p>
                   </div>
