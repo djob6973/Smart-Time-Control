@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Bold,
   Italic,
@@ -11,6 +11,7 @@ import {
   Table2,
   Smile,
 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 const EMOJIS = [
   "😀", "😉", "😊", "🙌", "👍", "👏", "🙏", "💪",
@@ -174,19 +175,7 @@ export function MarkdownEditor({
   textareaStyle?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  const emojiRef = useRef<HTMLDivElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
-
-  useEffect(() => {
-    if (!emojiOpen) return;
-    function onClickOutside(e: MouseEvent) {
-      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
-        setEmojiOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [emojiOpen]);
 
   function pickEmoji(emoji: string) {
     if (ref.current) insertAtCursor(ref.current, value, onChange, emoji);
@@ -207,30 +196,33 @@ export function MarkdownEditor({
             <Icon className="size-3.5" />
           </button>
         ))}
-        <div className="relative" ref={emojiRef}>
-          <button
-            type="button"
-            title="Emoji"
-            onClick={() => setEmojiOpen((o) => !o)}
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              title="Emoji"
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+            >
+              <Smile className="size-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-auto p-2"
+            style={{ display: "grid", gridTemplateColumns: "repeat(6, 2rem)", gap: 2 }}
           >
-            <Smile className="size-3.5" />
-          </button>
-          {emojiOpen && (
-            <div className="absolute z-10 top-full left-0 mt-1 grid grid-cols-8 gap-0.5 p-2 rounded-xl border border-border bg-card shadow-card">
-              {EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => pickEmoji(emoji)}
-                  className="size-7 flex items-center justify-center rounded-lg hover:bg-secondary text-base"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            {EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => pickEmoji(emoji)}
+                className="size-8 flex items-center justify-center overflow-hidden rounded-lg hover:bg-secondary text-lg leading-none"
+              >
+                {emoji}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
       </div>
       <textarea
         ref={ref}
