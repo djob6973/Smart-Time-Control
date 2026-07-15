@@ -15,7 +15,7 @@ import {
   CalendarDays, UserCog, FileX, BarChart3, Settings2,
   Clock, LayoutDashboard, Building2, CalendarCheck, Megaphone,
   Search, Users, Plus, UserPlus, PencilLine, Palette, ChevronDown,
-  MessageSquare, Eye, EyeOff,
+  MessageSquare, Eye, EyeOff, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import {
   getSlackConfig, saveSlackConfig, testSlackConnection,
@@ -384,6 +384,7 @@ function SettingsPage() {
   // Members state
   const [orgMembers, setOrgMembers]           = useState<OrgMember[]>([]);
   const [membersLoading, setMembersLoading]   = useState(false);
+  const [membersPage, setMembersPage]         = useState(1);
   const [addMemberEmail, setAddMemberEmail]   = useState("");
   const [addMemberLoading, setAddMemberLoading] = useState(false);
   const [addMemberError, setAddMemberError]   = useState<string | null>(null);
@@ -574,6 +575,7 @@ function SettingsPage() {
     try {
       const members = await adminListOrgMembers({ data: { orgId: organization.id } });
       setOrgMembers(members);
+      setMembersPage(1);
     } catch (e: any) { console.error(e); }
     finally { setMembersLoading(false); }
   }
@@ -1188,30 +1190,61 @@ function SettingsPage() {
                 <div className="text-xs text-muted-foreground text-center py-4">Cargando miembros…</div>
               ) : orgMembers.length === 0 ? (
                 <div className="text-xs text-muted-foreground text-center py-4">No hay miembros registrados.</div>
-              ) : (
-                <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
-                  {orgMembers.map(m => (
-                    <div key={m.userId} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/40 transition-colors">
-                      <div className="size-8 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 text-xs font-semibold">
-                        {initials(m.fullName || m.email)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{m.fullName || "—"}</div>
-                        <div className="text-xs text-muted-foreground truncate">{m.email}</div>
-                      </div>
-                      {isAdmin && m.userId !== user?.id && (
-                        <button
-                          onClick={() => handleRemoveMember(m.userId)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          title="Quitar miembro"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      )}
+              ) : (() => {
+                const MEMBERS_PAGE_SIZE = 10;
+                const totalMembersPages = Math.max(1, Math.ceil(orgMembers.length / MEMBERS_PAGE_SIZE));
+                const page = Math.min(Math.max(1, membersPage), totalMembersPages);
+                const pagedMembers = orgMembers.slice((page - 1) * MEMBERS_PAGE_SIZE, page * MEMBERS_PAGE_SIZE);
+                return (
+                  <>
+                    <div className="divide-y divide-border rounded-xl border border-border overflow-hidden">
+                      {pagedMembers.map(m => (
+                        <div key={m.userId} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/40 transition-colors">
+                          <div className="size-8 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 text-xs font-semibold">
+                            {initials(m.fullName || m.email)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{m.fullName || "—"}</div>
+                            <div className="text-xs text-muted-foreground truncate">{m.email}</div>
+                          </div>
+                          {isAdmin && m.userId !== user?.id && (
+                            <button
+                              onClick={() => handleRemoveMember(m.userId)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title="Quitar miembro"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
+                    {totalMembersPages > 1 && (
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-xs text-muted-foreground">Página {page} de {totalMembersPages}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setMembersPage(p => Math.max(1, p - 1))}
+                            disabled={page <= 1}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                            title="Página anterior"
+                          >
+                            <ChevronLeft className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setMembersPage(p => Math.min(totalMembersPages, p + 1))}
+                            disabled={page >= totalMembersPages}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                            title="Página siguiente"
+                          >
+                            <ChevronRight className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Add member */}
               {isAdmin && (
