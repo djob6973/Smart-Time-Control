@@ -274,12 +274,10 @@ export interface OrgMember {
 export interface UpdateOrgInput {
   id: string;
   nombre: string;
-  plan: string;
 }
 
 export interface CreateOrgInput {
   nombre: string;
-  plan: string;
   userId: string;
 }
 
@@ -311,8 +309,8 @@ export const adminUpdateOrg = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as UpdateOrgInput)
   .handler(async ({ data }) => {
     await execute(
-      `UPDATE public.organizations SET nombre = $1, plan = $2, actualizado_en = NOW() WHERE id = $3`,
-      [data.nombre, data.plan, data.id],
+      `UPDATE public.organizations SET nombre = $1, actualizado_en = NOW() WHERE id = $2`,
+      [data.nombre, data.id],
     );
     return { success: true };
   });
@@ -323,9 +321,9 @@ export const adminCreateOrg = createServerFn({ method: "POST" })
     const slug = toSlug(data.nombre) + "-" + Math.random().toString(36).slice(2, 8);
 
     const orgRows = await query<{ id: string }>(
-      `INSERT INTO public.organizations (nombre, slug, plan, activo)
-       VALUES ($1, $2, $3, true) RETURNING id`,
-      [data.nombre, slug, data.plan],
+      `INSERT INTO public.organizations (nombre, slug, activo)
+       VALUES ($1, $2, true) RETURNING id`,
+      [data.nombre, slug],
     );
     const orgId = orgRows[0].id;
 

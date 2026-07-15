@@ -28,7 +28,6 @@ export interface Organization {
   nombre: string;
   slug: string;
   activo: boolean;
-  plan: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config?: Record<string, any>;
   logo?: string | null;

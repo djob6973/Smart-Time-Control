@@ -216,16 +216,17 @@ export async function runMigration(): Promise<void> {
       nombre         TEXT        NOT NULL,
       slug           TEXT        NOT NULL UNIQUE,
       activo         BOOLEAN     NOT NULL DEFAULT true,
-      plan           TEXT        NOT NULL DEFAULT 'free',
       config         JSONB       NOT NULL DEFAULT '{}',
       creado_en      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 
+  await execute(`ALTER TABLE public.organizations DROP COLUMN IF EXISTS plan`);
+
   await execute(`
-    INSERT INTO public.organizations (id, nombre, slug, plan)
-    VALUES ('00000000-0000-0000-0000-000000000001', 'Default Organization', 'default', 'pro')
+    INSERT INTO public.organizations (id, nombre, slug)
+    VALUES ('00000000-0000-0000-0000-000000000001', 'Default Organization', 'default')
     ON CONFLICT DO NOTHING
   `);
 

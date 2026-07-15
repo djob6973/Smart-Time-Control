@@ -31,7 +31,6 @@ export interface OrgRow {
   nombre: string;
   slug: string;
   activo: boolean;
-  plan: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: Record<string, any>;
   logo_data?: string | null;
@@ -60,7 +59,7 @@ export const getUserRolesAndOrgs = createServerFn({ method: "GET" })
         [data.userId],
       ),
       query<OrgRow>(
-        `SELECT o.id, o.nombre, o.slug, o.activo, o.plan, o.config, o.logo_data
+        `SELECT o.id, o.nombre, o.slug, o.activo, o.config, o.logo_data
          FROM public.user_organizations uo
          JOIN public.organizations o ON o.id = uo.organization_id
          WHERE uo.user_id = $1 AND uo.activo = true`,
@@ -73,7 +72,7 @@ export const getUserRolesAndOrgs = createServerFn({ method: "GET" })
     if (orgRows.length === 0) {
       const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
       const defaultOrg = await queryOne<OrgRow>(
-        `SELECT id, nombre, slug, activo, plan, config, logo_data FROM public.organizations WHERE id = $1`,
+        `SELECT id, nombre, slug, activo, config, logo_data FROM public.organizations WHERE id = $1`,
         [DEFAULT_ORG_ID],
       );
       if (defaultOrg) resolvedOrgRows = [defaultOrg];
@@ -298,14 +297,6 @@ export const dbDeleteRole = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-export const dbListOrgs = createServerFn({ method: "GET" })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .handler(async (): Promise<any> => {
-  return query(
-    `SELECT id, nombre, slug, activo, plan, config FROM public.organizations ORDER BY creado_en ASC`,
-  );
-});
-
 export const dbListOrgMembers = createServerFn({ method: "GET" })
   .inputValidator(z.object({ orgId: z.string() }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -317,58 +308,6 @@ export const dbListOrgMembers = createServerFn({ method: "GET" })
        WHERE uo.organization_id = $1 AND uo.activo = true`,
       [data.orgId],
     );
-  });
-
-export const dbUpdateOrg = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string(), nombre: z.string(), plan: z.string() }))
-  .handler(async ({ data }) => {
-    await execute(
-      `UPDATE public.organizations SET nombre = $1, plan = $2, actualizado_en = NOW() WHERE id = $3`,
-      [data.nombre, data.plan, data.id],
-    );
-    return { success: true };
-  });
-
-export const dbCreateOrg = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ nombre: z.string(), plan: z.string(), userId: z.string() }))
-  .handler(async ({ data }) => {
-    const slug =
-      data.nombre
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "")
-        .replace(/-+/g, "-")
-        .slice(0, 40) +
-      "-" +
-      Date.now().toString(36);
-
-    const orgRows = await query<{ id: string }>(
-      `INSERT INTO public.organizations (nombre, slug, plan, activo)
-       VALUES ($1, $2, $3, true) RETURNING id`,
-      [data.nombre, slug, data.plan],
-    );
-    const orgId = orgRows[0].id;
-
-    await execute(
-      `INSERT INTO public.user_organizations (user_id, organization_id, activo) VALUES ($1, $2, true)`,
-      [data.userId, orgId],
-    );
-
-    const adminRoleRows = await query<{ id: string }>(
-      `SELECT id FROM public.roles WHERE nombre = 'admin'`,
-    );
-    if (adminRoleRows[0]) {
-      await execute(
-        `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
-         VALUES ($1, $2, $3, NOW())
-         ON CONFLICT DO NOTHING`,
-        [data.userId, adminRoleRows[0].id, orgId],
-      );
-    }
-
-    return { id: orgId, slug };
   });
 
 export const dbAddOrgMember = createServerFn({ method: "POST" })

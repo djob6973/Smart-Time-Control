@@ -201,14 +201,13 @@ CREATE TABLE IF NOT EXISTS public.organizations (
   nombre         TEXT        NOT NULL,
   slug           TEXT        NOT NULL UNIQUE,
   activo         BOOLEAN     NOT NULL DEFAULT true,
-  plan           TEXT        NOT NULL DEFAULT 'free',
   config         JSONB       NOT NULL DEFAULT '{}',
   creado_en      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO public.organizations (id, nombre, slug, plan)
-VALUES ('00000000-0000-0000-0000-000000000001', 'Default Organization', 'default', 'pro')
+INSERT INTO public.organizations (id, nombre, slug)
+VALUES ('00000000-0000-0000-0000-000000000001', 'Default Organization', 'default')
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.user_organizations (

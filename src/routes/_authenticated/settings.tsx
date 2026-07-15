@@ -377,7 +377,6 @@ function SettingsPage() {
 
   // Org edit state
   const [editOrgNombre, setEditOrgNombre] = useState(organization?.nombre ?? "");
-  const [editOrgPlan, setEditOrgPlan]     = useState(organization?.plan ?? "free");
   const [orgSaving, setOrgSaving]         = useState(false);
   const [orgSaveError, setOrgSaveError]   = useState<string | null>(null);
   const [orgSaveSuccess, setOrgSaveSuccess] = useState(false);
@@ -391,7 +390,6 @@ function SettingsPage() {
 
   // Create org state
   const [newOrgNombre, setNewOrgNombre]         = useState("");
-  const [newOrgPlan, setNewOrgPlan]             = useState("free");
   const [createOrgLoading, setCreateOrgLoading] = useState(false);
   const [createOrgError, setCreateOrgError]     = useState<string | null>(null);
   const [createOrgSuccess, setCreateOrgSuccess] = useState(false);
@@ -418,7 +416,6 @@ function SettingsPage() {
   useEffect(() => {
     if (organization) {
       setEditOrgNombre(organization.nombre);
-      setEditOrgPlan(organization.plan);
     }
   }, [organization?.id]);
 
@@ -588,7 +585,7 @@ function SettingsPage() {
     setOrgSaving(true);
     setOrgSaveError(null);
     try {
-      await adminUpdateOrg({ data: { id: organization.id, nombre, plan: editOrgPlan } });
+      await adminUpdateOrg({ data: { id: organization.id, nombre } });
       setOrgSaveSuccess(true);
       setTimeout(() => { setOrgSaveSuccess(false); window.location.reload(); }, 1200);
     } catch (e: any) {
@@ -623,9 +620,8 @@ function SettingsPage() {
     setCreateOrgLoading(true);
     setCreateOrgError(null);
     try {
-      await adminCreateOrg({ data: { nombre: newOrgNombre.trim(), plan: newOrgPlan, userId: user.id } });
+      await adminCreateOrg({ data: { nombre: newOrgNombre.trim(), userId: user.id } });
       setNewOrgNombre("");
-      setNewOrgPlan("free");
       setCreateOrgSuccess(true);
       setTimeout(() => { setCreateOrgSuccess(false); window.location.reload(); }, 1500);
     } catch (e: any) {
@@ -1106,7 +1102,7 @@ function SettingsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{organization?.nombre ?? "—"}</div>
                     <div className="text-xs text-muted-foreground">
-                      {employees.length} trabajadores · {areas.length} áreas · plan {organization?.plan ?? "—"}
+                      {employees.length} trabajadores · {areas.length} áreas
                     </div>
                   </div>
                   <span
@@ -1141,7 +1137,7 @@ function SettingsPage() {
                   <PencilLine className="size-4 text-muted-foreground" />
                   <div>
                     <h2 className="font-semibold text-sm">Editar organización</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Nombre y plan de facturación</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Nombre de la organización</p>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -1153,20 +1149,6 @@ function SettingsPage() {
                       placeholder="Nombre de la organización"
                       className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan</label>
-                    <select
-                      value={editOrgPlan}
-                      onChange={e => setEditOrgPlan(e.target.value)}
-                      disabled={!isAdmin}
-                      className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
-                    >
-                      <option value="free">Free</option>
-                      <option value="starter">Starter</option>
-                      <option value="pro">Pro</option>
-                      <option value="enterprise">Enterprise</option>
-                    </select>
                   </div>
                 </div>
                 {orgSaveError && <p className="text-xs text-destructive">{orgSaveError}</p>}
@@ -1280,19 +1262,6 @@ function SettingsPage() {
                       placeholder="Ej: Mi Empresa S.A."
                       className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan</label>
-                    <select
-                      value={newOrgPlan}
-                      onChange={e => setNewOrgPlan(e.target.value)}
-                      className="w-full rounded-pill border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                      <option value="free">Free</option>
-                      <option value="starter">Starter</option>
-                      <option value="pro">Pro</option>
-                      <option value="enterprise">Enterprise</option>
-                    </select>
                   </div>
                 </div>
                 {createOrgError && <p className="text-xs text-destructive">{createOrgError}</p>}
