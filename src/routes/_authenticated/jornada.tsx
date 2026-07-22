@@ -951,11 +951,13 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
   const { t } = useI18n();
   const { employees, areas, shifts } = useWFM();
   const { user, profile } = useAuth();
-  const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado, configuracion } = useJornada();
+  const { registros, fechaActiva, getEstadoEmpleado, registrarMovimiento, reloadRegistros, getShiftProgramado, horarios, horariosEmpleado, configuracion, now } = useJornada();
   const ownArea = profile?.areaId ?? null;
 
   const isSelfMode = !!autoEmployeeId;
-  const nowLocal = new Date();
+  // `now()` está corregido con el offset del servidor: si el reloj del dispositivo
+  // está mal, esto evita que reaparezcan botones de movimientos ya registrados hoy.
+  const nowLocal = now();
   const hoy = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
   const hoyDia = new Date(`${hoy}T12:00:00`).getDay();
   const nowHHMM = `${String(nowLocal.getHours()).padStart(2, "0")}:${String(nowLocal.getMinutes()).padStart(2, "0")}`;
@@ -1060,7 +1062,7 @@ function TabRegistro({ autoEmployeeId }: { autoEmployeeId: string | null }) {
     : [];
 
   function fmtHora() {
-    const n = new Date();
+    const n = now();
     return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
   }
 

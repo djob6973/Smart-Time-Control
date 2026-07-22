@@ -11,7 +11,10 @@ import type {
   TipoMovimiento,
 } from "./types";
 import * as db from "./db";
+import { resolveJornadaConfig } from "./rules";
 import type { Shift } from "@/lib/wfm/types";
+
+export { resolveJornadaConfig };
 
 interface JornadaState {
   registros: JornadaRegistro[];
@@ -24,6 +27,8 @@ interface JornadaState {
   initialized: boolean;
   loading: boolean;
   fechaActiva: string; // YYYY-MM-DD viewed date
+  clockOffsetMs: number; // diferencia entre la hora del servidor y el reloj local del dispositivo
+  now: () => Date; // hora actual corregida con clockOffsetMs — usar en vez de `new Date()` para "ahora"
 
   initFromDB: (fecha?: string) => Promise<void>;
   setFechaActiva: (fecha: string) => void;
@@ -81,23 +86,11 @@ interface JornadaState {
   getShiftProgramado: (employeeId: string, fecha: string, shifts: Shift[]) => Shift | null;
 }
 
-// Resuelve la configuración de jornada aplicable a un área: prioriza la config
-// propia del área (si existe) y cae a la config global (areaId vacío) en su defecto.
-export function resolveJornadaConfig(
-  configuracion: JornadaConfiguracion[],
-  areaId?: string | null,
-): JornadaConfiguracion | undefined {
-  if (areaId) {
-    const propia = configuracion.find((c) => c.areaId === areaId);
-    if (propia) return propia;
-  }
-  return configuracion.find((c) => !c.areaId) ?? configuracion[0];
-}
-
 function computeEstado(
   registros: JornadaRegistro[],
   config: JornadaConfiguracion | undefined,
   fecha: string,
+  now: Date, // reloj corregido con el offset del servidor (ver `now()` del store), no `new Date()` directo
   horario?: JornadaHorario,
   shiftHoraEntrada?: string, // hora de inicio del turno WFM ("HH:MM"), usado cuando no hay horario jornada
 ): Pick<EstadoJornadaEmpleado, "estado" | "ultimoMovimiento" | "horaUltimoMovimiento" | "tiempoEnBreakMin" | "tiempoEnBreak1Min" | "tiempoEnBreak2Min" | "tiempoEnAlmuerzoMin" | "minutosEnJornada" | "esTarde" | "minutosRetraso" | "break1Excedido" | "break2Excedido" | "breakExcedido" | "almuerzoExcedido" | "jornadaExcedida"> {
@@ -106,7 +99,6 @@ function computeEstado(
   );
   const ultimo = sorted[sorted.length - 1];
 
-  const now = new Date();
   // Usar fecha LOCAL (no UTC) para evitar desfases en zonas UTC-N como Colombia
   const hoy = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const esFechaActual = fecha === hoy;
@@ -262,15 +254,21 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   initialized: false,
   loading: false,
   fechaActiva: (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })(),
+  clockOffsetMs: 0,
+  now: () => new Date(Date.now() + get().clockOffsetMs),
 
   initFromDB: async (fecha) => {
     set({ loading: true });
     try {
-      const now = new Date();
+      // La hora del servidor es la fuente de verdad: se resuelve ANTES que el resto
+      // para no traer/mostrar el día equivocado si el reloj del dispositivo está mal.
+      const { nowMs } = await db.fetchServerTime();
+      const clockOffsetMs = nowMs - Date.now();
+      const now = new Date(nowMs);
       const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       const hoy = fecha ?? localToday;
       // Modificaciones: últimos 90 días para no traer toda la historia
-      const desde90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const desde90 = new Date(nowMs - 90 * 24 * 60 * 60 * 1000);
       const desde90str = `${desde90.getFullYear()}-${String(desde90.getMonth() + 1).padStart(2, "0")}-${String(desde90.getDate()).padStart(2, "0")}`;
       const [registros, modificaciones, horarios, horariosEmpleado, cupos, configuracion] = await Promise.all([
         db.fetchRegistros(hoy),
@@ -280,7 +278,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
         db.fetchCupos(),
         db.fetchConfiguracion(),
       ]);
-      set({ registros, modificaciones, horarios, horariosEmpleado, cupos, configuracion, initialized: true, fechaActiva: hoy });
+      set({ registros, modificaciones, horarios, horariosEmpleado, cupos, configuracion, initialized: true, fechaActiva: hoy, clockOffsetMs });
     } finally {
       set({ loading: false });
     }
@@ -311,95 +309,16 @@ export const useJornada = create<JornadaState>()((set, get) => ({
   },
 
   registrarMovimiento: async (employeeId, tipo, areaId, usuarioId, observaciones, areaWorkingDays) => {
-    const config = resolveJornadaConfig(get().configuracion, areaId);
-    // Priorizar los días laborales del área; si no están disponibles, usar la config de jornada
-    const diasEfectivos = areaWorkingDays ?? config?.diasLaborales;
-    if (diasEfectivos?.length && !diasEfectivos.includes(new Date().getDay())) {
-      return { ok: false, error: "Hoy no es un día laboral según la configuración del área." };
-    }
-
-    const { registros } = get();
-    const nowLocal = new Date();
-    const hoy = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
-    const registrosHoy = registros.filter(
-      (r) => r.employeeId === employeeId && r.fecha === hoy,
-    );
-
-    // Validate no duplicate movement
-    const yaExiste = registrosHoy.some((r) => r.tipoMovimiento === tipo);
-    if (yaExiste && tipo === "entrada") {
-      return { ok: false, error: "Ya existe una entrada registrada para hoy." };
-    }
-
-    if (tipo === "salida_break1" || tipo === "salida_break2") {
-      const n = tipo === "salida_break1" ? 1 : 2;
-      const yaUsado = registrosHoy.some((r) => r.tipoMovimiento === tipo);
-      if (yaUsado) {
-        return { ok: false, error: `Ya se usó el Break ${n} hoy.` };
-      }
-      const horaInicio = n === 1 ? (config?.break1HoraInicio ?? "09:00") : (config?.break2HoraInicio ?? "14:00");
-      const horaFin = n === 1 ? (config?.break1HoraFin ?? "11:00") : (config?.break2HoraFin ?? "16:00");
-      const nowHHMM = `${String(nowLocal.getHours()).padStart(2, "0")}:${String(nowLocal.getMinutes()).padStart(2, "0")}`;
-      if (nowHHMM < horaInicio.slice(0, 5) || nowHHMM > horaFin.slice(0, 5)) {
-        return { ok: false, error: `Break ${n} solo puede iniciarse entre ${horaInicio.slice(0, 5)} y ${horaFin.slice(0, 5)}.` };
-      }
-    }
-    if (tipo === "salida_almuerzo") {
-      const maxAlmuerzos = config?.maxAlmuerzosPorJornada ?? 1;
-      const almuerzos = registrosHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
-      if (almuerzos >= maxAlmuerzos) {
-        return { ok: false, error: `Ya se ${maxAlmuerzos === 1 ? "ha usado el almuerzo permitido" : `han usado los ${maxAlmuerzos} almuerzos permitidos`} para esta jornada.` };
-      }
-    }
-
-    // Validate flow
-    const sorted = [...registrosHoy].sort(
-      (a, b) => new Date(a.horaExacta).getTime() - new Date(b.horaExacta).getTime(),
-    );
-    const ultimo = sorted[sorted.length - 1]?.tipoMovimiento;
-
-    const flujoValido: Record<string, TipoMovimiento[]> = {
-      entrada: [],
-      salida_break1: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
-      regreso_break1: ["salida_break1"],
-      salida_break2: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
-      regreso_break2: ["salida_break2"],
-      salida_almuerzo: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
-      regreso_almuerzo: ["salida_almuerzo"],
-      salida: ["entrada", "regreso_break1", "regreso_break2", "regreso_almuerzo"],
-    };
-
-    const prevAllow = flujoValido[tipo] ?? [];
-    if (prevAllow.length > 0 && (!ultimo || !prevAllow.includes(ultimo as TipoMovimiento))) {
-      return { ok: false, error: `No se puede registrar '${tipo}' en el estado actual.` };
-    }
-
-    // Check cupo limits for break / almuerzo
-    if (tipo === "salida_break1" || tipo === "salida_break2" || tipo === "salida_almuerzo") {
-      const cupoTipo = tipo === "salida_almuerzo" ? "almuerzo" : "break";
-      const { max, enUso } = get().getCuposDisponibles(areaId, cupoTipo, hoy);
-      if (max > 0 && enUso >= max) {
-        return {
-          ok: false,
-          error: `No es posible iniciar ${cupoTipo}. El límite simultáneo permitido para el área ya fue alcanzado (${max} personas).`,
-        };
-      }
-    }
-
+    // Toda la validación (día laboral, duplicados, ventanas de break, cupos, flujo)
+    // y el cálculo de fecha/hora ocurren en el servidor — nunca se confía en el
+    // reloj ni en el caché del cliente, que pueden estar desincronizados.
     try {
-      const nuevo = await db.insertRegistro({
-        employeeId,
-        fecha: hoy,
-        horaExacta: new Date().toISOString(),
-        tipoMovimiento: tipo,
-        areaId,
-        usuarioRegistroId: usuarioId,
-        observaciones,
-        estado: "valido",
-        esModificacion: false,
-      });
-      set((s) => ({ registros: [...s.registros, nuevo] }));
-      return { ok: true };
+      const result = await db.registrarMovimiento(employeeId, tipo, areaId, usuarioId, observaciones, areaWorkingDays);
+      if (result.ok && result.registro) {
+        set((s) => ({ registros: [...s.registros, result.registro!] }));
+        return { ok: true };
+      }
+      return { ok: false, error: result.error };
     } catch (e: any) {
       return { ok: false, error: e?.message ?? "Error al registrar." };
     }
@@ -546,7 +465,7 @@ export const useJornada = create<JornadaState>()((set, get) => ({
         ? `${String(shiftStart).padStart(2, "0")}:00`
         : undefined;
 
-    const resultado = computeEstado(registros, config, fecha, horario, shiftHoraEntrada);
+    const resultado = computeEstado(registros, config, fecha, get().now(), horario, shiftHoraEntrada);
     return { employeeId, fecha, ...resultado };
   },
 

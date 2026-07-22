@@ -8,7 +8,9 @@ import type {
   JornadaHorarioEmpleado,
   JornadaCupo,
   JornadaConfiguracion,
+  TipoMovimiento,
 } from "./types";
+import { resolveJornadaConfig, FLUJO_VALIDO, bogotaParts } from "./rules";
 
 // ── Mappers ────────────────────────────────────────────────
 
@@ -160,6 +162,124 @@ const _fetchConfiguracion = createServerFn({ method: "GET" }).handler(async () =
   const rows = await query("SELECT * FROM public.jornada_configuracion");
   return rows.map(configFromDB);
 });
+
+// Hora del servidor: única fuente de verdad para "qué día/hora es" — el reloj
+// del dispositivo del usuario puede estar mal configurado o desincronizado.
+const _fetchServerTime = createServerFn({ method: "GET" }).handler(async () => {
+  return { nowMs: Date.now() };
+});
+
+const TIPO_MOVIMIENTO_VALUES = [
+  "entrada", "salida_break1", "regreso_break1", "salida_break2",
+  "regreso_break2", "salida_almuerzo", "regreso_almuerzo", "salida",
+] as const;
+
+// Registra un movimiento de jornada validando todo (día laboral, duplicados,
+// ventanas de break, cupos, flujo) contra la hora y los datos reales del
+// servidor — nunca contra el reloj ni el caché del cliente, que pueden estar
+// desincronizados y hacer reaparecer botones ya usados.
+const _registrarMovimiento = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
+    employeeId: z.string(),
+    tipo: z.enum(TIPO_MOVIMIENTO_VALUES),
+    areaId: z.string().optional(),
+    usuarioId: z.string(),
+    observaciones: z.string().optional(),
+    areaWorkingDays: z.array(z.number()).optional(),
+  }))
+  .handler(async ({ data }) => {
+    const { fecha, horaExacta, hhmm, dow } = bogotaParts(Date.now());
+
+    const config = resolveJornadaConfig(
+      (await query("SELECT * FROM public.jornada_configuracion")).map(configFromDB),
+      data.areaId,
+    );
+
+    const diasEfectivos = data.areaWorkingDays ?? config?.diasLaborales;
+    if (diasEfectivos?.length && !diasEfectivos.includes(dow)) {
+      return { ok: false, error: "Hoy no es un día laboral según la configuración del área." };
+    }
+
+    const registrosHoy = (
+      await query(
+        "SELECT * FROM public.jornada_registros WHERE employee_id = $1 AND fecha = $2 ORDER BY hora_exacta",
+        [data.employeeId, fecha],
+      )
+    ).map(registroFromDB);
+
+    if (data.tipo === "entrada" && registrosHoy.some((r) => r.tipoMovimiento === "entrada")) {
+      return { ok: false, error: "Ya existe una entrada registrada para hoy." };
+    }
+
+    if (data.tipo === "salida_break1" || data.tipo === "salida_break2") {
+      const n = data.tipo === "salida_break1" ? 1 : 2;
+      if (registrosHoy.some((r) => r.tipoMovimiento === data.tipo)) {
+        return { ok: false, error: `Ya se usó el Break ${n} hoy.` };
+      }
+      const horaInicio = (n === 1 ? config?.break1HoraInicio : config?.break2HoraInicio) ?? (n === 1 ? "09:00" : "14:00");
+      const horaFin = (n === 1 ? config?.break1HoraFin : config?.break2HoraFin) ?? (n === 1 ? "11:00" : "16:00");
+      if (hhmm < horaInicio.slice(0, 5) || hhmm > horaFin.slice(0, 5)) {
+        return { ok: false, error: `Break ${n} solo puede iniciarse entre ${horaInicio.slice(0, 5)} y ${horaFin.slice(0, 5)}.` };
+      }
+    }
+
+    if (data.tipo === "salida_almuerzo") {
+      const maxAlmuerzos = config?.maxAlmuerzosPorJornada ?? 1;
+      const almuerzos = registrosHoy.filter((r) => r.tipoMovimiento === "salida_almuerzo").length;
+      if (almuerzos >= maxAlmuerzos) {
+        return {
+          ok: false,
+          error: `Ya se ${maxAlmuerzos === 1 ? "ha usado el almuerzo permitido" : `han usado los ${maxAlmuerzos} almuerzos permitidos`} para esta jornada.`,
+        };
+      }
+    }
+
+    const ultimo = registrosHoy[registrosHoy.length - 1]?.tipoMovimiento;
+    const prevAllow = FLUJO_VALIDO[data.tipo] ?? [];
+    if (prevAllow.length > 0 && (!ultimo || !prevAllow.includes(ultimo as TipoMovimiento))) {
+      return { ok: false, error: `No se puede registrar '${data.tipo}' en el estado actual.` };
+    }
+
+    if (data.tipo === "salida_break1" || data.tipo === "salida_break2" || data.tipo === "salida_almuerzo") {
+      const cupoTipo = data.tipo === "salida_almuerzo" ? "almuerzo" : "break";
+      const cupos = (await query("SELECT * FROM public.jornada_cupos WHERE activo = true")).map(cupoFromDB);
+      const cupo = cupos.find((c) => c.tipo === cupoTipo && (!c.areaId || c.areaId === data.areaId));
+      if (cupo && cupo.maxSimultaneos > 0) {
+        const tiposSalida = cupoTipo === "break" ? ["salida_break1", "salida_break2"] : ["salida_almuerzo"];
+        const todosHoy = (
+          await query("SELECT * FROM public.jornada_registros WHERE fecha = $1 ORDER BY hora_exacta", [fecha])
+        ).map(registroFromDB);
+        const porEmpleado = new Map<string, JornadaRegistro[]>();
+        for (const r of todosHoy) {
+          if (!porEmpleado.has(r.employeeId)) porEmpleado.set(r.employeeId, []);
+          porEmpleado.get(r.employeeId)!.push(r);
+        }
+        const enUso = [...porEmpleado.values()].filter(
+          (regs) => tiposSalida.includes(regs[regs.length - 1].tipoMovimiento),
+        ).length;
+        if (enUso >= cupo.maxSimultaneos) {
+          return {
+            ok: false,
+            error: `No es posible iniciar ${cupoTipo}. El límite simultáneo permitido para el área ya fue alcanzado (${cupo.maxSimultaneos} personas).`,
+          };
+        }
+      }
+    }
+
+    const rows = await query(
+      `INSERT INTO public.jornada_registros
+         (employee_id, fecha, hora_exacta, tipo_movimiento, area_id,
+          usuario_registro_id, observaciones, estado, es_modificacion, registro_original_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING *`,
+      [
+        data.employeeId, fecha, horaExacta, data.tipo,
+        data.areaId ?? null, data.usuarioId, data.observaciones ?? null,
+        "valido", false, null,
+      ],
+    );
+    return { ok: true, registro: registroFromDB(rows[0]) };
+  });
 
 const _insertRegistro = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as Omit<JornadaRegistro, "id" | "createdAt">)
@@ -328,6 +448,21 @@ export async function fetchCupos(): Promise<JornadaCupo[]> {
 
 export async function fetchConfiguracion(): Promise<JornadaConfiguracion[]> {
   return _fetchConfiguracion();
+}
+
+export async function fetchServerTime(): Promise<{ nowMs: number }> {
+  return _fetchServerTime();
+}
+
+export async function registrarMovimiento(
+  employeeId: string,
+  tipo: TipoMovimiento,
+  areaId: string | undefined,
+  usuarioId: string,
+  observaciones: string | undefined,
+  areaWorkingDays: number[] | undefined,
+): Promise<{ ok: boolean; error?: string; registro?: JornadaRegistro }> {
+  return _registrarMovimiento({ data: { employeeId, tipo, areaId, usuarioId, observaciones, areaWorkingDays } });
 }
 
 export async function insertRegistro(
