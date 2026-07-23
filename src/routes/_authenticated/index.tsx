@@ -102,15 +102,21 @@ function Dashboard() {
   const ownArea = profile?.areaId ?? null;
   const navigate = useNavigate();
   const { employees, shifts, areas, absences } = useWFM();
-  const { registros, configuracion } = useJornada();
+  const { registros, configuracion, initialized: jornadaInitialized, initFromDB: initJornada, now: serverNow } = useJornada();
 
   const [period, setPeriod]             = useState<Period>("semana");
   const [dateOffset, setDateOffset]     = useState(0);
   const [selectedArea, setSelectedArea] = useState<string>(ownArea ?? "all");
   const [approvals, setApprovals]       = useState<Record<string, string>>({});
 
-  const today    = toISO(new Date());
-  const ws       = useMemo(() => startOfWeek(new Date()), [today]);
+  // KPIs de "hoy" (tardanzas, sin marcar entrada) deben compararse contra la
+  // fecha/hora real del servidor, no contra el reloj del navegador de quien
+  // mira el dashboard — de paso, garantiza que jornada.registros/configuracion
+  // estén cargados aunque el usuario nunca haya visitado /jornada en esta sesión.
+  useEffect(() => { if (!jornadaInitialized) initJornada(); }, [jornadaInitialized, initJornada]);
+
+  const today    = toISO(serverNow());
+  const ws       = useMemo(() => startOfWeek(serverNow()), [today]);
   const days     = useMemo(() => weekDays(ws), [ws]);
   const weekISOs = useMemo(() => days.map(toISO), [days]);
 
@@ -118,7 +124,7 @@ function Dashboard() {
   useEffect(() => { setDateOffset(0); }, [period]);
 
   const dateRange = useMemo((): [string, string] => {
-    const now = new Date();
+    const now = serverNow();
     if (period === "dia") {
       const d = new Date(now);
       d.setDate(d.getDate() + dateOffset);
@@ -134,10 +140,10 @@ function Dashboard() {
     const d = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
     const last = new Date(now.getFullYear(), now.getMonth() + dateOffset + 1, 0);
     return [toISO(d), toISO(last)];
-  }, [period, dateOffset]);
+  }, [period, dateOffset, today]);
 
   const dateLabelText = useMemo(() => {
-    const now = new Date();
+    const now = serverNow();
     const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
     if (period === "dia") {
       const d = new Date(now);
@@ -153,7 +159,7 @@ function Dashboard() {
     }
     const d = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
     return cap(d.toLocaleDateString("es-CO", { month: "long", year: "numeric" }));
-  }, [period, dateOffset]);
+  }, [period, dateOffset, today]);
 
   const effectiveArea = ownArea ?? (selectedArea !== "all" ? selectedArea : null);
   const filteredEmployees = useMemo(
@@ -192,7 +198,7 @@ function Dashboard() {
 
   // ── Período anterior (para deltas comparativos) ──────────────
   const prevDateRange = useMemo((): [string, string] => {
-    const now = new Date();
+    const now = serverNow();
     const prevOffset = dateOffset - 1;
     if (period === "dia") {
       const d = new Date(now);
@@ -209,7 +215,7 @@ function Dashboard() {
     const d = new Date(now.getFullYear(), now.getMonth() + prevOffset, 1);
     const last = new Date(now.getFullYear(), now.getMonth() + prevOffset + 1, 0);
     return [toISO(d), toISO(last)];
-  }, [period, dateOffset]);
+  }, [period, dateOffset, today]);
 
   const prevPeriodShifts = useMemo(
     () => shifts.filter(s =>
@@ -309,14 +315,14 @@ function Dashboard() {
 
     if (period === "dia") return [{ day: t("dashboard_period_today"), ...bdFor(dateRange[0], dateRange[1]) }];
     if (period === "semana") {
-      const now = new Date();
+      const now = serverNow();
       const wsCur = startOfWeek(now);
       wsCur.setDate(wsCur.getDate() + dateOffset * 7);
       const dys = weekDays(wsCur);
       const dow = new Intl.DateTimeFormat(undefined, { weekday: "short" });
       return dys.map(d => ({ day: dow.format(d).slice(0, 2), ...bdFor(toISO(d), toISO(d)) }));
     }
-    const now = new Date();
+    const now = serverNow();
     const first = new Date(now.getFullYear(), now.getMonth() + dateOffset, 1);
     const last  = new Date(now.getFullYear(), now.getMonth() + dateOffset + 1, 0);
     const result: any[] = [];

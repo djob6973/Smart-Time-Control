@@ -6,6 +6,7 @@ import { Topbar } from "@/components/wfm/Topbar";
 import { useAuth } from "@/lib/auth";
 import { useWFM } from "@/lib/wfm/store";
 import { useAvisos } from "@/lib/avisos/store";
+import { useServerClock } from "@/lib/server-time";
 import {
   estadoAviso,
   ESTADO_AVISO_LABELS,
@@ -57,6 +58,13 @@ function AvisosPage() {
   useEffect(() => {
     if (organization?.id && !initialized) initFromDB(organization.id);
   }, [organization?.id, initialized, initFromDB]);
+
+  // El badge de estado (Programado/Activo/Vencido) debe reflejar la hora real
+  // del servidor — la visibilidad real para empleados (listAvisosActivos) ya
+  // usa NOW() del servidor; sin esto, el admin podía ver un estado desalineado
+  // si su reloj local estaba mal.
+  const { now: serverNow, sync: syncClock } = useServerClock();
+  useEffect(() => { syncClock(); }, [syncClock]);
 
   // Tras crear/editar/eliminar, refresca también los avisos vigentes del widget
   // flotante — de lo contrario quedaría desactualizado hasta el próximo poll (60s).
@@ -205,7 +213,7 @@ function AvisosPage() {
         }}
       >
         {filteredAvisos.map((a) => {
-          const estado = estadoAviso(a);
+          const estado = estadoAviso(a, serverNow());
           return (
             <div
               key={a.id}
