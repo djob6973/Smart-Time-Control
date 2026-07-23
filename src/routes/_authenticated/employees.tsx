@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, Pencil, Trash2, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
-import { adminListUsers, adminUpdateUser, type AppUser } from "@/lib/auth/admin.server";
+import { listLinkableUsers, linkEmployeeUser, type LinkableUser } from "@/lib/auth/admin.server";
 import { dispatchEmployeeEvent } from "@/lib/notifications/dispatch";
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -49,9 +49,9 @@ function EmployeesPage() {
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("all");
   const [editing, setEditing]             = useState<string | null>(null);
 
-  const [users, setUsers] = useState<AppUser[]>([]);
-  useEffect(() => { adminListUsers().then(setUsers).catch(() => {}); }, []);
-  function reloadUsers() { adminListUsers().then(setUsers).catch(() => {}); }
+  const [users, setUsers] = useState<LinkableUser[]>([]);
+  useEffect(() => { listLinkableUsers().then(setUsers).catch(() => {}); }, []);
+  function reloadUsers() { listLinkableUsers().then(setUsers).catch(() => {}); }
 
   const userByEmpId = useMemo(
     () => new Map(users.filter(u => u.employeeId).map(u => [u.employeeId!, u])),
@@ -173,17 +173,32 @@ function EmployeesPage() {
                       <td className="px-4 py-3">
                         {(() => {
                           const linked = userByEmpId.get(e.id);
-                          return linked ? (
-                            <div className="flex items-center gap-1.5">
+                          const content = linked ? (
+                            <>
                               <Link2 className="size-3 text-primary shrink-0" />
                               <span className="text-xs font-medium truncate max-w-[140px]" title={linked.email}>
                                 {linked.fullName || linked.email}
                               </span>
-                            </div>
+                            </>
                           ) : (
-                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <>
                               <Unlink className="size-3 shrink-0" />
                               <span className="text-[11px]">{t("employees_not_linked")}</span>
+                            </>
+                          );
+                          // Clic abre el modal de edición (donde vive el selector de
+                          // vínculo) — antes esto era solo texto informativo.
+                          return canEdit ? (
+                            <button
+                              type="button"
+                              onClick={() => setEditing(e.id)}
+                              className={`flex items-center gap-1.5 rounded-md px-1 -mx-1 py-0.5 hover:bg-secondary transition-colors ${linked ? "" : "text-muted-foreground"}`}
+                            >
+                              {content}
+                            </button>
+                          ) : (
+                            <div className={`flex items-center gap-1.5 ${linked ? "" : "text-muted-foreground"}`}>
+                              {content}
                             </div>
                           );
                         })()}
@@ -265,7 +280,7 @@ function EmployeesPage() {
 function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
   const { employees } = useWFM();
   const { t } = useI18n();
-  const currentLinkedUser: AppUser | undefined = users.find((u: AppUser) => u.employeeId === employee?.id);
+  const currentLinkedUser: LinkableUser | undefined = users.find((u: LinkableUser) => u.employeeId === employee?.id);
 
   const [form, setForm] = useState(() => ({
     ...(employee ?? {
@@ -331,10 +346,10 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
     if (linkedUserId !== prevLinkedUserId) {
       try {
         if (prevLinkedUserId) {
-          await adminUpdateUser({ data: { id: prevLinkedUserId, employeeId: null } });
+          await linkEmployeeUser({ data: { userId: prevLinkedUserId, employeeId: null } });
         }
         if (linkedUserId) {
-          await adminUpdateUser({ data: { id: linkedUserId, employeeId: emp.id } });
+          await linkEmployeeUser({ data: { userId: linkedUserId, employeeId: emp.id } });
         }
       } catch (e: any) {
         toast.error(`Error al vincular usuario: ${e.message}`);
@@ -428,7 +443,7 @@ function EmployeeModal({ employee, areas, users, onClose, onSave }: any) {
                 onChange={e => update("linkedUserId", e.target.value)}
               >
                 <option value="">— {t("employees_not_linked")} —</option>
-                {(users as AppUser[])
+                {(users as LinkableUser[])
                   .filter(u => !u.employeeId || u.id === currentLinkedUser?.id)
                   .map(u => (
                     <option key={u.id} value={u.id}>

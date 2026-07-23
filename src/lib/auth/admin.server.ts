@@ -8,7 +8,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { query, queryOne, execute, withTransaction } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
-import { requireAdmin } from "@/lib/server-auth";
+import { requireAdmin, requireAuth, getUserRole } from "@/lib/server-auth";
+import { hasPermission } from "@/lib/permissions";
+import type { RoleName } from "@/lib/permissions";
 
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -94,6 +96,62 @@ export const adminListUsers = createServerFn().handler(async () => {
     }),
   );
 });
+
+// ── Vincular usuario ↔ trabajador (acotado, no requiere admin) ─────
+//
+// La gestión completa de usuarios (rol, área, activo/inactivo) sigue
+// exigiendo admin vía requireAdmin(). Pero vincular/desvincular un usuario
+// a un registro de trabajador es parte de "gestionar trabajadores", así que
+// cualquier rol con permiso employees:edit (ej. supervisor) debe poder
+// hacerlo — sin por eso darle acceso a cambiar roles o áreas de usuarios.
+
+async function requireEmployeesEdit() {
+  const ctx = await requireAuth();
+  const role = await getUserRole(ctx.userId);
+  if (!hasPermission(role as RoleName | null, "employees", "edit")) {
+    throw new Error("No tienes permiso para vincular usuarios a trabajadores.");
+  }
+  return ctx;
+}
+
+export interface LinkableUser {
+  id: string;
+  email: string;
+  fullName: string;
+  employeeId: string | null;
+}
+
+// Listado mínimo (sin rol/área/últimas sesiones) para el selector de
+// "vincular usuario" en Trabajadores — a diferencia de adminListUsers, no
+// requiere ser admin, solo poder editar trabajadores.
+export const listLinkableUsers = createServerFn().handler(async () => {
+  await requireEmployeesEdit();
+  const rows = await query<{ id: string; nombre: string; email: string; employee_id: string | null }>(
+    `SELECT id, nombre, email, employee_id FROM public.user_profiles ORDER BY nombre ASC`,
+  );
+  return rows.map(
+    (r): LinkableUser => ({
+      id: r.id,
+      email: r.email,
+      fullName: r.nombre,
+      employeeId: r.employee_id ?? null,
+    }),
+  );
+});
+
+// Vincula/desvincula un usuario a un trabajador — SOLO toca employee_id,
+// nunca rol/área/estado, así que no sirve para escalar privilegios aunque
+// lo use un rol no-admin.
+export const linkEmployeeUser = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => data as { userId: string; employeeId: string | null })
+  .handler(async ({ data }) => {
+    await requireEmployeesEdit();
+    await execute(
+      `UPDATE public.user_profiles SET employee_id = $1, updated_at = NOW() WHERE id = $2`,
+      [data.employeeId, data.userId],
+    );
+    return { success: true };
+  });
 
 // ── Crear usuario ─────────────────────────────────────────────────
 
