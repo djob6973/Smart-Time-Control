@@ -45,3 +45,38 @@ export async function execute(sql: string, params?: unknown[]): Promise<void> {
   const pool = getPool();
   await pool.query(sql, params);
 }
+
+export interface TxClient {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query<T = any>(sql: string, params?: unknown[]): Promise<T[]>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  queryOne<T = any>(sql: string, params?: unknown[]): Promise<T | null>;
+  execute(sql: string, params?: unknown[]): Promise<void>;
+}
+
+/**
+ * Ejecuta varias escrituras dentro de una sola transacción (BEGIN/COMMIT/ROLLBACK)
+ * sobre la MISMA conexión — usar para cualquier operación "lógicamente atómica"
+ * (más de un INSERT/UPDATE que deban tener éxito o fallar juntos). Sin esto,
+ * un fallo a mitad de camino deja la base de datos en un estado parcial.
+ */
+export async function withTransaction<T>(fn: (tx: TxClient) => Promise<T>): Promise<T> {
+  const pool = getPool();
+  const client = await pool.connect();
+  const tx: TxClient = {
+    query: async (sql, params) => (await client.query(sql, params)).rows,
+    queryOne: async (sql, params) => (await client.query(sql, params)).rows[0] ?? null,
+    execute: async (sql, params) => { await client.query(sql, params); },
+  };
+  try {
+    await client.query("BEGIN");
+    const result = await fn(tx);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}

@@ -38,6 +38,7 @@ interface WFMState {
   upsertArea: (a: Area) => void;
   removeArea: (id: string) => void;
   upsertAbsence: (a: Absence) => void;
+  decideAbsence: (id: string, status: "aprobada" | "rechazada", note?: string) => Promise<{ ok: boolean; error?: string }>;
   removeAbsence: (id: string) => void;
 
   setShift: (employeeId: string, date: string, patch: Partial<Shift>) => void;
@@ -136,6 +137,25 @@ export const useWFM = create<WFMState>()((set, get) => ({
         : [...s.absences, a],
     }));
     db.upsertAbsence(a).catch(dbErr("ausencia"));
+  },
+
+  // Aprobar/rechazar: espera la confirmación del servidor antes de tocar el
+  // estado local (a diferencia de upsertAbsence, que es optimista) — si otro
+  // supervisor ya decidió esta ausencia, el servidor lo rechaza y no debemos
+  // pisar su decisión con la nuestra.
+  decideAbsence: async (id, status, note) => {
+    try {
+      const result = await db.decideAbsence(id, status, note);
+      if (result.ok && result.absence) {
+        set((s) => ({ absences: s.absences.map((a) => (a.id === id ? result.absence! : a)) }));
+        return { ok: true };
+      }
+      if (result.error) toast.error(result.error);
+      return { ok: false, error: result.error };
+    } catch (err) {
+      dbErr("ausencia")(err);
+      return { ok: false, error: "No se pudo guardar la decisión." };
+    }
   },
 
   removeAbsence: (id) => {
@@ -572,10 +592,11 @@ export const useWFM = create<WFMState>()((set, get) => ({
       ],
     }));
 
-    [newA, newB].forEach(sh => {
-      if (sh.code === "OFF") db.removeShift(sh.employeeId, sh.date).catch(dbErr("intercambio"));
-      else db.upsertShift(sh, get().currentUserId).catch(dbErr("intercambio"));
-    });
+    // Ambos lados se escriben en una sola transacción server-side — si uno
+    // fallara, el otro no debe quedar aplicado a medias.
+    const upserts  = [newA, newB].filter(sh => sh.code !== "OFF");
+    const removals = [newA, newB].filter(sh => sh.code === "OFF").map(sh => ({ employeeId: sh.employeeId, date: sh.date }));
+    db.applyShiftChanges(upserts, removals, get().currentUserId).catch(dbErr("intercambio"));
 
     return "ok";
   },

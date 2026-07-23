@@ -507,7 +507,7 @@ function AbsenceFormModal({ employees, initial, onClose, onSave }: {
 /*  Page                                                                */
 /* ------------------------------------------------------------------ */
 function AbsencesPage() {
-  const { absences, employees, areas, shifts, upsertAbsence, removeAbsence, clearShift, setShift } = useWFM();
+  const { absences, employees, areas, shifts, upsertAbsence, decideAbsence, removeAbsence, clearShift, setShift } = useWFM();
   const { hasPermission, hasLimit, profile } = useAuth();
   const { t } = useI18n();
 
@@ -604,28 +604,25 @@ function AbsencesPage() {
     .filter(a => (a.status ?? "pendiente") === "aprobada")
     .reduce((s, a) => s + countDays(a), 0);
 
-  function handleDecide(id: string, status: AbsenceStatus, note?: string) {
+  async function handleDecide(id: string, status: AbsenceStatus, note?: string) {
     const a = absences.find(ab => ab.id === id);
     if (!a) return;
-    upsertAbsence({
-      ...a,
-      status,
-      decisionNote: note ?? undefined,
-      decidedBy: profile?.fullName ?? undefined,
-      decidedAt: new Date().toISOString(),
-    });
-    if (status === "aprobada" || status === "rechazada") {
-      const emp = employees.find(e => e.id === a.employeeId);
-      dispatchAbsenceEvent({ data: {
-        event: status === "aprobada" ? "absence_approved" : "absence_rejected",
-        employeeId: a.employeeId,
-        employeeName: emp?.fullName ?? "",
-        absenceType: a.type,
-        startDate: a.startDate,
-        endDate: a.endDate,
-        ...(note ? { note } : {}),
-      }}).catch(e => console.error("[notif:absence]", e?.message ?? e));
-    }
+    if (status !== "aprobada" && status !== "rechazada") return;
+    // decidedBy/decidedAt los calcula el servidor (sesión + reloj real), y la
+    // decisión solo se aplica si la ausencia sigue "pendiente" — evita que dos
+    // supervisores decidiendo casi al mismo tiempo se pisen sin darse cuenta.
+    const result = await decideAbsence(id, status, note);
+    if (!result.ok) return;
+    const emp = employees.find(e => e.id === a.employeeId);
+    dispatchAbsenceEvent({ data: {
+      event: status === "aprobada" ? "absence_approved" : "absence_rejected",
+      employeeId: a.employeeId,
+      employeeName: emp?.fullName ?? "",
+      absenceType: a.type,
+      startDate: a.startDate,
+      endDate: a.endDate,
+      ...(note ? { note } : {}),
+    }}).catch(e => console.error("[notif:absence]", e?.message ?? e));
   }
 
   // Sync ABS shift records when an absence is edited or deleted.

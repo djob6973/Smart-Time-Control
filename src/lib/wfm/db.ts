@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { query, execute } from "@/lib/db";
+import { query, queryOne, execute, withTransaction } from "@/lib/db";
+import { requireAuth } from "@/lib/server-auth";
 import type { Area, Employee, Absence, Shift, ShiftHistory } from "./types";
 
 // ── Mappers camelCase ↔ snake_case ────────────────────────────
@@ -170,24 +171,71 @@ const _upsertShift = createServerFn({ method: "POST" })
 const _upsertShiftsBatch = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as { shifts: Shift[]; userId?: string | null })
   .handler(async ({ data: { shifts, userId } }) => {
-    for (const s of shifts) {
-      await execute(
-        `INSERT INTO public.shifts
-           (id, employee_id, date, start_hour, end_hour, break_minutes, code, locked, note)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         ON CONFLICT (employee_id, date) DO UPDATE SET
-           id=$1, start_hour=$4, end_hour=$5, break_minutes=$6, code=$7, locked=$8, note=$9`,
-        [s.id, s.employeeId, s.date, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
-      );
-    }
-    for (const s of shifts) {
-      await execute(
-        `INSERT INTO public.shift_history
-           (shift_id, employee_id, date, changed_by, start_hour, end_hour, break_minutes, code, locked, note)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [s.id, s.employeeId, s.date, userId ?? null, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
-      ).catch((err: unknown) => console.error("shift_history batch insert failed:", err));
-    }
+    // Todo el lote se aplica en una sola transacción: sin esto, un fallo a
+    // mitad de un lote de cientos de turnos dejaba el calendario a medio
+    // generar/guardar, distinto de lo que el usuario vio en pantalla.
+    await withTransaction(async (tx) => {
+      for (const s of shifts) {
+        await tx.execute(
+          `INSERT INTO public.shifts
+             (id, employee_id, date, start_hour, end_hour, break_minutes, code, locked, note)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           ON CONFLICT (employee_id, date) DO UPDATE SET
+             id=$1, start_hour=$4, end_hour=$5, break_minutes=$6, code=$7, locked=$8, note=$9`,
+          [s.id, s.employeeId, s.date, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
+        );
+      }
+      for (const s of shifts) {
+        await tx.execute(
+          `INSERT INTO public.shift_history
+             (shift_id, employee_id, date, changed_by, start_hour, end_hour, break_minutes, code, locked, note)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [s.id, s.employeeId, s.date, userId ?? null, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
+        );
+      }
+    });
+  });
+
+// Aplica varios cambios de turno (upserts + eliminaciones) en una sola
+// transacción — usado por el intercambio de turnos entre dos empleados, que
+// antes hacía dos llamadas independientes y podía dejar el intercambio a
+// medias (uno de los dos con el turno nuevo, el otro con el viejo) si la
+// segunda escritura fallaba.
+const _applyShiftChanges = createServerFn({ method: "POST" })
+  .inputValidator(
+    (d: unknown) => d as {
+      upserts: Shift[];
+      removals: { employeeId: string; date: string }[];
+      userId?: string | null;
+    },
+  )
+  .handler(async ({ data: { upserts, removals, userId } }) => {
+    await withTransaction(async (tx) => {
+      for (const s of upserts) {
+        await tx.execute(
+          `INSERT INTO public.shifts
+             (id, employee_id, date, start_hour, end_hour, break_minutes, code, locked, note)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           ON CONFLICT (employee_id, date) DO UPDATE SET
+             id=$1, start_hour=$4, end_hour=$5, break_minutes=$6, code=$7, locked=$8, note=$9`,
+          [s.id, s.employeeId, s.date, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
+        );
+      }
+      for (const r of removals) {
+        await tx.execute(
+          "DELETE FROM public.shifts WHERE employee_id = $1 AND date = $2",
+          [r.employeeId, r.date],
+        );
+      }
+      for (const s of upserts) {
+        await tx.execute(
+          `INSERT INTO public.shift_history
+             (shift_id, employee_id, date, changed_by, start_hour, end_hour, break_minutes, code, locked, note)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [s.id, s.employeeId, s.date, userId ?? null, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
+        );
+      }
+    });
   });
 
 const _fetchShiftHistory = createServerFn({ method: "GET" })
@@ -238,6 +286,41 @@ const _upsertAbsence = createServerFn({ method: "POST" })
         a.decisionNote ?? null, a.decidedBy ?? null, a.decidedAt ?? null,
       ],
     );
+  });
+
+// Aprobar/rechazar una ausencia: a diferencia de upsertAbsence (que sobrescribe
+// el registro completo tal como lo arma el cliente), esto exige que la ausencia
+// SIGA pendiente al momento de decidir (evita que dos supervisores decidiendo
+// casi al mismo tiempo se pisen sin darse cuenta) y calcula "quién/cuándo" con
+// la sesión y el reloj del servidor, nunca con lo que envíe el cliente.
+const _decideAbsence = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      id: z.string(),
+      status: z.enum(["aprobada", "rechazada"]),
+      decisionNote: z.string().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const ctx = await requireAuth();
+    const caller = await queryOne<{ nombre: string }>(
+      `SELECT nombre FROM public.user_profiles WHERE id = $1`,
+      [ctx.userId],
+    );
+    const rows = await query(
+      `UPDATE public.absences
+       SET status = $1, decision_note = $2, decided_by = $3, decided_at = NOW()
+       WHERE id = $4 AND status = 'pendiente'
+       RETURNING *`,
+      [data.status, data.decisionNote ?? null, caller?.nombre ?? ctx.email, data.id],
+    );
+    if (!rows[0]) {
+      return {
+        ok: false,
+        error: "Esta ausencia ya fue decidida por otro usuario. Recarga para ver el estado actual.",
+      };
+    }
+    return { ok: true, absence: absenceFromDB(rows[0]) };
   });
 
 const _removeArea = createServerFn({ method: "POST" })
@@ -305,10 +388,12 @@ const _upsertApproval = createServerFn({ method: "POST" })
   });
 
 const _clearAllData = createServerFn({ method: "POST" }).handler(async () => {
-  await execute("DELETE FROM public.shifts");
-  await execute("DELETE FROM public.absences");
-  await execute("DELETE FROM public.employees");
-  await execute("DELETE FROM public.areas");
+  await withTransaction(async (tx) => {
+    await tx.execute("DELETE FROM public.shifts");
+    await tx.execute("DELETE FROM public.absences");
+    await tx.execute("DELETE FROM public.employees");
+    await tx.execute("DELETE FROM public.areas");
+  });
 });
 
 const _seedAllData = createServerFn({ method: "POST" })
@@ -316,48 +401,50 @@ const _seedAllData = createServerFn({ method: "POST" })
     (d: unknown) => d as { areas: Area[]; employees: Employee[]; absences: Absence[]; shifts: Shift[] },
   )
   .handler(async ({ data }) => {
-    for (const a of data.areas) {
-      await execute(
-        `INSERT INTO public.areas
-           (id, name, leader, start_hour, end_hour, working_days, max_hours_day,
-            max_hours_week, max_hours_month, allow_overtime, allow_sunday,
-            min_rest_hours, coverage_requirements, enable_coverage_mode)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-         ON CONFLICT (id) DO NOTHING`,
-        [
-          a.id, a.name, a.leader, a.startHour, a.endHour, a.workingDays,
-          a.maxHoursDay, a.maxHoursWeek, a.maxHoursMonth, a.allowOvertime,
-          a.allowSunday, a.minRestHours, JSON.stringify(a.coverageRequirements), a.enableCoverageMode,
-        ],
-      );
-    }
-    for (const e of data.employees) {
-      await execute(
-        `INSERT INTO public.employees
-           (id, full_name, document_id, position, area_id, leader, status, contract_type, hire_date, availability)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-         ON CONFLICT (id) DO NOTHING`,
-        [e.id, e.fullName, e.documentId, e.position, e.areaId ?? null, e.leader, e.status, e.contractType, e.hireDate, JSON.stringify(e.availability)],
-      );
-    }
-    for (const a of data.absences) {
-      await execute(
-        `INSERT INTO public.absences
-           (id, employee_id, type, start_date, end_date, start_hour, end_hour, reason, status)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         ON CONFLICT (id) DO NOTHING`,
-        [a.id, a.employeeId, a.type, a.startDate, a.endDate, a.startHour ?? null, a.endHour ?? null, a.reason, a.status ?? "pendiente"],
-      );
-    }
-    for (const s of data.shifts) {
-      await execute(
-        `INSERT INTO public.shifts
-           (id, employee_id, date, start_hour, end_hour, break_minutes, code, locked, note)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-         ON CONFLICT (id) DO NOTHING`,
-        [s.id, s.employeeId, s.date, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
-      );
-    }
+    await withTransaction(async (tx) => {
+      for (const a of data.areas) {
+        await tx.execute(
+          `INSERT INTO public.areas
+             (id, name, leader, start_hour, end_hour, working_days, max_hours_day,
+              max_hours_week, max_hours_month, allow_overtime, allow_sunday,
+              min_rest_hours, coverage_requirements, enable_coverage_mode)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            a.id, a.name, a.leader, a.startHour, a.endHour, a.workingDays,
+            a.maxHoursDay, a.maxHoursWeek, a.maxHoursMonth, a.allowOvertime,
+            a.allowSunday, a.minRestHours, JSON.stringify(a.coverageRequirements), a.enableCoverageMode,
+          ],
+        );
+      }
+      for (const e of data.employees) {
+        await tx.execute(
+          `INSERT INTO public.employees
+             (id, full_name, document_id, position, area_id, leader, status, contract_type, hire_date, availability)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           ON CONFLICT (id) DO NOTHING`,
+          [e.id, e.fullName, e.documentId, e.position, e.areaId ?? null, e.leader, e.status, e.contractType, e.hireDate, JSON.stringify(e.availability)],
+        );
+      }
+      for (const a of data.absences) {
+        await tx.execute(
+          `INSERT INTO public.absences
+             (id, employee_id, type, start_date, end_date, start_hour, end_hour, reason, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           ON CONFLICT (id) DO NOTHING`,
+          [a.id, a.employeeId, a.type, a.startDate, a.endDate, a.startHour ?? null, a.endHour ?? null, a.reason, a.status ?? "pendiente"],
+        );
+      }
+      for (const s of data.shifts) {
+        await tx.execute(
+          `INSERT INTO public.shifts
+             (id, employee_id, date, start_hour, end_hour, break_minutes, code, locked, note)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           ON CONFLICT (id) DO NOTHING`,
+          [s.id, s.employeeId, s.date, s.start, s.end, s.breakMinutes, s.code, s.locked ?? false, s.note ?? null],
+        );
+      }
+    });
   });
 
 // ── Exports públicos con la misma firma que antes ─────────────
@@ -395,12 +482,29 @@ export async function upsertShiftsBatch(shifts: Shift[], userId?: string | null)
   await _upsertShiftsBatch({ data: { shifts, userId } });
 }
 
+export async function applyShiftChanges(
+  upserts: Shift[],
+  removals: { employeeId: string; date: string }[],
+  userId?: string | null,
+): Promise<void> {
+  if (!upserts.length && !removals.length) return;
+  await _applyShiftChanges({ data: { upserts, removals, userId } });
+}
+
 export async function fetchShiftHistory(employeeId: string, date: string): Promise<ShiftHistory[]> {
   return _fetchShiftHistory({ data: { employeeId, date } });
 }
 
 export async function upsertAbsence(a: Absence): Promise<void> {
   await _upsertAbsence({ data: a });
+}
+
+export async function decideAbsence(
+  id: string,
+  status: "aprobada" | "rechazada",
+  decisionNote?: string,
+): Promise<{ ok: boolean; error?: string; absence?: Absence }> {
+  return _decideAbsence({ data: { id, status, decisionNote } });
 }
 
 export async function removeArea(id: string): Promise<void> {

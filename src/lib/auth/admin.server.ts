@@ -6,7 +6,7 @@
 //   DATABASE_URL → para todos los datos y autenticación
 
 import { createServerFn } from "@tanstack/react-start";
-import { query, queryOne, execute } from "@/lib/db";
+import { query, queryOne, execute, withTransaction } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireAdmin } from "@/lib/server-auth";
 
@@ -124,27 +124,30 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     if (!roleRows[0]) throw new Error(`Rol no encontrado: ${data.roleId}`);
     const roleUUID = roleRows[0].id;
 
-    // Crear perfil
-    await execute(
-      `INSERT INTO public.user_profiles
-         (id, email, nombre, full_name, activo, is_active, password_hash, role_id, area_id, employee_id)
-       VALUES ($1, $2, $3, $3, true, true, $4, $5, $6, $7)`,
-      [userId, email, data.fullName, passwordHash, roleUUID, data.areaId ?? null, data.employeeId ?? null],
-    );
+    // Perfil + rol + membresía de organización deben crearse juntos: si alguno
+    // falla a mitad de camino, un usuario huérfano (sin rol u organización)
+    // queda inutilizable. Una sola transacción evita ese estado parcial.
+    await withTransaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO public.user_profiles
+           (id, email, nombre, full_name, activo, is_active, password_hash, role_id, area_id, employee_id)
+         VALUES ($1, $2, $3, $3, true, true, $4, $5, $6, $7)`,
+        [userId, email, data.fullName, passwordHash, roleUUID, data.areaId ?? null, data.employeeId ?? null],
+      );
 
-    // Asignar rol
-    await execute(
-      `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
-       VALUES ($1, $2, $3, NOW()) ON CONFLICT DO NOTHING`,
-      [userId, roleUUID, DEFAULT_ORG_ID],
-    );
+      await tx.execute(
+        `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
+         VALUES ($1, $2, $3, NOW()) ON CONFLICT (user_id) DO UPDATE SET
+           role_id = EXCLUDED.role_id, organization_id = EXCLUDED.organization_id, assigned_at = NOW()`,
+        [userId, roleUUID, DEFAULT_ORG_ID],
+      );
 
-    // Vincular a la organización por defecto
-    await execute(
-      `INSERT INTO public.user_organizations (user_id, organization_id, activo)
-       VALUES ($1, $2, true) ON CONFLICT (user_id, organization_id) DO UPDATE SET activo = true`,
-      [userId, DEFAULT_ORG_ID],
-    );
+      await tx.execute(
+        `INSERT INTO public.user_organizations (user_id, organization_id, activo)
+         VALUES ($1, $2, true) ON CONFLICT (user_id, organization_id) DO UPDATE SET activo = true`,
+        [userId, DEFAULT_ORG_ID],
+      );
+    });
 
     return { id: userId, email };
   });
@@ -179,10 +182,10 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
       );
     }
 
-    // Actualizar asignación de rol en user_roles
+    // Actualizar asignación de rol en user_roles — UPSERT atómico sobre
+    // UNIQUE(user_id) en vez de DELETE + INSERT, para no dejar al usuario sin
+    // rol si el INSERT falla, ni con dos roles si dos cambios se solapan.
     if (data.roleId !== undefined) {
-      await execute(`DELETE FROM public.user_roles WHERE user_id = $1`, [data.id]);
-
       if (data.roleId) {
         const roleRows = await query<{ id: string }>(
           `SELECT id FROM public.roles WHERE nombre = $1`,
@@ -192,9 +195,15 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
 
         await execute(
           `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
-           VALUES ($1, $2, $3, NOW())`,
+           VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (user_id) DO UPDATE SET
+             role_id = EXCLUDED.role_id,
+             organization_id = EXCLUDED.organization_id,
+             assigned_at = NOW()`,
           [data.id, roleRows[0].id, DEFAULT_ORG_ID],
         );
+      } else {
+        await execute(`DELETE FROM public.user_roles WHERE user_id = $1`, [data.id]);
       }
     }
 

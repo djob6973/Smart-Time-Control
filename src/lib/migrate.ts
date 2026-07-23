@@ -243,6 +243,28 @@ export async function runMigration(): Promise<void> {
 
   await execute(`CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON public.user_roles(user_id)`);
 
+  // Un usuario solo debe tener un rol a la vez, pero el PK compuesto (user_id, role_id)
+  // no lo garantizaba: un DELETE+INSERT no atómico (ver dbAssignRole/adminUpdateUser)
+  // podía dejar dos filas para el mismo usuario si dos cambios de rol chocaban.
+  // Deduplicar primero (conservando la asignación más reciente) para poder forzar
+  // la restricción sin que falle sobre datos ya duplicados.
+  await execute(`
+    DELETE FROM public.user_roles a
+    USING public.user_roles b
+    WHERE a.user_id = b.user_id
+      AND (a.assigned_at, a.ctid) < (b.assigned_at, b.ctid)
+  `);
+  await execute(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'user_roles_user_id_key'
+      ) THEN
+        ALTER TABLE public.user_roles ADD CONSTRAINT user_roles_user_id_key UNIQUE (user_id);
+      END IF;
+    END $$;
+  `);
+
   await execute(`
     CREATE TABLE IF NOT EXISTS public.user_organizations (
       user_id         UUID        NOT NULL,

@@ -111,15 +111,15 @@ export async function upsertUser(email: string): Promise<AuthContext> {
       `SELECT id FROM public.roles WHERE nombre = 'admin' LIMIT 1`,
     );
     if (adminRole) {
-      // Reemplaza cualquier rol existente por admin para garantizar el acceso
-      await execute(
-        `DELETE FROM public.user_roles WHERE user_id = $1`,
-        [user.id],
-      ).catch(() => {});
+      // UPSERT atómico sobre UNIQUE(user_id): nunca deja al usuario sin rol a
+      // mitad de camino (a diferencia de un DELETE + INSERT en dos pasos).
       await execute(
         `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
          VALUES ($1, $2, $3, NOW())
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT (user_id) DO UPDATE SET
+           role_id = EXCLUDED.role_id,
+           organization_id = EXCLUDED.organization_id,
+           assigned_at = NOW()`,
         [user.id, adminRole.id, DEFAULT_ORG_ID],
       ).catch(() => {});
     }

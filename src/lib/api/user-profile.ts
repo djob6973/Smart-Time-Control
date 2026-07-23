@@ -245,13 +245,16 @@ export const dbAssignRole = createServerFn({ method: "POST" })
     if (!roleRows[0]) throw new Error(`Rol no encontrado: ${data.roleNombre}`);
     const roleId = roleRows[0].id;
 
-    await execute(
-      `DELETE FROM public.user_roles WHERE user_id = $1`,
-      [data.userId],
-    );
+    // UPSERT atómico sobre UNIQUE(user_id) en vez de DELETE + INSERT: evita que
+    // el usuario quede sin rol si el INSERT falla, o con dos roles si dos
+    // cambios de rol se solapan.
     await execute(
       `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
-       VALUES ($1, $2, $3, NOW())`,
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         role_id = EXCLUDED.role_id,
+         organization_id = EXCLUDED.organization_id,
+         assigned_at = NOW()`,
       [data.userId, roleId, orgId],
     );
     return { success: true };
