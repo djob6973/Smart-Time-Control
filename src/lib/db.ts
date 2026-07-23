@@ -23,6 +23,20 @@ export function getPool(): Pool {
     _pool = new Pool({
       connectionString,
       ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      // Sin esto, un intento de conexión que no consigue cliente (BD caída o
+      // saturada) se queda colgado indefinidamente en vez de fallar rápido —
+      // el navegador ve eso como "Failed to fetch" tras su propio timeout.
+      connectionTimeoutMillis: 10_000,
+    });
+    // CRÍTICO: sin este listener, un error en un cliente INACTIVO del pool
+    // (ej. Postgres cierra la conexión por detrás) se propaga como excepción
+    // no capturada de Node y tumba TODO el proceso — la causa más probable
+    // del "Failed to fetch" intermitente reportado (el contenedor se
+    // reinicia a mitad de otras peticiones en curso).
+    _pool.on("error", (err) => {
+      console.error("[pg pool] error en cliente inactivo:", err);
     });
   }
   return _pool;
