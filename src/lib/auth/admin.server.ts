@@ -8,6 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { query, queryOne, execute } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { requireAdmin } from "@/lib/server-auth";
 
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -47,6 +48,7 @@ export interface UpdateUserInput {
 // ── Listar todos los usuarios ──────────────────────────────────────
 
 export const adminListUsers = createServerFn().handler(async () => {
+  await requireAdmin();
   const [profileRows, sessionRows] = await Promise.all([
     query<{
       id: string;
@@ -100,6 +102,7 @@ import { randomUUID } from "node:crypto";
 export const adminCreateUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as CreateUserInput)
   .handler(async ({ data }: { data: CreateUserInput }) => {
+    await requireAdmin();
     const email = typeof data?.email === "string" ? data.email.trim().toLowerCase() : undefined;
     const password = typeof data?.password === "string" ? data.password : undefined;
 
@@ -151,6 +154,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
 export const adminUpdateUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as UpdateUserInput)
   .handler(async ({ data }: { data: UpdateUserInput }) => {
+    await requireAdmin();
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -200,6 +204,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
 export const adminDeleteUser = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(`DELETE FROM public.sessions WHERE user_id = $1`, [data.id]);
     await execute(`DELETE FROM public.user_roles WHERE user_id = $1`, [data.id]);
     await execute(`DELETE FROM public.user_organizations WHERE user_id = $1`, [data.id]);
@@ -230,6 +235,7 @@ export interface CreateRoleInput {
 export const adminLoadRoles = createServerFn()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async (): Promise<any> => {
+    await requireAdmin();
     return query(
       `SELECT id, nombre, descripcion, permisos FROM public.roles ORDER BY created_at ASC`,
     );
@@ -238,6 +244,7 @@ export const adminLoadRoles = createServerFn()
 export const adminUpdateRole = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as UpdateRoleInput)
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(
       `UPDATE public.roles SET permisos = $1 WHERE id = $2`,
       [JSON.stringify(data.permisos), data.id],
@@ -248,6 +255,7 @@ export const adminUpdateRole = createServerFn({ method: "POST" })
 export const adminCreateRole = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as CreateRoleInput)
   .handler(async ({ data }) => {
+    await requireAdmin();
     const rows = await query<{ id: string }>(
       `INSERT INTO public.roles (nombre, descripcion, permisos) VALUES ($1, $2, $3) RETURNING id`,
       [data.nombre, data.descripcion, JSON.stringify(data.permisos)],
@@ -258,6 +266,7 @@ export const adminCreateRole = createServerFn({ method: "POST" })
 export const adminDeleteRole = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(`DELETE FROM public.roles WHERE id = $1`, [data.id]);
     return { success: true };
   });
@@ -296,6 +305,7 @@ export const adminListOrgMembers = createServerFn()
   .inputValidator((data: unknown) => data as { orgId: string })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async ({ data }): Promise<any> => {
+    await requireAdmin();
     return query(
       `SELECT uo.user_id as "userId", up.email, up.nombre as "fullName", uo.creado_en as "joinedAt"
        FROM public.user_organizations uo
@@ -308,6 +318,7 @@ export const adminListOrgMembers = createServerFn()
 export const adminUpdateOrg = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as UpdateOrgInput)
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(
       `UPDATE public.organizations SET nombre = $1, actualizado_en = NOW() WHERE id = $2`,
       [data.nombre, data.id],
@@ -318,6 +329,7 @@ export const adminUpdateOrg = createServerFn({ method: "POST" })
 export const adminCreateOrg = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as CreateOrgInput)
   .handler(async ({ data }) => {
+    await requireAdmin();
     const slug = toSlug(data.nombre) + "-" + Math.random().toString(36).slice(2, 8);
 
     const orgRows = await query<{ id: string }>(
@@ -350,6 +362,7 @@ export const adminCreateOrg = createServerFn({ method: "POST" })
 export const adminAddOrgMember = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { orgId: string; email: string })
   .handler(async ({ data }) => {
+    await requireAdmin();
     const profile = await queryOne<{ id: string }>(
       `SELECT id FROM public.user_profiles WHERE email = $1`,
       [data.email.trim().toLowerCase()],
@@ -368,6 +381,7 @@ export const adminAddOrgMember = createServerFn({ method: "POST" })
 export const adminRemoveOrgMember = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { orgId: string; userId: string })
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(
       `UPDATE public.user_organizations SET activo = false
        WHERE user_id = $1 AND organization_id = $2`,
@@ -381,6 +395,7 @@ export const adminRemoveOrgMember = createServerFn({ method: "POST" })
 export const adminResetPassword = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => data as { id: string; newPassword: string })
   .handler(async ({ data }: { data: { id: string; newPassword: string } }) => {
+    await requireAdmin();
     if (!data.newPassword || data.newPassword.length < 8) {
       throw new Error("La contraseña debe tener al menos 8 caracteres");
     }

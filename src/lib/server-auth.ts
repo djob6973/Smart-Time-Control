@@ -42,6 +42,45 @@ export function resolveEmail(req: Request): string | null {
   return null;
 }
 
+export class AuthError extends Error {}
+
+/**
+ * Exige una sesión válida (derivada del header de perímetro, nunca de un dato
+ * enviado por el cliente) y devuelve la identidad real de quien llama.
+ * Usar en TODO server function que actúe en nombre de "quien hace la llamada".
+ */
+export async function requireAuth(): Promise<AuthContext> {
+  const ctx = await getAuthContext();
+  if (!ctx) throw new AuthError("No autenticado.");
+  return ctx;
+}
+
+/** Rol actual del usuario (el más reciente si tuviera más de uno asignado). */
+export async function getUserRole(userId: string): Promise<string | null> {
+  const row = await queryOne<{ nombre: string }>(
+    `SELECT r.nombre FROM public.user_roles ur
+     JOIN public.roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1
+     ORDER BY ur.assigned_at DESC LIMIT 1`,
+    [userId],
+  );
+  return row?.nombre ?? null;
+}
+
+/**
+ * Exige que quien llama esté autenticado Y tenga rol admin — el mismo chequeo
+ * server-side que ya se usa en /api/settings/* (auth-handlers.ts), aplicado a
+ * las server functions de administración. Nunca confiar en un rol/permiso
+ * calculado en el cliente: la UI puede ocultar botones, pero cualquier server
+ * function sigue siendo un endpoint HTTP invocable directamente.
+ */
+export async function requireAdmin(): Promise<AuthContext> {
+  const ctx = await requireAuth();
+  const role = await getUserRole(ctx.userId);
+  if (role !== "admin") throw new AuthError("Acceso denegado: se requiere rol de administrador.");
+  return ctx;
+}
+
 /**
  * Crea o actualiza el usuario en user_profiles y aplica roles de ADMIN_EMAILS.
  * Idempotente — se puede llamar en cada request sin efectos secundarios.

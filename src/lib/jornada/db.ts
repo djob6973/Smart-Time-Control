@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { query, execute } from "@/lib/db";
+import { query, queryOne, execute } from "@/lib/db";
 import type {
   JornadaRegistro,
   JornadaModificacion,
@@ -11,6 +11,9 @@ import type {
   TipoMovimiento,
 } from "./types";
 import { resolveJornadaConfig, FLUJO_VALIDO, bogotaParts } from "./rules";
+import { requireAuth, getUserRole } from "@/lib/server-auth";
+import { hasPermission } from "@/lib/permissions";
+import type { RoleName } from "@/lib/permissions";
 
 // ── Mappers ────────────────────────────────────────────────
 
@@ -188,6 +191,24 @@ const _registrarMovimiento = createServerFn({ method: "POST" })
     areaWorkingDays: z.array(z.number()).optional(),
   }))
   .handler(async ({ data }) => {
+    // La identidad de quien registra nunca se toma de `data.usuarioId` (el
+    // cliente podría falsificar el audit trail); se deriva de la sesión real.
+    const ctx = await requireAuth();
+
+    // Un empleado solo puede marcar su propia jornada, salvo que su rol tenga
+    // permiso explícito para registrar movimientos de otros (uso admin/supervisor).
+    const callerProfile = await queryOne<{ employee_id: string | null }>(
+      `SELECT employee_id FROM public.user_profiles WHERE id = $1`,
+      [ctx.userId],
+    );
+    const isSelf = !!callerProfile?.employee_id && callerProfile.employee_id === data.employeeId;
+    if (!isSelf) {
+      const role = await getUserRole(ctx.userId);
+      if (!hasPermission(role as RoleName | null, "jornada_registro", "edit")) {
+        return { ok: false, error: "No tienes permiso para registrar movimientos de otro empleado." };
+      }
+    }
+
     const { fecha, horaExacta, hhmm, dow } = bogotaParts(Date.now());
 
     const config = resolveJornadaConfig(
@@ -274,7 +295,7 @@ const _registrarMovimiento = createServerFn({ method: "POST" })
        RETURNING *`,
       [
         data.employeeId, fecha, horaExacta, data.tipo,
-        data.areaId ?? null, data.usuarioId, data.observaciones ?? null,
+        data.areaId ?? null, ctx.userId, data.observaciones ?? null,
         "valido", false, null,
       ],
     );

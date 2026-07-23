@@ -3,6 +3,7 @@ import { z } from "zod";
 import { query, queryOne, execute } from "@/lib/db";
 import type { RoleName, AccessLimits } from "@/lib/permissions";
 import { DEFAULT_LIMITS, DEFAULT_LIMITS_BY_ROLE } from "@/lib/permissions";
+import { requireAuth, requireAdmin } from "@/lib/server-auth";
 
 // ── Tipos ──────────────────────────────────────────────────────────
 
@@ -48,22 +49,26 @@ export interface UserDataResult {
 export const getUserRolesAndOrgs = createServerFn({ method: "GET" })
   .inputValidator(z.object({ userId: z.string() }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .handler(async ({ data }): Promise<any> => {
+  .handler(async (): Promise<any> => {
+    // El userId nunca se toma del cliente: se deriva de la sesión real para
+    // evitar que un usuario consulte el rol/organización de otro (IDOR).
+    const ctx = await requireAuth();
+    const userId = ctx.userId;
     const [roleRows, orgRows] = await Promise.all([
       query(
         `SELECT r.nombre, r.permisos
          FROM public.user_roles ur
          JOIN public.roles r ON r.id = ur.role_id
          WHERE ur.user_id = $1
-         LIMIT 1`,
-        [data.userId],
+         ORDER BY ur.assigned_at DESC LIMIT 1`,
+        [userId],
       ),
       query<OrgRow>(
         `SELECT o.id, o.nombre, o.slug, o.activo, o.config, o.logo_data
          FROM public.user_organizations uo
          JOIN public.organizations o ON o.id = uo.organization_id
          WHERE uo.user_id = $1 AND uo.activo = true`,
-        [data.userId],
+        [userId],
       ),
     ]);
 
@@ -99,12 +104,15 @@ export const getUserRolesAndOrgs = createServerFn({ method: "GET" })
 export const getUserProfile = createServerFn({ method: "GET" })
   .inputValidator(z.object({ userId: z.string() }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .handler(async ({ data }): Promise<any> => {
+  .handler(async (): Promise<any> => {
+    // Igual que arriba: siempre el propio perfil de la sesión, nunca el de un
+    // userId arbitrario enviado por el cliente.
+    const ctx = await requireAuth();
     return queryOne(
       `SELECT id, email, nombre, full_name, activo, is_active, area_id, employee_id
        FROM public.user_profiles
        WHERE id = $1`,
-      [data.userId],
+      [ctx.userId],
     );
   });
 
@@ -125,6 +133,7 @@ export const dbUpsertUserProfile = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    await requireAdmin();
     const nombre = data.nombre ?? data.full_name ?? "";
     const activo = data.activo ?? data.is_active ?? true;
 
@@ -168,6 +177,7 @@ export const dbUpdateUserProfile = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    await requireAdmin();
     const fields: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -206,6 +216,7 @@ export const dbUpdateUserProfile = createServerFn({ method: "POST" })
 export const dbListUserProfiles = createServerFn({ method: "GET" })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async (): Promise<any> => {
+  await requireAdmin();
   return query(
     `SELECT up.*, a.name as area_name
      FROM public.user_profiles up
@@ -223,6 +234,7 @@ export const dbAssignRole = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
+    await requireAdmin();
     const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
     const orgId = data.organizationId ?? DEFAULT_ORG_ID;
 
@@ -250,6 +262,7 @@ export const dbEnsureUserInOrg = createServerFn({ method: "POST" })
     z.object({ userId: z.string(), organizationId: z.string().optional() }),
   )
   .handler(async ({ data }) => {
+    await requireAdmin();
     const orgId = data.organizationId ?? "00000000-0000-0000-0000-000000000001";
     await execute(
       `INSERT INTO public.user_organizations (user_id, organization_id, activo)
@@ -263,6 +276,7 @@ export const dbEnsureUserInOrg = createServerFn({ method: "POST" })
 export const dbListRoles = createServerFn({ method: "GET" })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async (): Promise<any> => {
+  await requireAdmin();
   return query(
     `SELECT id, nombre, descripcion, permisos FROM public.roles ORDER BY created_at ASC`,
   );
@@ -271,6 +285,7 @@ export const dbListRoles = createServerFn({ method: "GET" })
 export const dbUpdateRole = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.string(), permisos: z.record(z.unknown()) }))
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(
       `UPDATE public.roles SET permisos = $1 WHERE id = $2`,
       [JSON.stringify(data.permisos), data.id],
@@ -283,6 +298,7 @@ export const dbCreateRole = createServerFn({ method: "POST" })
     z.object({ nombre: z.string(), descripcion: z.string(), permisos: z.record(z.unknown()) }),
   )
   .handler(async ({ data }) => {
+    await requireAdmin();
     const rows = await query<{ id: string }>(
       `INSERT INTO public.roles (nombre, descripcion, permisos) VALUES ($1, $2, $3) RETURNING id`,
       [data.nombre, data.descripcion, JSON.stringify(data.permisos)],
@@ -293,6 +309,7 @@ export const dbCreateRole = createServerFn({ method: "POST" })
 export const dbDeleteRole = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(`DELETE FROM public.roles WHERE id = $1`, [data.id]);
     return { success: true };
   });
@@ -301,6 +318,7 @@ export const dbListOrgMembers = createServerFn({ method: "GET" })
   .inputValidator(z.object({ orgId: z.string() }))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .handler(async ({ data }): Promise<any> => {
+    await requireAdmin();
     return query(
       `SELECT uo.user_id as "userId", up.email, up.nombre, uo.creado_en as "joinedAt"
        FROM public.user_organizations uo
@@ -313,6 +331,7 @@ export const dbListOrgMembers = createServerFn({ method: "GET" })
 export const dbAddOrgMember = createServerFn({ method: "POST" })
   .inputValidator(z.object({ orgId: z.string(), email: z.string() }))
   .handler(async ({ data }) => {
+    await requireAdmin();
     const profile = await queryOne<{ id: string }>(
       `SELECT id FROM public.user_profiles WHERE email = $1`,
       [data.email.trim().toLowerCase()],
@@ -331,6 +350,7 @@ export const dbAddOrgMember = createServerFn({ method: "POST" })
 export const dbRemoveOrgMember = createServerFn({ method: "POST" })
   .inputValidator(z.object({ orgId: z.string(), userId: z.string() }))
   .handler(async ({ data }) => {
+    await requireAdmin();
     await execute(
       `UPDATE public.user_organizations SET activo = false
        WHERE user_id = $1 AND organization_id = $2`,
@@ -345,13 +365,17 @@ export const dbRemoveOrgMember = createServerFn({ method: "POST" })
 
 export const selfAssignGestorRole = createServerFn({ method: "POST" })
   .inputValidator(z.object({ userId: z.string() }))
-  .handler(async ({ data }) => {
+  .handler(async () => {
+    // Autoservicio: solo puede auto-asignarse el rol quien hizo la llamada,
+    // nunca el userId que el cliente envíe (evitaría asignar "gestor" a otro).
+    const ctx = await requireAuth();
+    const userId = ctx.userId;
     const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 
     // Verifica que el usuario realmente no tiene rol asignado aún
     const existing = await queryOne<{ role_id: string }>(
       `SELECT role_id FROM public.user_roles WHERE user_id = $1 LIMIT 1`,
-      [data.userId],
+      [userId],
     );
     if (existing) throw new Error("El usuario ya tiene un rol asignado.");
 
@@ -364,7 +388,7 @@ export const selfAssignGestorRole = createServerFn({ method: "POST" })
       `INSERT INTO public.user_roles (user_id, role_id, organization_id, assigned_at)
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT DO NOTHING`,
-      [data.userId, gestorRole.id, DEFAULT_ORG_ID],
+      [userId, gestorRole.id, DEFAULT_ORG_ID],
     );
 
     return { success: true };
