@@ -1659,9 +1659,12 @@ function RegistrarModal({
 function TabHistorial() {
   const { t } = useI18n();
   const { employees, areas } = useWFM();
-  const { user, profile } = useAuth();
+  const { user, profile, hasPermission } = useAuth();
   const { registros, modificaciones, editarRegistro, eliminarRegistro, agregarRegistroManual, fechaActiva, setFechaActiva, reloadRegistros } = useJornada();
   const ownArea = profile?.areaId ?? null;
+  // El servidor ya rechaza estas acciones sin permiso; esto solo evita
+  // mostrar botones que llevarían a un error para quien no puede usarlos.
+  const canEditHistorial = hasPermission("jornada_historial" as any, "edit");
   const [empFilter,  setEmpFilter]  = useState("all");
   const [areaFilter, setAreaFilter] = useState(ownArea ?? "all");
   const [tipoFilter, setTipoFilter] = useState("all");
@@ -1714,9 +1717,11 @@ function TabHistorial() {
         <button onClick={() => reloadRegistros(fechaActiva)} className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-pill border border-border hover:bg-secondary">
           <RefreshCw className="size-4" /> {t("jornada_update")}
         </button>
-        <button onClick={() => setShowAddManual(true)} className="ml-auto inline-flex items-center gap-2 rounded-pill bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
-          <Plus className="size-4" /> {t("jornada_add_manual")}
-        </button>
+        {canEditHistorial && (
+          <button onClick={() => setShowAddManual(true)} className="ml-auto inline-flex items-center gap-2 rounded-pill bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+            <Plus className="size-4" /> {t("jornada_add_manual")}
+          </button>
+        )}
       </div>
 
       <div className="rounded-card bg-card shadow-card overflow-hidden">
@@ -1771,8 +1776,12 @@ function TabHistorial() {
                         >
                           Ver detalle
                         </button>
-                        <button onClick={() => setEditingReg(r)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"><Edit3 className="size-4" /></button>
-                        <button onClick={() => setDeleteConfirm({ reg: r, motivo: "" })} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button>
+                        {canEditHistorial && (
+                          <>
+                            <button onClick={() => setEditingReg(r)} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"><Edit3 className="size-4" /></button>
+                            <button onClick={() => setDeleteConfirm({ reg: r, motivo: "" })} className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-destructive"><Trash2 className="size-4" /></button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

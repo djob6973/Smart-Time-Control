@@ -11,9 +11,23 @@ import type {
   TipoMovimiento,
 } from "./types";
 import { resolveJornadaConfig, FLUJO_VALIDO, bogotaParts } from "./rules";
-import { requireAuth, getUserRole } from "@/lib/server-auth";
+import { requireAuth, getUserRole, type AuthContext } from "@/lib/server-auth";
 import { hasPermission } from "@/lib/permissions";
 import type { RoleName } from "@/lib/permissions";
+
+// El historial de jornada (editar hora, eliminar, agregar registro manual)
+// permite actuar sobre CUALQUIER empleado — sin este chequeo, cualquier
+// usuario autenticado podía llamar estos server functions directamente
+// (son endpoints HTTP, no dependen de que la UI oculte el botón) e insertar,
+// editar o borrar registros de otra persona.
+async function requireJornadaEdit(): Promise<AuthContext> {
+  const ctx = await requireAuth();
+  const role = await getUserRole(ctx.userId);
+  if (!hasPermission(role as RoleName | null, "jornada_historial", "edit")) {
+    throw new Error("No tienes permiso para editar el historial de jornada.");
+  }
+  return ctx;
+}
 
 // ── Mappers ────────────────────────────────────────────────
 
@@ -305,6 +319,7 @@ const _registrarMovimiento = createServerFn({ method: "POST" })
 const _insertRegistro = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as Omit<JornadaRegistro, "id" | "createdAt">)
   .handler(async ({ data: r }) => {
+    const ctx = await requireJornadaEdit();
     const rows = await query(
       `INSERT INTO public.jornada_registros
          (employee_id, fecha, hora_exacta, tipo_movimiento, area_id,
@@ -313,7 +328,9 @@ const _insertRegistro = createServerFn({ method: "POST" })
        RETURNING *`,
       [
         r.employeeId, r.fecha, r.horaExacta, r.tipoMovimiento,
-        r.areaId ?? null, r.usuarioRegistroId ?? null, r.observaciones ?? null,
+        // Quién hizo el registro manual se toma de la sesión, no de lo que
+        // el cliente diga que es (evita falsificar el audit trail).
+        r.areaId ?? null, ctx.userId, r.observaciones ?? null,
         r.estado, r.esModificacion, r.registroOriginalId ?? null,
       ],
     );
@@ -323,6 +340,7 @@ const _insertRegistro = createServerFn({ method: "POST" })
 const _updateRegistro = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as JornadaRegistro)
   .handler(async ({ data: r }) => {
+    await requireJornadaEdit();
     await execute(
       `UPDATE public.jornada_registros SET
          employee_id=$2, fecha=$3, hora_exacta=$4, tipo_movimiento=$5,
@@ -340,17 +358,25 @@ const _updateRegistro = createServerFn({ method: "POST" })
 const _deleteRegistro = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
+    await requireJornadaEdit();
     await execute("DELETE FROM public.jornada_registros WHERE id = $1", [data.id]);
   });
 
 const _insertModificacion = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => d as Omit<JornadaModificacion, "id" | "fechaModificacion">)
   .handler(async ({ data: m }) => {
+    const ctx = await requireJornadaEdit();
+    // "Quién hizo el cambio" en el audit trail también se deriva de la sesión,
+    // nunca del usuarioId/nombreUsuario que envíe el cliente.
+    const caller = await queryOne<{ nombre: string }>(
+      `SELECT nombre FROM public.user_profiles WHERE id = $1`,
+      [ctx.userId],
+    );
     await execute(
       `INSERT INTO public.jornada_modificaciones
          (registro_id, usuario_id, nombre_usuario, motivo, campo_modificado, valor_anterior, valor_nuevo)
        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [m.registroId, m.usuarioId, m.nombreUsuario ?? null, m.motivo, m.campoModificado ?? null, m.valorAnterior ?? null, m.valorNuevo ?? null],
+      [m.registroId, ctx.userId, caller?.nombre ?? ctx.email, m.motivo, m.campoModificado ?? null, m.valorAnterior ?? null, m.valorNuevo ?? null],
     );
   });
 
